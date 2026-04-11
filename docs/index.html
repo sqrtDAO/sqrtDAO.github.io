@@ -1,7 +1,64 @@
 <!DOCTYPE html>
-<html>
-  <head><title>sqrtDAO</title></head>
-  <body>
-    Hello world!
-  </body>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DAO — Coming Soon</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --fg: #00ff88;
+      --muted: #0a0a0a;
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    .wrap {
+      min-height: 100%;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 50% 50%, #00110a 0%, var(--bg) 60%);
+    }
+    h1 {
+      font-size: clamp(28px, 6vw, 64px);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin: 0;
+      text-align: center;
+      text-shadow: 0 0 8px rgba(0,255,136,0.6), 0 0 24px rgba(0,255,136,0.35);
+      animation: flicker 3.5s infinite ease-in-out;
+    }
+    @keyframes flicker {
+      0%, 18%, 22%, 25%, 53%, 57%, 100% { opacity: 1; }
+      20%, 24%, 55% { opacity: 0.6; }
+    }
+    .logo {
+      position: fixed;
+      top: 18px;
+      left: 22px;
+      font-size: 18px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      opacity: 0.85;
+      text-shadow: 0 0 6px rgba(0,255,136,0.6);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo .sqrt {
+      font-size: 40px;
+      line-height: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo"><span class="sqrt">√</span><span>DAO</span></div>
+  <div class="wrap">
+    <h1>Coming Soon</h1>
+  </div>
+</body>
 </html>
