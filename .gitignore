@@ -1,0 +1,93 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# testing
+coverage/
+*.lcov
+
+# next.js
+.next/
+out/
+dist/
+
+# production build
+build/
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# local env files
+.env
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# turbo
+.turbo
+
+# contentlayer
+.contentlayer
+
+# sentry
+.sentryclirc
+
+# playwright
+playwright-report/
+test-results/
+
+# storybook
+storybook-static/
+
+# tailwind
+tailwind.css
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# pnpm
+# pnpm-lock.yaml
+
+# netlify
+.netlify
+
+# github pages specific
+gh-pages/
+
+# temporary files
+*.tmp
+*.temp
+.cache/
