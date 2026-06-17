@@ -90,16 +90,18 @@ export default function Page() {
         {/* VIEW 1 - HERO */}
         <section className="view">
           <div className="stage"><div className="grid">
-            <div className="block block--empty" style={pos("3 / 5", "2 / 3")} />
-            <div className="card tilt" style={pos("10 / 13", "1 / 3")}>
-              <p className="kicker" style={{ color: "var(--sqrt-text-primary)" }}>Fair-launch infrastructure for tokens.</p>
-              <p className="detail" style={{ marginTop: 8 }}>Launching Q1.</p>
+            <div className="block block--empty" style={pos("3 / 5", "1 / 2")} />
+            <div className="block block--empty" style={pos("1 / 2", "2 / 3")} />
+            <div className="card tilt" style={{ ...pos("9 / 13", "1 / 3"), background: "#000000" }}>
+              <img src="/logo.svg" alt="sqrtDAO" width="201" style={{ marginBottom: 16 }} />
+              <p className="kicker" style={{ color: "var(--sqrt-text-primary)", fontSize: 18 }}>Launch and distribute infrastructure for tokens.</p>
+              <p className="detail" style={{ marginTop: 8, fontSize: 14 }}>Launching Q1.</p>
             </div>
-            <div className="plate" style={pos("6 / 8", "3 / 4")}><Logo dark /></div>
-            <div className="block" style={pos("1 / 8", "4 / 6")}>
+            <div className="block" style={pos("1 / 7", "3 / 6")}>
               <div className="swatch" style={{ width: 220, marginBottom: 14 }}>{TEAL.map((c) => <i key={c} style={{ background: c }} />)}</div>
-              <h1 className="headline headline--xl">Fairness isn&apos;t a promise we make.</h1>
-              <h1 className="headline headline--xl" style={{ marginTop: 6 }}>It&apos;s a property we build in.</h1>
+              <h1 className="headline headline--xl" style={{ fontSize: 56, lineHeight: 1.0 }}>A launch is a moment</h1>
+              <h1 className="headline headline--xl" style={{ fontSize: 56, lineHeight: 1.0, marginTop: 6 }}>Distribution is a process</h1>
+              <h1 className="headline headline--xl" style={{ fontSize: 56, lineHeight: 1.0, marginTop: 6 }}>We built the process</h1>
             </div>
             <div className="block block--empty" style={pos("6 / 8", "6 / 7")} />
           </div></div>
