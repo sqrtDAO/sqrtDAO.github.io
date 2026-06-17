@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "node scripts/build-tokens.mjs && next dev",
+    "build": "node scripts/build-tokens.mjs && next build",
+    "start": "node scripts/build-tokens.mjs && next start",
     "lint": "eslint"
   },
   "dependencies": {
