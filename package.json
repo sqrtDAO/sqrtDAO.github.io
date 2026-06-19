@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "tokens": "node scripts/build-tokens.mjs",
+    "predev": "pnpm run tokens",
+    "prebuild": "pnpm run tokens",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

@@ -142,8 +142,8 @@ ${componentCss}
 }
 `;
 
-writeFileSync(resolve(root, "src/app/tokens.css"), out);
-console.log("✓ src/app/tokens.css written");
+writeFileSync(resolve(root, "src/app/theme.css"), out);
+console.log("✓ src/app/theme.css written");
 console.log(
   `  primitive: ${primitiveCss.split("\n").length} vars · semantic: ${semanticPairs.length} vars`
 );

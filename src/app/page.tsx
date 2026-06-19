@@ -24,37 +24,9 @@ export default function Page() {
     fit();
     window.addEventListener("resize", fit);
 
-    const container = ref.current;
-    const views = container ? Array.from(container.querySelectorAll<HTMLElement>(".view")) : [];
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let raf = 0, tick = 0;
+    let raf = 0;
 
     const loop = () => {
-      tick++;
-      const vh = window.innerHeight;
-      for (const v of views) {
-        const r = v.getBoundingClientRect();
-        const visible = r.bottom > 0 && r.top < vh;
-        const g = visible ? Math.min(1, Math.abs((r.top + r.height / 2 - vh / 2) / vh) * 1.7) : 0;
-        const blocks = v.querySelectorAll<HTMLElement>(".block");
-        if (!reduce && g > 0.04) {
-          v.style.setProperty("--g", g.toFixed(3));
-          blocks.forEach((b) => {
-            b.classList.add("glx");
-            if (tick % 2 === 0) {
-              const a = g * 9;
-              b.style.setProperty("--gx", ((Math.random() * 2 - 1) * a).toFixed(1) + "px");
-              b.style.setProperty("--gy", ((Math.random() * 2 - 1) * a * 0.4).toFixed(1) + "px");
-              b.style.setProperty("--clip", Math.random() < 0.5
-                ? `inset(${(Math.random() * 40).toFixed(0)}% 0 ${(Math.random() * 40).toFixed(0)}% 0)`
-                : "inset(0)");
-            }
-          });
-        } else {
-          v.style.setProperty("--g", "0");
-          blocks.forEach((b) => { b.classList.remove("glx"); b.style.removeProperty("--clip"); });
-        }
-      }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);

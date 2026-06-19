@@ -59,6 +59,9 @@ storybook-static/
 # tailwind
 tailwind.css
 
+# generated tokens
+src/app/theme.css
+
 # IDE
 .vscode/*
 !.vscode/settings.json
