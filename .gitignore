@@ -3,6 +3,8 @@ node_modules/
 .pnp
 .pnp.js
 
+src/app/tokens.css
+
 # testing
 coverage/
 *.lcov
@@ -58,6 +60,9 @@ storybook-static/
 
 # tailwind
 tailwind.css
+
+# generated tokens
+src/app/theme.css
 
 # IDE
 .vscode/*

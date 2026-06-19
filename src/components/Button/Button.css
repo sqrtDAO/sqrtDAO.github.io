@@ -1,0 +1,130 @@
+/* sqrtDAO — Button styles (matches Figma component set 1106:5006)
+   Interactive states use native pseudo-classes. The mirrored
+   [data-force="..."] selectors exist only so docs/QA can display a
+   state without real interaction; production never sets them. */
+
+.sqrt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--btn-l-gap);
+
+  font-family: var(--btn-font-family);
+  font-weight: var(--btn-font-weight);
+  font-size: var(--btn-l-font);
+  line-height: var(--btn-line-height);
+  letter-spacing: var(--btn-letter-spacing);
+
+  height: var(--btn-l-height);
+  padding: var(--btn-l-pad);
+
+  border: var(--btn-border-width) solid transparent;
+  border-radius: var(--btn-radius);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--btn-transition),
+    border-color var(--btn-transition), color var(--btn-transition);
+}
+
+.sqrt-btn__label { padding: 0 4px; }           /* the "text" frame */
+.sqrt-btn__icon { display: inline-flex; flex: 0 0 auto; }
+.sqrt-btn__icon svg { display: block; width: var(--btn-l-icon); height: var(--btn-l-icon); }
+
+/* ---- size: medium ---- */
+.sqrt-btn--m {
+  gap: var(--btn-m-gap);
+  font-size: var(--btn-m-font);
+  height: var(--btn-m-height);
+  padding: var(--btn-m-pad);
+}
+.sqrt-btn--m .sqrt-btn__icon svg { width: var(--btn-m-icon); height: var(--btn-m-icon); }
+
+.sqrt-btn--full { width: 100%; }
+
+/* focus ring (keyboard) — 1px inset navy stroke, all variants */
+.sqrt-btn:focus { outline: none; }
+.sqrt-btn:focus-visible,
+.sqrt-btn[data-force="focused"] { border-color: var(--sqrt-border-focus); }
+
+/* ===================== PRIMARY ===================== */
+.sqrt-btn--primary {
+  background-color: var(--sqrt-action-primary-rest);
+  color: var(--sqrt-text-on-amber);
+  box-shadow: var(--btn-inner-shadow);
+}
+.sqrt-btn--primary:hover,
+.sqrt-btn--primary[data-force="hovered"] { background-color: var(--sqrt-action-primary-hover); }
+.sqrt-btn--primary:active,
+.sqrt-btn--primary[data-force="pressed"] {
+  background-color: var(--sqrt-action-primary-press);
+  color: var(--sqrt-text-primary);              /* text + icons flip light */
+}
+
+/* ===================== SECONDARY ===================== */
+.sqrt-btn--secondary {
+  background-color: var(--sqrt-action-secondary-rest);
+  color: var(--sqrt-text-primary);
+  box-shadow: var(--btn-inner-shadow);
+}
+.sqrt-btn--secondary:hover,
+.sqrt-btn--secondary[data-force="hovered"] { background-color: var(--sqrt-action-secondary-hover); }
+.sqrt-btn--secondary:active,
+.sqrt-btn--secondary[data-force="pressed"] { background-color: var(--sqrt-action-secondary-press); }
+
+/* ===================== OUTLINE ===================== */
+.sqrt-btn--outline {
+  background-color: transparent;
+  color: var(--sqrt-text-primary);
+  border-color: var(--sqrt-action-secondary-rest);
+}
+.sqrt-btn--outline:hover,
+.sqrt-btn--outline[data-force="hovered"] { border-color: var(--sqrt-action-secondary-hover); }
+.sqrt-btn--outline:active,
+.sqrt-btn--outline[data-force="pressed"] { border-color: var(--sqrt-action-secondary-press); }
+.sqrt-btn--outline:focus-visible,
+.sqrt-btn--outline[data-force="focused"] { border-color: var(--sqrt-border-focus); }
+
+/* ===================== GHOST ===================== */
+.sqrt-btn--ghost {
+  background-color: transparent;
+  color: var(--sqrt-text-primary);
+}
+.sqrt-btn--ghost:hover,
+.sqrt-btn--ghost[data-force="hovered"] { color: var(--sqrt-text-accent); }   /* amber */
+.sqrt-btn--ghost:active,
+.sqrt-btn--ghost[data-force="pressed"] { color: var(--sqrt-text-secondary); }
+
+/* ===================== DANGER ===================== */
+.sqrt-btn--danger {
+  background-color: var(--sqrt-state-danger);
+  color: var(--sqrt-text-primary);
+  box-shadow: var(--btn-inner-shadow);
+}
+/* danger keeps the same fill on hover/press (single token) */
+
+/* ===================== DISABLED (overrides everything) ===================== */
+.sqrt-btn:disabled,
+.sqrt-btn[data-force="disabled"] {
+  cursor: not-allowed;
+  border-color: transparent;
+}
+.sqrt-btn--primary:disabled,   .sqrt-btn--primary[data-force="disabled"],
+.sqrt-btn--secondary:disabled, .sqrt-btn--secondary[data-force="disabled"],
+.sqrt-btn--danger:disabled,    .sqrt-btn--danger[data-force="disabled"] {
+  background-color: var(--sqrt-text-disabled);
+  color: var(--sqrt-text-on-amber);
+  box-shadow: var(--btn-inner-shadow);
+}
+.sqrt-btn--outline:disabled,   .sqrt-btn--outline[data-force="disabled"] {
+  background-color: transparent;
+  border-color: var(--sqrt-text-disabled);
+  color: var(--sqrt-text-disabled);
+}
+.sqrt-btn--ghost:disabled,     .sqrt-btn--ghost[data-force="disabled"] {
+  background-color: transparent;
+  color: var(--sqrt-text-disabled);
+}
+
+@media (prefers-reduced-motion: reduce) { .sqrt-btn { transition: none; } }

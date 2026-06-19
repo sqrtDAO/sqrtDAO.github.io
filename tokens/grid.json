@@ -1,0 +1,41 @@
+{
+  "desktop": {
+    "1920 - block-grid": {
+      "$type": "grid",
+      "$value": [
+        {
+          "pattern": "columns",
+          "visible": true,
+          "alignment": "center",
+          "color": "#ff00001a",
+          "gutterSize": "24px",
+          "count": 12,
+          "offset": "0px"
+        },
+        {
+          "pattern": "rows",
+          "visible": true,
+          "alignment": "center",
+          "color": "#ff00001a",
+          "gutterSize": "24px",
+          "count": 6,
+          "offset": "0px"
+        }
+      ]
+    },
+    "master-grid": {
+      "$type": "grid",
+      "$value": [
+        {
+          "pattern": "columns",
+          "visible": true,
+          "alignment": "center",
+          "color": "#ff00001a",
+          "gutterSize": "24px",
+          "count": 12,
+          "offset": "0px"
+        }
+      ]
+    }
+  }
+}
