@@ -6,7 +6,7 @@
   scroll-snap-type: y mandatory;
   scroll-behavior: smooth;
   position: relative;
-  z-index: 1;
+  z-index: 4;
 }
 
 .view {
@@ -25,7 +25,7 @@
   transform: scale(var(--s, 1));
   transform-origin: center center;
   position: relative;
-  opacity: var(--stage-ready, 0);
+  visibility: var(--stage-ready, hidden);
 }
 .grid {
   width: 1920px;
@@ -116,6 +116,24 @@
   background: #fff;
   border-radius: var(--sqrt-radius-card);
   display: flex; align-items: center; justify-content: center;
+}
+
+/* ---- view 2 hover cards ---- */
+.v2-row {
+  display: flex;
+  align-items: stretch;
+}
+.v2-hover {
+  opacity: 0;
+  transform: translateX(-12px);
+  transition: opacity var(--motion-duration-base) var(--motion-easing-standard),
+              transform var(--motion-duration-base) var(--motion-easing-arrive);
+  pointer-events: none;
+}
+.v2-row:hover .v2-hover {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
 }
 
 .cta-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
