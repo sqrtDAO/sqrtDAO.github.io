@@ -125,14 +125,10 @@ export default function Page() {
         {/* VIEW 3 - CTA */}
         <section className="view">
           <div className="stage">
-            {/* L-shape — top-left narrow */}
-            <div style={{ position: "absolute", left: 516, top: 279, width: 197, height: 125, background: "var(--sqrt-bg-space)" }} />
-            {/* L-shape — main body */}
-            <div style={{ position: "absolute", left: 516, top: 404, width: 912, height: 456, background: "var(--sqrt-bg-space)" }} />
-            {/* surface square */}
-            <div style={{ position: "absolute", left: 1017, top: 428, width: 128, height: 128, background: "var(--sqrt-bg-surface)" }} />
-            {/* overlay square */}
-            <div style={{ position: "absolute", left: 1169, top: 580, width: 128, height: 128, background: "var(--sqrt-bg-overlay)" }} />
+            {/* subtract shape */}
+            <svg width="912" height="581" viewBox="0 0 912 581" fill="none" style={{ position: "absolute", left: 516, top: 279 }}>
+              <path d="M197 125H912V581H0V0H197V125ZM653 429H781V301H653V429ZM501 277H629V149H501V277Z" fill="var(--sqrt-bg-space)" />
+            </svg>
             {/* teal gradient strip */}
             <div style={{ position: "absolute", left: 710, top: 394, height: 10, display: "flex" }}>
               <div style={{ width: 57.33, background: "var(--color-support-teal-900)" }} />
