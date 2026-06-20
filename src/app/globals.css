@@ -3,8 +3,8 @@
 /* sqrtDAO base — tokens.css (loaded before this) provides the variables. */
 
 @theme inline {
-  --font-sans: "IBM Plex Sans Condensed", system-ui, sans-serif;
-  --font-display: "Oxanium", system-ui, sans-serif;
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
 }
 
 :root { color-scheme: dark; }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import HeroBackground from "@/components/HeroBackground/HeroBackground";
 import Logo from "@/components/Logo/Logo";
 import { Button } from "@/components/Button/Button";
@@ -15,22 +15,19 @@ const pos = (c: string, r: string): React.CSSProperties => ({ gridColumn: c, gri
 export default function Page() {
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.documentElement;
     const fit = () => {
-      const s = Math.min(1, (window.innerWidth - 48) / 1536, (window.innerHeight - 40) / 768);
+      const s = Math.min(1, (window.innerWidth - 48) / 1920, (window.innerHeight - 40) / 1135);
       root.style.setProperty("--s", String(s));
+      root.style.setProperty("--stage-ready", "1");
     };
     fit();
     window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, []);
 
-    let raf = 0;
-
-    const loop = () => {
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-
+  useEffect(() => {
     const onTilt = (e: PointerEvent) => {
       const card = (e.target as HTMLElement).closest(".card") as HTMLElement | null;
       if (!card) return;
@@ -45,10 +42,7 @@ export default function Page() {
     };
     document.addEventListener("pointermove", onTilt);
     document.addEventListener("pointerout", onOut);
-
     return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", fit);
       document.removeEventListener("pointermove", onTilt);
       document.removeEventListener("pointerout", onOut);
     };
@@ -61,22 +55,41 @@ export default function Page() {
 
         {/* VIEW 1 - HERO */}
         <section className="view">
-          <div className="stage"><div className="grid">
-            <div className="block block--empty" style={pos("3 / 5", "1 / 2")} />
-            <div className="block block--empty" style={pos("1 / 2", "2 / 3")} />
-            <div className="card tilt" style={{ ...pos("9 / 13", "1 / 3"), background: "#000000" }}>
-              <img src="/logo.svg" alt="sqrtDAO" width="201" style={{ marginBottom: 16 }} />
-              <p className="kicker" style={{ color: "var(--sqrt-text-primary)", fontSize: 18 }}>Launch and distribute infrastructure for tokens.</p>
-              <p className="detail" style={{ marginTop: 8, fontSize: 14 }}>Launching Q1.</p>
+          <div className="stage">
+            {/* empty block top */}
+            <div style={{ position: "absolute", left: 212, top: 277, width: 280, height: 151, background: "var(--sqrt-bg-space)" }} />
+            {/* empty block mid-right */}
+            <div style={{ position: "absolute", left: 1089, top: 758, width: 234, height: 128, background: "var(--sqrt-bg-space)" }} />
+            {/* L-shape — upper rect */}
+            <div style={{ position: "absolute", left: 60, top: 428, width: 1042, height: 456, background: "var(--sqrt-bg-space)", display: "flex", flexDirection: "column", justifyContent: "flex-start", padding: 0 }}>
+              <h1 className="headline" style={{ fontSize: "var(--font-size-display-l)", lineHeight: "var(--font-line-height-display-l)", letterSpacing: "var(--font-letter-spacing-display-l)", marginTop: 62 }}>A launch is a moment</h1>
+              <h1 className="headline" style={{ fontSize: "var(--font-size-display-l)", lineHeight: "var(--font-line-height-display-l)", letterSpacing: "var(--font-letter-spacing-display-l)", marginTop: 16 }}>Distribution is a process</h1>
+              <h1 className="headline" style={{ fontSize: "var(--font-size-display-xl)", lineHeight: "var(--font-line-height-display-xl)", letterSpacing: "var(--font-letter-spacing-display-xl)", marginTop: 52, whiteSpace: "nowrap" }}>We built the process</h1>
             </div>
-            <div className="block" style={pos("1 / 7", "3 / 6")}>
-              <div className="swatch" style={{ width: 220, marginBottom: 14 }}>{TEAL.map((c) => <i key={c} style={{ background: c }} />)}</div>
-              <h1 className="headline headline--xl" style={{ fontSize: 56, lineHeight: 1.0 }}>A launch is a moment</h1>
-              <h1 className="headline headline--xl" style={{ fontSize: 56, lineHeight: 1.0, marginTop: 6 }}>Distribution is a process</h1>
-              <h1 className="headline headline--xl" style={{ fontSize: 56, lineHeight: 1.0, marginTop: 6 }}>We built the process</h1>
+            {/* L-shape — lower left foot */}
+            <div style={{ position: "absolute", left: 60, top: 884, width: 240, height: 110, background: "var(--sqrt-bg-space)" }} />
+            {/* L-shape — lower right fill */}
+            <div style={{ position: "absolute", left: 300, top: 884, width: 548, height: 110, background: "var(--sqrt-bg-space)" }} />
+            {/* small square */}
+            <div style={{ position: "absolute", left: 848, top: 884, width: 110, height: 110, background: "var(--sqrt-bg-surface)" }} />
+            {/* wide block */}
+            <div style={{ position: "absolute", left: 958, top: 884, width: 240, height: 110, background: "var(--sqrt-bg-overlay)" }} />
+            {/* info card */}
+            <div className="card tilt" style={{ position: "absolute", left: 1428, top: 124, width: 432, height: 299, background: "var(--sqrt-bg-space)", borderRadius: 0, border: "none", padding: "32px 20px 24px" }}>
+              <img src="/logo.svg" alt="sqrtDAO" width="201" style={{ marginBottom: 24 }} />
+              <p style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "var(--font-size-h3)", lineHeight: "var(--font-line-height-h3)", color: "var(--sqrt-text-accent)", margin: 0 }}>Launch and distribute</p>
+              <p style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "var(--font-size-h3)", lineHeight: "var(--font-line-height-h3)", color: "var(--sqrt-text-secondary)", margin: "4px 0 0" }}>infrastructure for tokens.</p>
+              <p style={{ fontFamily: "var(--font-sans)", fontSize: "var(--font-size-h4)", lineHeight: "var(--font-line-height-h4)", color: "var(--sqrt-text-secondary)", marginTop: 16 }}>Launching Q2.</p>
             </div>
-            <div className="block block--empty" style={pos("6 / 8", "6 / 7")} />
-          </div></div>
+            {/* teal gradient strip — painted last to sit on top of L-shape black fill */}
+            <div style={{ position: "absolute", left: 60, top: 428, width: 408, height: 21, display: "flex", zIndex: 1 }}>
+              <i style={{ flex: 1, background: "var(--color-support-teal-900)" }} />
+              <i style={{ flex: 1, background: "var(--color-support-teal-700)" }} />
+              <i style={{ flex: 1, background: "var(--color-support-teal-500)" }} />
+              <i style={{ flex: 1, background: "var(--color-support-teal-300)" }} />
+              <i style={{ flex: 1, background: "var(--color-support-teal-100)" }} />
+            </div>
+          </div>
         </section>
 
         {/* VIEW 2 - LIQUIDITY */}
@@ -122,7 +135,7 @@ export default function Page() {
         <section className="view">
           <div className="stage"><div className="grid">
             <div className="block" style={pos("4 / 6", "1 / 2")}>
-              <p className="detail">sqrtDAO launches Q1.</p>
+              <p className="detail">sqrtDAO launches Q2.</p>
             </div>
             <div className="block block--empty" style={pos("8 / 10", "2 / 3")} />
             <div className="block" style={pos("4 / 10", "2 / 6")}>
