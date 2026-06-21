@@ -18,9 +18,9 @@ void main(){
   vec2 mp=(mUV-0.5);mp.x*=asp;
   vec2 q=vec2(fbm(p*1.1+t),fbm(p*1.1+vec2(3.0,1.0)-t));
   float f=fbm(p*1.1+1.2*q+0.10*(mUV-0.5));
-  vec3 cVoid=vec3(0.043,0.051,0.071);
-  vec3 cDeep=vec3(0.090,0.110,0.188);
-  vec3 cInfra=vec3(0.192,0.227,0.388);
+  vec3 cVoid=vec3(0.045,0.054,0.075);
+  vec3 cDeep=vec3(0.095,0.116,0.197);
+  vec3 cInfra=vec3(0.202,0.238,0.407);
   vec3 col=mix(cVoid,cDeep,smoothstep(0.25,0.65,f));
   col=mix(col,cInfra,smoothstep(0.62,0.94,f)*0.65);
   float md=length(p-mp);
@@ -148,6 +148,7 @@ export default function HeroBackground() {
           zIndex: 3,
           pointerEvents: "none",
           overflow: "visible",
+          display: "none",
         }}
       >
         <svg width={1672} height="100%" preserveAspectRatio="none" style={{ display: "block", width: 1672, overflow: "visible" }}>
