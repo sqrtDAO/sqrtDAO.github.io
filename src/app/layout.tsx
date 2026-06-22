@@ -1,6 +1,21 @@
 import type { Metadata } from "next";
+import { Oxanium, IBM_Plex_Sans_Condensed } from "next/font/google";
 import "./theme.css";
 import "./globals.css";
+
+const oxanium = Oxanium({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const ibmPlex = IBM_Plex_Sans_Condensed({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sans",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "sqrtDAO — design the beginning fair",
@@ -9,15 +24,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;500;600;700;800&family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="en" className={`${oxanium.variable} ${ibmPlex.variable}`}>
       <body>{children}</body>
     </html>
   );
