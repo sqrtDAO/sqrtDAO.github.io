@@ -8,7 +8,8 @@ import HeroTablet from "@/views/Hero/HeroTablet";
 import HeroMobile from "@/views/Hero/HeroMobile";
 import View2Desktop from "@/views/View2/View2Desktop";
 import View2Tablet from "@/views/View2/View2Tablet";
-import View2Mobile from "@/views/View2/View2Mobile";
+import View2AMobile from "@/views/View2/View2AMobile";
+import View2BMobile from "@/views/View2/View2BMobile";
 import CTADesktop from "@/views/CTA/CTADesktop";
 import CTATablet from "@/views/CTA/CTATablet";
 import CTAMobile from "@/views/CTA/CTAMobile";
@@ -52,8 +53,14 @@ export default function Page() {
         <section className="view">
           {bp === "desktop" && <View2Desktop />}
           {bp === "tablet" && <View2Tablet />}
-          {bp === "mobile" && <View2Mobile />}
+          {bp === "mobile" && <View2AMobile />}
         </section>
+
+        {bp === "mobile" && (
+          <section className="view">
+            <View2BMobile />
+          </section>
+        )}
 
         <section className="view">
           {bp === "desktop" && <CTADesktop />}
