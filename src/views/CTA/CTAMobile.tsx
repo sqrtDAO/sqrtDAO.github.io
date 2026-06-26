@@ -45,8 +45,8 @@ export default function CTAMobile() {
 
           {/* Buttons — center aligned, 16px gap */}
           <div style={{ display: "flex", gap: 16, marginTop: 24, justifyContent: "center" }}>
-            <Button variant="primary" leadingIcon={<IconBrandX />}>Follow on X</Button>
-            <Button variant="secondary" leadingIcon={<IconBrandDiscord />}>Join Discord</Button>
+            <a href="https://x.com/DAOsqrt" target="_blank" rel="noopener noreferrer"><Button variant="primary" leadingIcon={<IconBrandX />}>Follow on X</Button></a>
+            <a href="https://discord.gg/hsW64egPRJ" target="_blank" rel="noopener noreferrer"><Button variant="secondary" leadingIcon={<IconBrandDiscord />}>Join Discord</Button></a>
           </div>
 
           {/* Bottom text */}

@@ -28,8 +28,8 @@ export default function CTADesktop() {
       <h2 className="headline" style={{ position: "absolute", left: 13, top: 284, fontSize: "var(--font-size-display-l)", lineHeight: "var(--font-line-height-display-l)", letterSpacing: "var(--font-letter-spacing-display-l)" }}>Be in the first cohort.</h2>
       {/* buttons */}
       <div style={{ position: "absolute", left: 8, top: 416, display: "flex", gap: 16 }}>
-        <Button variant="primary" leadingIcon={<IconBrandX />}>Follow on X</Button>
-        <Button variant="secondary" leadingIcon={<IconBrandDiscord />}>Join Discord</Button>
+        <a href="https://x.com/DAOsqrt" target="_blank" rel="noopener noreferrer"><Button variant="primary" leadingIcon={<IconBrandX />}>Follow on X</Button></a>
+        <a href="https://discord.gg/hsW64egPRJ" target="_blank" rel="noopener noreferrer"><Button variant="secondary" leadingIcon={<IconBrandDiscord />}>Join Discord</Button></a>
       </div>
       {/* bottom text */}
       <p style={{ position: "absolute", left: 14, top: 480, fontFamily: "var(--font-sans)", fontSize: "var(--font-size-body-l)", lineHeight: "var(--font-line-height-body-l)", color: "var(--sqrt-text-primary)", margin: 0 }}>Owned by no one. Controlled by the protocol.</p>
