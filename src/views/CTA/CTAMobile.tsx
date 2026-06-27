@@ -45,8 +45,8 @@ export default function CTAMobile() {
 
           {/* Buttons — center aligned, 16px gap */}
           <div style={{ display: "flex", gap: 16, marginTop: 24, justifyContent: "center" }}>
-            <a href="https://x.com/DAOsqrt" target="_blank" rel="noopener noreferrer"><Button variant="primary" leadingIcon={<IconBrandX />}>Follow on X</Button></a>
-            <a href="https://discord.gg/hsW64egPRJ" target="_blank" rel="noopener noreferrer"><Button variant="secondary" leadingIcon={<IconBrandDiscord />}>Join Discord</Button></a>
+            <Button variant="primary" leadingIcon={<IconBrandX />} onClick={() => window.open("https://x.com/DAOsqrt", "_blank", "noopener,noreferrer")}>Follow on X</Button>
+            <Button variant="secondary" leadingIcon={<IconBrandDiscord />} onClick={() => window.open("https://discord.gg/hsW64egPRJ", "_blank", "noopener,noreferrer")}>Join Discord</Button>
           </div>
 
           {/* Bottom text */}
