@@ -1,0 +1,226 @@
+/* TokenRouter — full-screen token routing wizard
+   States: idle → no → yes
+   Figma source: Primitive / Router V.2 (node 3067:1846) */
+
+/* ── Backdrop ─────────────────────────────────────────── */
+.tr-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background-color: var(--sqrt-bg-canvas);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  animation: tr-backdrop-in var(--motion-duration-slow) var(--motion-easing-arrive) both;
+  overflow-y: auto;
+}
+
+/* Ambient glow — blooms when a choice is active */
+.tr-backdrop::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 50% 35% at 50% 42%,
+    var(--color-alpha-amber-glow) 0%,
+    transparent 70%
+  );
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-duration-slow) var(--motion-easing-standard);
+}
+.tr-backdrop.has-choice::before {
+  opacity: 1;
+}
+
+@keyframes tr-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Panel (584 px content column) ───────────────────── */
+.tr-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  width: 584px;
+  max-width: calc(100vw - 48px);
+  padding: 64px 0;
+  animation: tr-panel-in var(--motion-duration-slow) var(--motion-easing-arrive) 60ms both;
+}
+
+@keyframes tr-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Back / close button ──────────────────────────────── */
+.tr-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 12px;
+  background: transparent;
+  border: 1px solid var(--sqrt-action-secondary-rest);
+  border-radius: 8px;
+  color: var(--sqrt-text-primary);
+  cursor: pointer;
+  transition:
+    border-color var(--motion-duration-fast) var(--motion-easing-standard),
+    background-color var(--motion-duration-fast) var(--motion-easing-standard),
+    color var(--motion-duration-fast) var(--motion-easing-standard);
+}
+.tr-back:hover {
+  border-color: var(--sqrt-action-secondary-hover);
+  background-color: var(--sqrt-bg-raised);
+  color: var(--sqrt-text-accent);
+}
+.tr-back:active {
+  border-color: var(--sqrt-action-secondary-pressed);
+  background-color: var(--sqrt-bg-overlay);
+}
+.tr-back:focus { outline: none; }
+.tr-back:focus-visible { border-color: var(--sqrt-border-focus); }
+
+/* ── Content area ─────────────────────────────────────── */
+.tr-content {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* ── Text group ───────────────────────────────────────── */
+.tr-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tr-title {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 36px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--sqrt-text-primary);
+  margin: 0;
+}
+
+.tr-subtitle {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 24px;
+  letter-spacing: 0.02em;
+  color: var(--sqrt-text-secondary);
+  margin: 0;
+}
+
+/* ── Choice buttons ───────────────────────────────────── */
+.tr-choices {
+  display: flex;
+  gap: 24px;
+}
+
+.tr-choice {
+  flex: 1;
+  min-width: 0;
+  height: 61px;
+  padding: 16px 20px;
+  background-color: var(--sqrt-bg-surface);
+  border: 1px solid var(--sqrt-border-subtle);
+  border-radius: 12px;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--sqrt-text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-duration-base) var(--motion-easing-standard),
+    border-color var(--motion-duration-base) var(--motion-easing-standard),
+    box-shadow var(--motion-duration-base) var(--motion-easing-standard),
+    transform var(--motion-duration-base) var(--motion-easing-arrive);
+}
+.tr-choice:not(.is-selected):hover {
+  border-color: var(--sqrt-border-default);
+  background-color: var(--sqrt-bg-raised);
+}
+.tr-choice:focus { outline: none; }
+.tr-choice:focus-visible { border-color: var(--sqrt-border-focus); }
+
+.tr-choice.is-selected {
+  background-color: var(--sqrt-bg-overlay);
+  border-color: var(--sqrt-border-focus);
+  transform: scale(1.015);
+  animation: tr-choice-glow var(--motion-duration-slow) var(--motion-easing-arrive) both;
+}
+
+/* Glow blooms then settles */
+@keyframes tr-choice-glow {
+  0%   { box-shadow: 0 0 0   0px transparent; }
+  45%  { box-shadow: 0 0 20px 4px var(--color-alpha-amber-glow); }
+  100% { box-shadow: 0 0 10px 2px var(--color-alpha-amber-glow); }
+}
+
+/* ── Conditional footer (instruction + CTA) ──────────── */
+.tr-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  animation: tr-footer-in var(--motion-duration-base) var(--motion-easing-arrive) both;
+}
+
+@keyframes tr-footer-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tr-instruction {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 24px;
+  letter-spacing: 0.02em;
+  color: var(--sqrt-text-primary);
+  margin: 0;
+  animation: tr-footer-in var(--motion-duration-base) var(--motion-easing-arrive) 40ms both;
+}
+
+.tr-submit {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ── Reduced motion ───────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .tr-backdrop,
+  .tr-panel,
+  .tr-footer,
+  .tr-instruction,
+  .tr-choice.is-selected {
+    animation: none;
+  }
+  .tr-backdrop::before {
+    transition: none;
+  }
+  .tr-choice,
+  .tr-back {
+    transition: none;
+  }
+}

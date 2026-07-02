@@ -3,7 +3,7 @@
 import { Button } from "@/components/Button/Button";
 import { IconBrandX, IconBrandDiscord } from "@tabler/icons-react";
 
-export default function CTAMobile() {
+export default function CTAMobile({ onGetStarted }: { onGetStarted?: () => void }) {
   return (
     <div style={{ width: "calc(100% + 48px)", marginLeft: -24, marginRight: -24, display: "flex", flexDirection: "column", paddingRight: 16 }}>
       {/* Subtract shape with all content inside */}
@@ -44,9 +44,12 @@ export default function CTAMobile() {
           <h2 className="headline" style={{ fontSize: "var(--font-size-h1)", lineHeight: "var(--font-line-height-h1)", marginTop: 8 }}>Be in the first cohort.</h2>
 
           {/* Buttons — center aligned, 16px gap */}
-          <div style={{ display: "flex", gap: 16, marginTop: 24, justifyContent: "center" }}>
+          <div style={{ display: "flex", gap: 16, marginTop: 24, justifyContent: "center", flexWrap: "wrap" }}>
             <Button variant="primary" leadingIcon={<IconBrandX />} onClick={() => window.open("https://x.com/DAOsqrt", "_blank", "noopener,noreferrer")}>Follow on X</Button>
             <Button variant="secondary" leadingIcon={<IconBrandDiscord />} onClick={() => window.open("https://discord.gg/hsW64egPRJ", "_blank", "noopener,noreferrer")}>Join Discord</Button>
+            {onGetStarted && (
+              <Button variant="outline" onClick={onGetStarted}>Launch your token</Button>
+            )}
           </div>
 
           {/* Bottom text */}

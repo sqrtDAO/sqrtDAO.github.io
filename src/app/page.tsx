@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import HeroBackground from "@/components/HeroBackground/HeroBackground";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 import HeroDesktop from "@/views/Hero/HeroDesktop";
@@ -13,10 +13,16 @@ import View2BMobile from "@/views/View2/View2BMobile";
 import CTADesktop from "@/views/CTA/CTADesktop";
 import CTATablet from "@/views/CTA/CTATablet";
 import CTAMobile from "@/views/CTA/CTAMobile";
+import TokenRouter from "@/components/TokenRouter/TokenRouter";
+import TokenImport from "@/components/TokenImport/TokenImport";
 import "./landing.css";
+
+// Flow steps for the token wizard overlay
+type FlowStep = "none" | "router" | "import";
 
 export default function Page() {
   const bp = useBreakpoint();
+  const [flow, setFlow] = useState<FlowStep>("none");
 
   useEffect(() => {
     const onTilt = (e: PointerEvent) => {
@@ -63,12 +69,28 @@ export default function Page() {
         )}
 
         <section className="view">
-          {bp === "desktop" && <CTADesktop />}
-          {bp === "tablet" && <CTATablet />}
-          {bp === "mobile" && <CTAMobile />}
+          {bp === "desktop" && <CTADesktop onGetStarted={() => setFlow("router")} />}
+          {bp === "tablet" && <CTATablet onGetStarted={() => setFlow("router")} />}
+          {bp === "mobile" && <CTAMobile onGetStarted={() => setFlow("router")} />}
         </section>
 
       </main>
+
+      {/* Token wizard overlay — steps: router → import */}
+      {flow === "router" && (
+        <TokenRouter
+          onClose={() => setFlow("none")}
+          onLaunch={() => setFlow("none")}
+          onDistribute={() => setFlow("import")}
+        />
+      )}
+
+      {flow === "import" && (
+        <TokenImport
+          onBack={() => setFlow("router")}
+          onConfirm={() => setFlow("none")}
+        />
+      )}
     </>
   );
 }

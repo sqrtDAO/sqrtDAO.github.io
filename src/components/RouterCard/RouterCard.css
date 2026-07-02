@@ -1,0 +1,70 @@
+/* RouterCard — 236×236 selection card
+   Figma source: "_router-card" (node 3055:944)
+   States: default, selected */
+
+.router-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: flex-start;
+  width: 236px;
+  height: 236px;
+  padding: 16px 20px;
+  background-color: var(--sqrt-bg-surface);
+  border: 1px solid var(--sqrt-border-subtle);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color var(--motion-duration-fast) var(--motion-easing-standard),
+    border-color var(--motion-duration-fast) var(--motion-easing-standard),
+    transform var(--motion-duration-fast) var(--motion-easing-standard);
+}
+.router-card:focus { outline: none; }
+.router-card:focus-visible { border-color: var(--sqrt-border-focus); }
+
+.router-card:hover {
+  background-color: var(--sqrt-bg-raised);
+}
+
+.router-card.is-selected {
+  background-color: var(--sqrt-bg-overlay);
+  border-color: var(--sqrt-border-focus);
+  transform: scale(1.015);
+}
+
+.router-card__title {
+  display: block;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--sqrt-text-primary);
+}
+
+.router-card__subtitle {
+  display: block;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--sqrt-text-secondary);
+  width: 100%;
+}
+
+.router-card__description {
+  flex: 1;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.01em;
+  color: var(--sqrt-text-secondary);
+  margin: 0;
+  width: 100%;
+  align-self: flex-end;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .router-card { transition: none; }
+}
