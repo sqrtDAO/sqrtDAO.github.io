@@ -1,16 +1,10 @@
-/* Divider — 8px horizontal separator
-   Figma source: "divider" (node 3417:1640)
-   The Figma asset is a subtle dark gradient strip; recreated in CSS. */
+/* Divider — 1px horizontal rule using border/subtle token
+   Figma source: "divider" (node 3417:1640) — border/subtle, ~1.24px weight */
 
 .sqrt-divider {
   width: 100%;
-  height: 8px;
-  background: linear-gradient(
-    90deg,
-    var(--sqrt-bg-canvas) 0%,
-    var(--sqrt-bg-space) 20%,
-    var(--sqrt-bg-space) 80%,
-    var(--sqrt-bg-canvas) 100%
-  );
+  height: 0;
+  border: none;
+  border-top: 1px solid var(--sqrt-border-subtle);
   flex-shrink: 0;
 }

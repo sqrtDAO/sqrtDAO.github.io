@@ -61,11 +61,18 @@
   display: block;
 }
 
+/* Disabled state */
+.select-box.is-disabled {
+  opacity: 0.4;
+}
+.select-box.is-disabled .select-box__radio {
+  cursor: not-allowed;
+}
+
 /* Content slot */
 .select-box__slot {
   width: 100%;
   border-radius: 4px;
-  min-height: 127px;
 }
 
 @media (prefers-reduced-motion: reduce) {

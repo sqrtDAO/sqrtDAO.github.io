@@ -15,10 +15,12 @@ import CTATablet from "@/views/CTA/CTATablet";
 import CTAMobile from "@/views/CTA/CTAMobile";
 import TokenRouter from "@/components/TokenRouter/TokenRouter";
 import TokenImport from "@/components/TokenImport/TokenImport";
+import TokenLaunch from "@/components/TokenLaunch/TokenLaunch";
+import DistributionWizard from "@/components/DistributionWizard/DistributionWizard";
 import "./landing.css";
 
 // Flow steps for the token wizard overlay
-type FlowStep = "none" | "router" | "import";
+type FlowStep = "none" | "router" | "import" | "launch" | "distribute";
 
 export default function Page() {
   const bp = useBreakpoint();
@@ -80,7 +82,7 @@ export default function Page() {
       {flow === "router" && (
         <TokenRouter
           onClose={() => setFlow("none")}
-          onLaunch={() => setFlow("none")}
+          onLaunch={() => setFlow("launch")}
           onDistribute={() => setFlow("import")}
         />
       )}
@@ -88,6 +90,20 @@ export default function Page() {
       {flow === "import" && (
         <TokenImport
           onBack={() => setFlow("router")}
+          onConfirm={() => setFlow("distribute")}
+        />
+      )}
+
+      {flow === "launch" && (
+        <TokenLaunch
+          onClose={() => setFlow("none")}
+          onDistribute={() => setFlow("distribute")}
+        />
+      )}
+
+      {flow === "distribute" && (
+        <DistributionWizard
+          onClose={() => setFlow("none")}
           onConfirm={() => setFlow("none")}
         />
       )}

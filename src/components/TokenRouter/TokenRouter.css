@@ -15,23 +15,6 @@
   overflow-y: auto;
 }
 
-/* Ambient glow — blooms when a choice is active */
-.tr-backdrop::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(
-    ellipse 50% 35% at 50% 42%,
-    var(--color-alpha-amber-glow) 0%,
-    transparent 70%
-  );
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--motion-duration-slow) var(--motion-easing-standard);
-}
-.tr-backdrop.has-choice::before {
-  opacity: 1;
-}
 
 @keyframes tr-backdrop-in {
   from { opacity: 0; }
@@ -162,14 +145,6 @@
   background-color: var(--sqrt-bg-overlay);
   border-color: var(--sqrt-border-focus);
   transform: scale(1.015);
-  animation: tr-choice-glow var(--motion-duration-slow) var(--motion-easing-arrive) both;
-}
-
-/* Glow blooms then settles */
-@keyframes tr-choice-glow {
-  0%   { box-shadow: 0 0 0   0px transparent; }
-  45%  { box-shadow: 0 0 20px 4px var(--color-alpha-amber-glow); }
-  100% { box-shadow: 0 0 10px 2px var(--color-alpha-amber-glow); }
 }
 
 /* ── Conditional footer (instruction + CTA) ──────────── */

@@ -1,0 +1,563 @@
+/* DistributionWizard — 6-step distribution setup
+   Figma source: Distribution wizard V.2 (node 3432:1220) */
+
+/* ── Backdrop ─────────────────────────────────────────── */
+.dw-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background-color: var(--sqrt-bg-canvas);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  animation: dw-backdrop-in var(--motion-duration-slow) var(--motion-easing-arrive) both;
+  overflow-y: auto;
+}
+
+@keyframes dw-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Panel (584 px content column) ───────────────────── */
+.dw-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  width: 584px;
+  max-width: calc(100vw - 48px);
+  padding: 64px 0;
+  animation: dw-panel-in var(--motion-duration-slow) var(--motion-easing-arrive) 60ms both;
+}
+
+@keyframes dw-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Back / close icon button ─────────────────────────── */
+.dw-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 12px;
+  background: transparent;
+  border: 1px solid var(--sqrt-action-secondary-rest);
+  border-radius: 8px;
+  color: var(--sqrt-text-primary);
+  cursor: pointer;
+  transition:
+    border-color var(--motion-duration-fast) var(--motion-easing-standard),
+    background-color var(--motion-duration-fast) var(--motion-easing-standard),
+    color var(--motion-duration-fast) var(--motion-easing-standard);
+}
+.dw-back:hover {
+  border-color: var(--sqrt-action-secondary-hover);
+  background-color: var(--sqrt-bg-raised);
+  color: var(--sqrt-text-accent);
+}
+.dw-back:active {
+  background-color: var(--sqrt-bg-overlay);
+}
+.dw-back:focus { outline: none; }
+.dw-back:focus-visible { border-color: var(--sqrt-border-focus); }
+
+/* ── Step content (key-animated) ─────────────────────── */
+.dw-content {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  animation: dw-step-in var(--motion-duration-base) var(--motion-easing-arrive) both;
+}
+
+@keyframes dw-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Text group ───────────────────────────────────────── */
+.dw-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dw-title {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 36px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--sqrt-text-primary);
+  margin: 0;
+}
+
+/* welcome step description body */
+.dw-welcome-body {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 24px;
+  letter-spacing: 0.02em;
+  color: var(--sqrt-text-primary);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dw-step-desc {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 24px;
+  letter-spacing: 0.02em;
+  color: var(--sqrt-text-primary);
+  margin: 0;
+}
+
+/* ── Section label (subsection headings) ──────────────── */
+.dw-section-label {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 24px;
+  letter-spacing: 0.02em;
+  color: var(--sqrt-text-secondary);
+  margin: 0;
+}
+
+/* ── Form wrapper ─────────────────────────────────────── */
+.dw-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Backing: two inputs side-by-side in slot ─────────── */
+.dw-backing-inputs {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+}
+
+.dw-backing-inputs .dw-supply-group {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Supply: custom input with token suffix ───────────── */
+.dw-supply-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dw-supply-label {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.01em;
+  color: var(--sqrt-text-primary);
+}
+
+.dw-supply-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--sqrt-bg-surface);
+  border-radius: 8px;
+  padding: 6px 8px;
+  overflow: hidden;
+  transition: outline var(--motion-duration-fast) var(--motion-easing-standard);
+  outline: 2px solid transparent;
+  outline-offset: 0;
+}
+
+.dw-supply-group:focus-within .dw-supply-field {
+  outline-color: var(--sqrt-border-focus);
+  border-radius: 8px;
+}
+
+.dw-supply-el {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.01em;
+  color: var(--sqrt-text-primary);
+  padding: 4px 0;
+  outline: none;
+}
+
+.dw-supply-el::placeholder {
+  color: var(--sqrt-text-tertiary);
+}
+
+.dw-supply-suffix {
+  flex-shrink: 0;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--sqrt-text-tertiary);
+  white-space: nowrap;
+}
+
+/* ── Wallet balance row ───────────────────────────────── */
+.dw-wallet-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.dw-balance {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dw-balance-label {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.01em;
+  color: var(--sqrt-text-secondary);
+}
+
+.dw-balance-line {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.dw-balance-amount {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--sqrt-text-star);
+}
+
+.dw-balance-unit {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--sqrt-text-secondary);
+}
+
+/* ── HALF / MAX buttons ───────────────────────────────── */
+.dw-halfmax {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+/* ── Release: curve cards ─────────────────────────────── */
+.dw-curve-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dw-curve-cards {
+  display: flex;
+  gap: 16px;
+}
+
+/* ── Release: type + dates ────────────────────────────── */
+.dw-release-type-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dw-release-desc {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.01em;
+  color: var(--sqrt-text-primary);
+  margin: 0;
+}
+
+.dw-date-row {
+  display: flex;
+  gap: 16px;
+}
+
+.dw-date-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dw-date-label {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.01em;
+  color: var(--sqrt-text-primary);
+}
+
+.dw-date-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--sqrt-bg-surface);
+  border-radius: 8px;
+  padding: 6px 8px;
+  overflow: hidden;
+}
+
+.dw-date-el {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--sqrt-text-primary);
+  padding: 4px 0;
+  outline: none;
+  color-scheme: dark;
+}
+
+.dw-date-el::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+.dw-cal-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background-color: var(--sqrt-action-secondary-rest);
+  border: none;
+  border-radius: 4px;
+  color: var(--sqrt-text-primary);
+  cursor: pointer;
+  box-shadow: inset -1px 1px 7px rgba(0, 0, 0, 0.16);
+  transition: background-color var(--motion-duration-fast) var(--motion-easing-standard);
+}
+
+.dw-cal-btn:hover {
+  background-color: var(--sqrt-action-secondary-hover);
+}
+
+.dw-cal-btn:focus { outline: none; }
+.dw-cal-btn:focus-visible {
+  outline: 2px solid var(--sqrt-border-focus);
+  outline-offset: 2px;
+}
+
+.dw-epoch-total {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 18px;
+  line-height: 24px;
+  letter-spacing: 0.02em;
+}
+
+.dw-epoch-total-label {
+  color: var(--sqrt-text-secondary);
+}
+
+.dw-epoch-total-count {
+  font-weight: 700;
+  color: var(--sqrt-text-primary);
+}
+
+/* ── Rules: section group ─────────────────────────────── */
+.dw-rules-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Review: sections ─────────────────────────────────── */
+.dw-review-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dw-review-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dw-review-title {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 24px;
+  letter-spacing: 0.02em;
+  color: var(--sqrt-text-primary);
+  margin: 0;
+}
+
+.dw-edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--sqrt-text-secondary);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-duration-fast) var(--motion-easing-standard),
+    color var(--motion-duration-fast) var(--motion-easing-standard);
+}
+
+.dw-edit-btn:hover {
+  background-color: var(--sqrt-bg-raised);
+  color: var(--sqrt-text-primary);
+}
+
+.dw-edit-btn:focus { outline: none; }
+.dw-edit-btn:focus-visible {
+  outline: 2px solid var(--sqrt-border-focus);
+  outline-offset: 2px;
+}
+
+/* ── Footer buttons ──────────────────────────────────── */
+.dw-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.dw-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 8px;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-duration-fast) var(--motion-easing-standard),
+    border-color var(--motion-duration-fast) var(--motion-easing-standard),
+    color var(--motion-duration-fast) var(--motion-easing-standard);
+}
+
+.dw-btn:focus { outline: none; }
+.dw-btn:focus-visible {
+  outline: 2px solid var(--sqrt-border-focus);
+  outline-offset: 2px;
+}
+
+/* Ghost — text only, no border (Back button) */
+.dw-btn--ghost {
+  background: transparent;
+  border: none;
+  padding: 8px 16px;
+  font-size: 16px;
+  line-height: 24px;
+  letter-spacing: 0.02em;
+  color: var(--sqrt-text-primary);
+}
+
+.dw-btn--ghost:hover {
+  color: var(--sqrt-text-accent);
+}
+
+/* Primary — amber */
+.dw-btn--primary {
+  background-color: var(--sqrt-action-primary-rest);
+  border: none;
+  padding: 8px 16px;
+  font-size: 16px;
+  line-height: 24px;
+  letter-spacing: 0.02em;
+  color: var(--sqrt-text-on-amber);
+  box-shadow: inset -1px 1px 7px rgba(0, 0, 0, 0.16);
+}
+
+.dw-btn--primary:hover {
+  background-color: var(--sqrt-action-primary-hover);
+}
+
+.dw-btn--primary:active {
+  background-color: var(--sqrt-action-primary-pressed);
+}
+
+/* Primary large — Start distribution (welcome) */
+.dw-btn--primary-l {
+  background-color: var(--sqrt-action-primary-rest);
+  border: none;
+  padding: 12px 20px;
+  font-size: 18px;
+  line-height: 24px;
+  letter-spacing: 0.02em;
+  color: var(--sqrt-text-on-amber);
+  box-shadow: inset -1px 1px 7px rgba(0, 0, 0, 0.16);
+}
+
+.dw-btn--primary-l:hover {
+  background-color: var(--sqrt-action-primary-hover);
+}
+
+/* Secondary — border only (HALF/MAX) */
+.dw-btn--secondary {
+  background: transparent;
+  border: 1px solid var(--sqrt-action-secondary-rest);
+  padding: 8px 16px;
+  font-size: 16px;
+  line-height: 24px;
+  letter-spacing: 0.02em;
+  color: var(--sqrt-text-primary);
+}
+
+.dw-btn--secondary:hover {
+  border-color: var(--sqrt-action-secondary-hover);
+  background-color: var(--sqrt-bg-raised);
+}
+
+/* SelectBox group gap override */
+.dw-selectbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── Reduced motion ───────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .dw-backdrop,
+  .dw-panel,
+  .dw-content { animation: none; }
+  .dw-btn,
+  .dw-back,
+  .dw-cal-btn,
+  .dw-edit-btn { transition: none; }
+}
