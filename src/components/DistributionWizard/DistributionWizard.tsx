@@ -26,7 +26,7 @@ const STEP_LABELS = ["Supply", "Release schedule", "Backing", "Rules", "Review"]
 const STEP_ORDER: DistStep[] = ["supply", "release", "backing", "rules", "review"];
 
 type ReleaseCurve = "fixed" | "linear" | "exponential";
-type EpochRule = "price-anchor" | "fund-share" | "buy-back";
+type EpochRule = "price-anchor" | "fund-share";
 
 export interface DistributionWizardProps {
   onClose: () => void;
@@ -64,24 +64,6 @@ function formatDate(iso: string): string {
 const BACKING_ASSETS = ["Base", "Ethereum"];
 const RELEASE_TYPES = ["Time-based", "Epoch-based"];
 
-const EPOCH_RULES: { key: EpochRule; label: string; desc: string }[] = [
-  {
-    key: "price-anchor",
-    label: "Price Anchor; Buy and burn the token from Uniswap pool",
-    desc: "After each epoch ends, the protocol buys the token and burns it to sync the price with Uniswap.",
-  },
-  {
-    key: "fund-share",
-    label: "I want fund share after every epoch ends",
-    desc: "After each epoch ends, You will get a portion of distribution.",
-  },
-  {
-    key: "buy-back",
-    label: "Buy Back & Redistribute the token",
-    desc: "After each epoch ends, the protocol buys the token back and redistributes it.",
-  },
-];
-
 // ── Main component ──────────────────────────────────────────────────────────
 
 export default function DistributionWizard({
@@ -114,6 +96,8 @@ export default function DistributionWizard({
   const [minParticipation, setMinParticipation] = useState("");
   const [claimDelay, setClaimDelay] = useState("");
   const [epochRule, setEpochRule] = useState<EpochRule>("price-anchor");
+  const [fundShare, setFundShare] = useState("");
+  const [receiverAddress, setReceiverAddress] = useState("");
 
   const epochCount = useMemo(() => calcEpochs(startDate, endDate), [startDate, endDate]);
 
@@ -540,15 +524,60 @@ export default function DistributionWizard({
                 <div className="dw-rules-section">
                   <p className="dw-section-label">After-epoch rules</p>
                   <div className="dw-selectbox-group">
-                    {EPOCH_RULES.map((rule) => (
-                      <SelectBox
-                        key={rule.key}
-                        label={rule.label}
-                        description={rule.desc}
-                        selected={epochRule === rule.key}
-                        onChange={() => setEpochRule(rule.key)}
-                      />
-                    ))}
+                    <SelectBox
+                      label={<><strong>Price Anchor</strong>; Buy and burn the token from Uniswap pool.</>}
+                      description="After each epoch ends, the protocol buys the token and burns it to sync the price with Uniswap."
+                      selected={epochRule === "price-anchor"}
+                      onChange={() => setEpochRule("price-anchor")}
+                    />
+                    <SelectBox
+                      label={<>Send <strong>funds to an address</strong> after each epoch.</>}
+                      description="After each epoch ends, a portion is sent to the address you set. (10% Max)"
+                      selected={epochRule === "fund-share"}
+                      onChange={() => setEpochRule("fund-share")}
+                      showSlot={epochRule === "fund-share"}
+                    >
+                      <div className="dw-backing-inputs">
+                        <div className="dw-supply-group">
+                          <label className="dw-supply-label">Fund share</label>
+                          <div className="dw-supply-field">
+                            <input
+                              className="dw-supply-el"
+                              type="text"
+                              inputMode="numeric"
+                              placeholder="Maximum 20%"
+                              value={fundShare}
+                              onChange={(e) =>
+                                setFundShare(e.target.value.replace(/[^0-9.]/g, ""))
+                              }
+                              spellCheck={false}
+                              autoComplete="off"
+                            />
+                            <span className="dw-supply-suffix">%</span>
+                          </div>
+                        </div>
+                        <div className="dw-supply-group">
+                          <label className="dw-supply-label">Receiver address</label>
+                          <div className="dw-supply-field">
+                            <input
+                              className="dw-supply-el"
+                              type="text"
+                              placeholder="e.g. 0x..."
+                              value={receiverAddress}
+                              onChange={(e) => setReceiverAddress(e.target.value)}
+                              spellCheck={false}
+                              autoComplete="off"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </SelectBox>
+                    <SelectBox
+                      label={<><strong>Buy Back & Redistribute</strong> the token.</>}
+                      description="After each epoch ends, the protocol buys the token back and redistributes it."
+                      selected={false}
+                      disabled
+                    />
                   </div>
                 </div>
               </div>
@@ -693,11 +722,21 @@ export default function DistributionWizard({
                     value={
                       epochRule === "price-anchor"
                         ? "Price anchor (buy & burn)"
-                        : epochRule === "fund-share"
-                        ? "Fund share"
-                        : "Buy back & redistribute"
+                        : "Fund share to address"
                     }
                   />
+                  {epochRule === "fund-share" && (
+                    <>
+                      <DataRow
+                        label="Fund share:"
+                        value={fundShare ? `${fundShare}%` : "—"}
+                      />
+                      <DataRow
+                        label="Receiver address:"
+                        value={receiverAddress || "—"}
+                      />
+                    </>
+                  )}
                 </div>
 
                 <Divider />

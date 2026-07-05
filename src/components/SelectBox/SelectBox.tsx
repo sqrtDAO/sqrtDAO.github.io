@@ -3,7 +3,7 @@
 import "./SelectBox.css";
 
 export interface SelectBoxProps {
-  label?: string;
+  label?: React.ReactNode;
   description?: string;
   selected?: boolean;
   disabled?: boolean;
@@ -27,7 +27,7 @@ function RadioIcon({ selected, disabled }: { selected: boolean; disabled: boolea
 }
 
 export default function SelectBox({
-  label = "Radio label",
+  label = "Radio label" as React.ReactNode,
   description = "Optional description",
   selected = false,
   disabled = false,

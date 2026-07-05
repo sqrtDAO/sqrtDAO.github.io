@@ -51,6 +51,10 @@
   display: block;
 }
 
+.select-box__label strong {
+  font-weight: 700;
+}
+
 .select-box__description {
   font-family: var(--font-sans), system-ui, sans-serif;
   font-weight: 400;
