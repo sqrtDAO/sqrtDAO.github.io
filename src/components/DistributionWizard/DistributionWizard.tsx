@@ -52,6 +52,13 @@ function calcEpochs(start: string, end: string): number | null {
   return Math.round(diff / (1000 * 60 * 60 * 24));
 }
 
+function calcEndDateFromEpochs(start: string, epochs: number): Date | null {
+  if (!start || isNaN(epochs) || epochs <= 0) return null;
+  const d = new Date(start);
+  d.setDate(d.getDate() + epochs);
+  return d;
+}
+
 function formatDate(iso: string): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-US", {
@@ -59,6 +66,10 @@ function formatDate(iso: string): string {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function formatDateLong(d: Date): string {
+  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
 const BACKING_ASSETS = ["Base", "Ethereum"];
@@ -83,6 +94,7 @@ export default function DistributionWizard({
   const [releaseTypeIdx, setReleaseTypeIdx] = useState(0);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [epochCountInput, setEpochCountInput] = useState("");
   const startRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
 
@@ -99,7 +111,13 @@ export default function DistributionWizard({
   const [fundShare, setFundShare] = useState("");
   const [receiverAddress, setReceiverAddress] = useState("");
 
-  const epochCount = useMemo(() => calcEpochs(startDate, endDate), [startDate, endDate]);
+  // Time-based: epoch count from date range
+  const epochsFromDates = useMemo(() => calcEpochs(startDate, endDate), [startDate, endDate]);
+  // Epoch-based: computed end date from start + count
+  const endDateFromEpochs = useMemo(
+    () => calcEndDateFromEpochs(startDate, parseInt(epochCountInput)),
+    [startDate, epochCountInput]
+  );
 
   // ── Navigation helpers ───────────────────────────────────────────────────
 
@@ -309,14 +327,16 @@ export default function DistributionWizard({
                   />
 
                   <p className="dw-release-desc">
-                    By this choice releasing <strong>epochs</strong> will calculated{" "}
-                    <strong>automatically</strong>.
+                    {releaseTypeIdx === 0
+                      ? "With this choice, the number of epochs is calculated automatically."
+                      : "With this choice, the epoch duration is calculated automatically."}
                   </p>
 
-                  {/* Date pickers */}
+                  {/* Input row — changes based on release type */}
                   <div className="dw-date-row">
+                    {/* Start date — same for both modes */}
                     <div className="dw-date-wrap">
-                      <label className="dw-date-label">Start timestamp</label>
+                      <label className="dw-date-label">Start date</label>
                       <div className="dw-date-field">
                         <input
                           ref={startRef}
@@ -336,34 +356,64 @@ export default function DistributionWizard({
                       </div>
                     </div>
 
-                    <div className="dw-date-wrap">
-                      <label className="dw-date-label">End timestamp</label>
-                      <div className="dw-date-field">
-                        <input
-                          ref={endRef}
-                          type="date"
-                          className="dw-date-el"
-                          value={endDate}
-                          onChange={(e) => setEndDate(e.target.value)}
-                        />
-                        <button
-                          type="button"
-                          className="dw-cal-btn"
-                          aria-label="Pick end date"
-                          onClick={() => endRef.current?.showPicker?.()}
-                        >
-                          <IconCalendar size={16} strokeWidth={1.5} />
-                        </button>
+                    {/* Right field: End date (time-based) or Number of epochs (epoch-based) */}
+                    {releaseTypeIdx === 0 ? (
+                      <div className="dw-date-wrap">
+                        <label className="dw-date-label">End date</label>
+                        <div className="dw-date-field">
+                          <input
+                            ref={endRef}
+                            type="date"
+                            className="dw-date-el"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="dw-cal-btn"
+                            aria-label="Pick end date"
+                            onClick={() => endRef.current?.showPicker?.()}
+                          >
+                            <IconCalendar size={16} strokeWidth={1.5} />
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="dw-date-wrap">
+                        <label className="dw-date-label">Number of epochs</label>
+                        <div className="dw-supply-field">
+                          <input
+                            className="dw-supply-el"
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="e.g. 54"
+                            value={epochCountInput}
+                            onChange={(e) =>
+                              setEpochCountInput(e.target.value.replace(/[^0-9]/g, ""))
+                            }
+                            spellCheck={false}
+                            autoComplete="off"
+                          />
+                          <span className="dw-supply-suffix">Epochs</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {epochCount !== null && (
+                  {/* Computed footer */}
+                  {releaseTypeIdx === 0 && epochsFromDates !== null && (
                     <div className="dw-epoch-total">
-                      <span className="dw-epoch-total-label">
-                        Total number of epochs will be:
-                      </span>
-                      <span className="dw-epoch-total-count">{epochCount}</span>
+                      <span className="dw-epoch-total-label">Total number of epochs will be:</span>
+                      <strong className="dw-epoch-total-count">{epochsFromDates}</strong>
+                    </div>
+                  )}
+                  {releaseTypeIdx === 1 && endDateFromEpochs !== null && (
+                    <div className="dw-epoch-total">
+                      <span className="dw-epoch-total-label">Distribution ends on:</span>
+                      <strong className="dw-epoch-total-count">
+                        {formatDateLong(endDateFromEpochs)}{" "}
+                        ({parseInt(epochCountInput)} day later)
+                      </strong>
                     </div>
                   )}
                 </div>
@@ -643,14 +693,27 @@ export default function DistributionWizard({
                     label="Release type:"
                     value={RELEASE_TYPES[releaseTypeIdx]}
                   />
-                  <DataRow
-                    label="Release starts at:"
-                    value={formatDate(startDate)}
-                  />
-                  <DataRow
-                    label="Release ends at:"
-                    value={formatDate(endDate)}
-                  />
+                  <DataRow label="Start date:" value={formatDate(startDate)} />
+                  {releaseTypeIdx === 0 ? (
+                    <>
+                      <DataRow label="End date:" value={formatDate(endDate)} />
+                      <DataRow
+                        label="Total epochs:"
+                        value={epochsFromDates !== null ? String(epochsFromDates) : "—"}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <DataRow
+                        label="Number of epochs:"
+                        value={epochCountInput ? `${epochCountInput} Epochs` : "—"}
+                      />
+                      <DataRow
+                        label="Distribution ends on:"
+                        value={endDateFromEpochs ? formatDateLong(endDateFromEpochs) : "—"}
+                      />
+                    </>
+                  )}
                 </div>
 
                 <Divider />
