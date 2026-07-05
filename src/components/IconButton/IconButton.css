@@ -1,0 +1,155 @@
+/* IconButton — icon-only button
+   Figma source: node 3058:1733
+   Variants: primary | secondary | outline | ghost | danger
+   Sizes: l (48px) | m (40px) | s (28px) */
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background-color var(--motion-duration-fast) var(--motion-easing-standard),
+    border-color var(--motion-duration-fast) var(--motion-easing-standard),
+    color var(--motion-duration-fast) var(--motion-easing-standard);
+}
+
+.icon-btn:focus { outline: none; }
+.icon-btn:focus-visible {
+  outline: 2px solid var(--sqrt-border-focus);
+  outline-offset: 2px;
+}
+
+.icon-btn:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.icon-btn__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Sizes ── */
+
+.icon-btn--l {
+  padding: 12px;
+  border-radius: 8px;
+}
+.icon-btn--l .icon-btn__icon {
+  width: 24px;
+  height: 24px;
+}
+
+.icon-btn--m {
+  padding: 8px;
+  border-radius: 8px;
+}
+.icon-btn--m .icon-btn__icon {
+  width: 24px;
+  height: 24px;
+}
+
+.icon-btn--s {
+  padding: 6px;
+  border-radius: 4px;
+}
+.icon-btn--s .icon-btn__icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── Primary (amber filled) ── */
+
+.icon-btn--primary {
+  background-color: var(--sqrt-action-primary-rest);
+  color: var(--sqrt-text-star);
+  box-shadow: inset -1px 1px 7px rgba(0, 0, 0, 0.16);
+}
+.icon-btn--primary:hover:not(:disabled) {
+  background-color: var(--sqrt-action-primary-hover);
+}
+.icon-btn--primary:active:not(:disabled) {
+  background-color: var(--sqrt-action-primary-pressed);
+}
+.icon-btn--primary:disabled {
+  background-color: var(--sqrt-text-disabled);
+}
+
+/* ── Secondary (navy filled) ── */
+
+.icon-btn--secondary {
+  background-color: var(--sqrt-action-secondary-rest);
+  color: var(--sqrt-text-star);
+  box-shadow: inset -1px 1px 7px rgba(0, 0, 0, 0.16);
+}
+.icon-btn--secondary:hover:not(:disabled) {
+  background-color: var(--sqrt-action-secondary-hover);
+}
+.icon-btn--secondary:active:not(:disabled) {
+  background-color: var(--sqrt-action-secondary-pressed);
+}
+.icon-btn--secondary:disabled {
+  background-color: var(--sqrt-text-disabled);
+}
+
+/* ── Danger (red filled) ── */
+
+.icon-btn--danger {
+  background-color: var(--sqrt-state-danger);
+  color: var(--sqrt-text-star);
+  box-shadow: inset -1px 1px 7px rgba(0, 0, 0, 0.16);
+}
+.icon-btn--danger:hover:not(:disabled) {
+  background-color: var(--sqrt-state-danger);
+}
+.icon-btn--danger:active:not(:disabled) {
+  background-color: var(--sqrt-state-danger);
+}
+.icon-btn--danger:disabled {
+  background-color: var(--sqrt-text-disabled);
+}
+
+/* ── Outline (border only) ── */
+
+.icon-btn--outline {
+  background: transparent;
+  border: 1px solid var(--sqrt-action-secondary-rest);
+  color: var(--sqrt-text-primary);
+}
+.icon-btn--outline:hover:not(:disabled) {
+  border-color: var(--sqrt-action-secondary-hover);
+}
+.icon-btn--outline:active:not(:disabled) {
+  border-color: var(--sqrt-action-secondary-pressed);
+}
+.icon-btn--outline:disabled {
+  border-color: var(--sqrt-text-disabled);
+  color: var(--sqrt-text-disabled);
+}
+
+/* ── Ghost (no bg, no border) ── */
+
+.icon-btn--ghost {
+  background: transparent;
+  color: var(--sqrt-text-secondary);
+}
+.icon-btn--ghost:hover:not(:disabled) {
+  color: var(--sqrt-text-primary);
+}
+.icon-btn--ghost:active:not(:disabled) {
+  color: var(--sqrt-text-accent);
+}
+.icon-btn--ghost:disabled {
+  color: var(--sqrt-text-disabled);
+}
+
+/* ── Reduced motion ── */
+
+@media (prefers-reduced-motion: reduce) {
+  .icon-btn { transition: none; }
+}
