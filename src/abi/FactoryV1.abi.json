@@ -1,0 +1,274 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "_initialOwner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "createDistributor",
+    "inputs": [
+      {
+        "name": "_config",
+        "type": "tuple",
+        "internalType": "struct DistributorConfig",
+        "components": [
+          {
+            "name": "distributionToken",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "participationToken",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "epochDuration",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "startTimestamp",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "protocolFeeBps",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "protocolFeeReceiver",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "minParticipation",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "claimDelaySeconds",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowFutureEpochParticipation",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "drainHookOnlyPassedEpochs",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "drainHook",
+            "type": "tuple",
+            "internalType": "struct Hook",
+            "components": [
+              {
+                "name": "contractAddress",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "callData",
+                "type": "bytes",
+                "internalType": "bytes"
+              }
+            ]
+          },
+          {
+            "name": "emissionFunction",
+            "type": "tuple",
+            "internalType": "struct EmissionFunction",
+            "components": [
+              {
+                "name": "emissionContract",
+                "type": "address",
+                "internalType": "contract IEmissionFunction"
+              },
+              {
+                "name": "curveConfig",
+                "type": "bytes",
+                "internalType": "bytes"
+              }
+            ]
+          },
+          {
+            "name": "allowlistSigner",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "allowlistDeadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "_participationAmountPerEpoch",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_participationRange",
+        "type": "tuple",
+        "internalType": "struct Range",
+        "components": [
+          {
+            "name": "from",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "length",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "distributorAddress",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "owner",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "renounceOwnership",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setProtocolFeeBps",
+    "inputs": [
+      {
+        "name": "_protocolFeeBps",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setProtocolFeeReceiver",
+    "inputs": [
+      {
+        "name": "_protocolFeeReceiver",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transferOwnership",
+    "inputs": [
+      {
+        "name": "newOwner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "NewDistributor",
+    "inputs": [
+      {
+        "name": "distributor",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "inputs": [
+      {
+        "name": "previousOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "OwnableInvalidOwner",
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OwnableUnauthorizedAccount",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SafeERC20FailedOperation",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  }
+]
