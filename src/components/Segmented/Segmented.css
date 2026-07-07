@@ -49,6 +49,12 @@
   color: var(--sqrt-action-primary-rest);
 }
 
+.seg-item--disabled,
+.seg-item--disabled:hover {
+  color: var(--sqrt-text-disabled);
+  cursor: not-allowed;
+}
+
 .seg-item__icon { display: flex; width: 16px; height: 16px; align-items: center; justify-content: center; }
 
 @media (prefers-reduced-motion: reduce) {

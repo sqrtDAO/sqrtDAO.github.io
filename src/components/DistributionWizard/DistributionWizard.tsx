@@ -2,8 +2,9 @@
 
 import { useState, useMemo, useRef } from "react";
 import {
-  IconChevronLeft,
+  IconX,
   IconCalendar,
+  IconClock,
   IconSettings,
   IconEqualDouble,
   IconMathFunctionY,
@@ -45,11 +46,15 @@ function formatNumber(n: number): string {
   return n.toLocaleString("en-US");
 }
 
-function calcEpochs(start: string, end: string): number | null {
+function calcEpochs(start: string, end: string, durationMs: number): number | null {
   if (!start || !end) return null;
   const diff = new Date(end).getTime() - new Date(start).getTime();
   if (diff <= 0) return null;
-  return Math.round(diff / (1000 * 60 * 60 * 24));
+  return Math.round(diff / durationMs);
+}
+
+function formatAmount(n: number): string {
+  return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
 function calcEndDateFromEpochs(start: string, epochs: number): Date | null {
@@ -72,8 +77,16 @@ function formatDateLong(d: Date): string {
   return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
-const BACKING_ASSETS = ["Base", "Ethereum"];
+const BACKING_ASSETS = ["USDT", "BASE", "USDC", "DAI"];
+const BACKING_ASSETS_DISABLED = [1, 2, 3];
 const RELEASE_TYPES = ["Time-based", "Epoch-based"];
+const EPOCH_DURATION_OPTIONS = ["20 mins", "2 hrs", "8 hrs", "1 day"];
+const EPOCH_DURATION_MS: Record<string, number> = {
+  "20 mins": 20 * 60 * 1000,
+  "2 hrs": 2 * 60 * 60 * 1000,
+  "8 hrs": 8 * 60 * 60 * 1000,
+  "1 day": 24 * 60 * 60 * 1000,
+};
 
 // ── Main component ──────────────────────────────────────────────────────────
 
@@ -93,9 +106,13 @@ export default function DistributionWizard({
   const [releaseCurve, setReleaseCurve] = useState<ReleaseCurve>("fixed");
   const [releaseTypeIdx, setReleaseTypeIdx] = useState(0);
   const [startDate, setStartDate] = useState("");
+  const [startTime, setStartTime] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [epochDuration, setEpochDuration] = useState(EPOCH_DURATION_OPTIONS[3]);
   const [epochCountInput, setEpochCountInput] = useState("");
+  const [releasePerEpoch, setReleasePerEpoch] = useState("");
   const startRef = useRef<HTMLInputElement>(null);
+  const startTimeRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
 
   // Step 4 — Backing
@@ -111,8 +128,18 @@ export default function DistributionWizard({
   const [fundShare, setFundShare] = useState("");
   const [receiverAddress, setReceiverAddress] = useState("");
 
-  // Time-based: epoch count from date range
-  const epochsFromDates = useMemo(() => calcEpochs(startDate, endDate), [startDate, endDate]);
+  // Time-based: epoch count from date range ÷ epoch duration
+  const epochsFromDates = useMemo(
+    () => calcEpochs(startDate, endDate, EPOCH_DURATION_MS[epochDuration]),
+    [startDate, endDate, epochDuration]
+  );
+  // Time-based: release amount per epoch, derived from total supply ÷ epoch count
+  const releasePerEpochFromDates = useMemo(() => {
+    if (!epochsFromDates) return null;
+    const supplyNum = parseFloat(supply.replace(/,/g, ""));
+    if (isNaN(supplyNum)) return null;
+    return supplyNum / epochsFromDates;
+  }, [supply, epochsFromDates]);
   // Epoch-based: computed end date from start + count
   const endDateFromEpochs = useMemo(
     () => calcEndDateFromEpochs(startDate, parseInt(epochCountInput)),
@@ -132,11 +159,6 @@ export default function DistributionWizard({
     else setStep("welcome");
   }
 
-  function goBackOrClose() {
-    if (step === "welcome") onClose();
-    else goBack();
-  }
-
   function jumpTo(target: DistStep) {
     setStep(target);
   }
@@ -150,10 +172,10 @@ export default function DistributionWizard({
     <div className="dw-backdrop">
       <div className="dw-panel">
 
-        {/* Back / close button */}
+        {/* Close button */}
         <div>
-          <button className="dw-back" onClick={goBackOrClose} aria-label="Go back">
-            <IconChevronLeft size={24} strokeWidth={2} />
+          <button className="dw-back" onClick={onClose} aria-label="Close">
+            <IconX size={24} strokeWidth={2} />
           </button>
         </div>
 
@@ -285,6 +307,55 @@ export default function DistributionWizard({
               </div>
 
               <div className="dw-form">
+                {/* Distribution start */}
+                <div className="dw-release-type-section">
+                  <p className="dw-section-label">Distribution start</p>
+                  <div className="dw-date-row">
+                    <div className="dw-date-wrap">
+                      <label className="dw-date-label">Start date</label>
+                      <div className="dw-date-field">
+                        <input
+                          ref={startRef}
+                          type="date"
+                          className="dw-date-el"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="dw-cal-btn"
+                          aria-label="Pick start date"
+                          onClick={() => startRef.current?.showPicker?.()}
+                        >
+                          <IconCalendar size={16} strokeWidth={1.5} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="dw-date-wrap">
+                      <label className="dw-date-label">Start time (UTC)</label>
+                      <div className="dw-date-field">
+                        <input
+                          ref={startTimeRef}
+                          type="time"
+                          className="dw-date-el"
+                          value={startTime}
+                          onChange={(e) => setStartTime(e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="dw-cal-btn"
+                          aria-label="Pick start time"
+                          onClick={() => startTimeRef.current?.showPicker?.()}
+                        >
+                          <IconClock size={16} strokeWidth={1.5} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Divider />
+
                 {/* Release curve cards */}
                 <div className="dw-curve-section">
                   <p className="dw-section-label">
@@ -329,35 +400,12 @@ export default function DistributionWizard({
                   <p className="dw-release-desc">
                     {releaseTypeIdx === 0
                       ? "With this choice, the number of epochs is calculated automatically."
-                      : "With this choice, the epoch duration is calculated automatically."}
+                      : "With this choice, the distribution duration is calculated automatically."}
                   </p>
 
                   {/* Input row — changes based on release type */}
-                  <div className="dw-date-row">
-                    {/* Start date — same for both modes */}
-                    <div className="dw-date-wrap">
-                      <label className="dw-date-label">Start date</label>
-                      <div className="dw-date-field">
-                        <input
-                          ref={startRef}
-                          type="date"
-                          className="dw-date-el"
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                        />
-                        <button
-                          type="button"
-                          className="dw-cal-btn"
-                          aria-label="Pick start date"
-                          onClick={() => startRef.current?.showPicker?.()}
-                        >
-                          <IconCalendar size={16} strokeWidth={1.5} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Right field: End date (time-based) or Number of epochs (epoch-based) */}
-                    {releaseTypeIdx === 0 ? (
+                  {releaseTypeIdx === 0 ? (
+                    <div className="dw-date-row">
                       <div className="dw-date-wrap">
                         <label className="dw-date-label">End date</label>
                         <div className="dw-date-field">
@@ -378,7 +426,19 @@ export default function DistributionWizard({
                           </button>
                         </div>
                       </div>
-                    ) : (
+                      <div className="dw-input-flex">
+                        <Input
+                          label="Epoch duration"
+                          placeholder="Select an option"
+                          value={epochDuration}
+                          onChange={setEpochDuration}
+                          dropdown
+                          options={EPOCH_DURATION_OPTIONS}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="dw-date-row">
                       <div className="dw-date-wrap">
                         <label className="dw-date-label">Number of epochs</label>
                         <div className="dw-supply-field">
@@ -397,24 +457,48 @@ export default function DistributionWizard({
                           <span className="dw-supply-suffix">Epochs</span>
                         </div>
                       </div>
-                    )}
-                  </div>
-
-                  {/* Computed footer */}
-                  {releaseTypeIdx === 0 && epochsFromDates !== null && (
-                    <div className="dw-epoch-total">
-                      <span className="dw-epoch-total-label">Total number of epochs will be:</span>
-                      <strong className="dw-epoch-total-count">{epochsFromDates}</strong>
+                      <div className="dw-date-wrap">
+                        <label className="dw-date-label">Release per epoch</label>
+                        <div className="dw-supply-field">
+                          <input
+                            className="dw-supply-el"
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="e.g. 100"
+                            value={releasePerEpoch}
+                            onChange={(e) =>
+                              setReleasePerEpoch(e.target.value.replace(/[^0-9.,]/g, ""))
+                            }
+                            spellCheck={false}
+                            autoComplete="off"
+                          />
+                          <span className="dw-supply-suffix">{tokenSymbol}</span>
+                        </div>
+                      </div>
                     </div>
                   )}
+
+                  {/* Release schedule summary */}
+                  {releaseTypeIdx === 0 && epochsFromDates !== null && (
+                    <p className="dw-release-summary">
+                      This creates <strong>{epochsFromDates} epochs.</strong> Releasing{" "}
+                      <strong>
+                        {releasePerEpochFromDates !== null
+                          ? `${formatAmount(releasePerEpochFromDates)} ${tokenSymbol}`
+                          : `— ${tokenSymbol}`}
+                      </strong>{" "}
+                      each.
+                    </p>
+                  )}
                   {releaseTypeIdx === 1 && endDateFromEpochs !== null && (
-                    <div className="dw-epoch-total">
-                      <span className="dw-epoch-total-label">Distribution ends on:</span>
-                      <strong className="dw-epoch-total-count">
+                    <p className="dw-release-summary">
+                      This creates{" "}
+                      <strong>{parseInt(epochCountInput)} epochs.</strong> Ends{" "}
+                      <strong>
                         {formatDateLong(endDateFromEpochs)}{" "}
-                        ({parseInt(epochCountInput)} day later)
+                        ({parseInt(epochCountInput)} days later)
                       </strong>
-                    </div>
+                    </p>
                   )}
                 </div>
               </div>
@@ -454,6 +538,7 @@ export default function DistributionWizard({
                       activeIndex={backingAssetIdx}
                       size="m"
                       onChange={setBackingAssetIdx}
+                      disabledIndices={BACKING_ASSETS_DISABLED}
                     />
                   </div>
                   <p className="dw-section-label" style={{ fontSize: 16, lineHeight: "22px", letterSpacing: "0.01em" }}>
@@ -582,7 +667,7 @@ export default function DistributionWizard({
                     />
                     <SelectBox
                       label={<>Send <strong>funds to an address</strong> after each epoch.</>}
-                      description="After each epoch ends, a portion is sent to the address you set. (10% Max)"
+                      description="After each epoch ends, a portion is sent to the address you set. (20% Max)"
                       selected={epochRule === "fund-share"}
                       onChange={() => setEpochRule("fund-share")}
                       showSlot={epochRule === "fund-share"}
@@ -597,9 +682,11 @@ export default function DistributionWizard({
                               inputMode="numeric"
                               placeholder="Maximum 20%"
                               value={fundShare}
-                              onChange={(e) =>
-                                setFundShare(e.target.value.replace(/[^0-9.]/g, ""))
-                              }
+                              onChange={(e) => {
+                                const raw = e.target.value.replace(/[^0-9.]/g, "");
+                                const num = parseFloat(raw);
+                                setFundShare(!isNaN(num) && num > 20 ? "20" : raw);
+                              }}
                               spellCheck={false}
                               autoComplete="off"
                             />
@@ -612,7 +699,7 @@ export default function DistributionWizard({
                             <input
                               className="dw-supply-el"
                               type="text"
-                              placeholder="e.g. 0x..."
+                              placeholder="e.g. 0xfe3...34kj4"
                               value={receiverAddress}
                               onChange={(e) => setReceiverAddress(e.target.value)}
                               spellCheck={false}
@@ -694,9 +781,11 @@ export default function DistributionWizard({
                     value={RELEASE_TYPES[releaseTypeIdx]}
                   />
                   <DataRow label="Start date:" value={formatDate(startDate)} />
+                  <DataRow label="Start time (UTC):" value={startTime || "—"} />
                   {releaseTypeIdx === 0 ? (
                     <>
                       <DataRow label="End date:" value={formatDate(endDate)} />
+                      <DataRow label="Epoch duration:" value={epochDuration} />
                       <DataRow
                         label="Total epochs:"
                         value={epochsFromDates !== null ? String(epochsFromDates) : "—"}
@@ -707,6 +796,10 @@ export default function DistributionWizard({
                       <DataRow
                         label="Number of epochs:"
                         value={epochCountInput ? `${epochCountInput} Epochs` : "—"}
+                      />
+                      <DataRow
+                        label="Release per epoch:"
+                        value={releasePerEpoch ? `${releasePerEpoch} ${tokenSymbol}` : "—"}
                       />
                       <DataRow
                         label="Distribution ends on:"

@@ -56,6 +56,63 @@
 }
 .sqrt-input__el::placeholder { color: var(--sqrt-text-tertiary); }
 
+.sqrt-input__field-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.sqrt-input__el[readonly] {
+  cursor: pointer;
+}
+
+.sqrt-input__dropdown-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 6px;
+  background: transparent;
+  border: none;
+  color: var(--sqrt-text-tertiary);
+  cursor: pointer;
+}
+.sqrt-input__dropdown-btn:focus { outline: none; }
+
+.sqrt-input__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background-color: var(--sqrt-bg-surface);
+  border: 1px solid var(--sqrt-border-subtle);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.sqrt-input__menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 16px;
+  letter-spacing: 0.02em;
+  color: var(--sqrt-text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+.sqrt-input__menu-item:hover { background-color: var(--sqrt-bg-raised); }
+.sqrt-input__menu-item:focus { outline: none; }
+
 .sqrt-input__paste {
   display: inline-flex;
   align-items: center;

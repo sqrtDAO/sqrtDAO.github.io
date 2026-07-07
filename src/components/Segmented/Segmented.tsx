@@ -10,15 +10,17 @@ export interface SegmentedItemProps {
   size?: ItemSize;
   state?: ItemState;
   icon?: React.ReactNode;
+  disabled?: boolean;
   onClick?: () => void;
 }
 
-export function SegmentedItem({ text, size = "s", state = "rest", icon, onClick }: SegmentedItemProps) {
+export function SegmentedItem({ text, size = "s", state = "rest", icon, disabled = false, onClick }: SegmentedItemProps) {
   return (
     <button
       type="button"
-      className={`seg-item seg-item--${size} seg-item--${state}`}
-      onClick={onClick}
+      className={`seg-item seg-item--${size} seg-item--${state}${disabled ? " seg-item--disabled" : ""}`}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
       aria-pressed={state === "selected"}
     >
       {icon && <span className="seg-item__icon" aria-hidden="true">{icon}</span>}
@@ -33,6 +35,7 @@ export interface SegmentedProps {
   size?: ItemSize;
   onChange?: (index: number) => void;
   className?: string;
+  disabledIndices?: number[];
 }
 
 export default function Segmented({
@@ -41,6 +44,7 @@ export default function Segmented({
   size = "m",
   onChange,
   className,
+  disabledIndices = [],
 }: SegmentedProps) {
   return (
     <div
@@ -53,6 +57,7 @@ export default function Segmented({
           text={label}
           size={size}
           state={i === activeIndex ? "selected" : "rest"}
+          disabled={disabledIndices.includes(i)}
           onClick={() => onChange?.(i)}
         />
       ))}
