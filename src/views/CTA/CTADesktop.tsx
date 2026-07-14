@@ -28,7 +28,7 @@ export default function CTADesktop() {
       <h2 className="headline" style={{ position: "absolute", left: 13, top: 284, fontSize: "var(--font-size-display-l)", lineHeight: "var(--font-line-height-display-l)", letterSpacing: "var(--font-letter-spacing-display-l)" }}>Be in the first cohort.</h2>
       {/* buttons */}
       <div style={{ position: "absolute", left: 8, top: 416, display: "flex", gap: 16 }}>
-        <Button variant="primary" leadingIcon={<IconBrandX />} onClick={() => window.open("https://x.com/DAOsqrt", "_blank", "noopener,noreferrer")}>Follow on X</Button>
+        <Button variant="primary" leadingIcon={<IconBrandX />} onClick={() => window.open("https://x.com/sqrtDAO", "_blank", "noopener,noreferrer")}>Follow on X</Button>
         <Button variant="secondary" leadingIcon={<IconBrandDiscord />} onClick={() => window.open("https://discord.gg/hsW64egPRJ", "_blank", "noopener,noreferrer")}>Join Discord</Button>
       </div>
       {/* bottom text */}
