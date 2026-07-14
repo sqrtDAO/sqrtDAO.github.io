@@ -20,7 +20,7 @@ export default function CTATablet() {
         <p style={{ fontFamily: "var(--font-sans)", fontSize: "var(--font-size-h4)", lineHeight: "var(--font-line-height-h4)", color: "var(--sqrt-text-secondary)", margin: "4px 0 0" }}>The protocol runs the rest.</p>
         <h2 className="headline" style={{ fontSize: "var(--font-size-display-m)", lineHeight: "var(--font-line-height-display-m)", letterSpacing: "var(--font-letter-spacing-display-m)", marginTop: 8 }}>Be in the first cohort.</h2>
         <div style={{ display: "flex", gap: 16, marginTop: 32 }}>
-          <Button variant="primary" leadingIcon={<IconBrandX />} onClick={() => window.open("https://x.com/DAOsqrt", "_blank", "noopener,noreferrer")}>Follow on X</Button>
+          <Button variant="primary" leadingIcon={<IconBrandX />} onClick={() => window.open("https://x.com/sqrtDAO", "_blank", "noopener,noreferrer")}>Follow on X</Button>
           <Button variant="secondary" leadingIcon={<IconBrandDiscord />} onClick={() => window.open("https://discord.gg/hsW64egPRJ", "_blank", "noopener,noreferrer")}>Join Discord</Button>
         </div>
         <p style={{ fontFamily: "var(--font-sans)", fontSize: "var(--font-size-body-l)", lineHeight: "var(--font-line-height-body-l)", color: "var(--sqrt-text-primary)", marginTop: 16 }}>Owned by no one. Controlled by the protocol.</p>
