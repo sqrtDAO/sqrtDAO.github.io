@@ -1,0 +1,21 @@
+.epoch-block-chart {
+  position: relative;
+  width: 100%;
+}
+
+/* "container and layout will have a fixed width" on real pages — this
+   scroller is the safety net for the rare case a distribution has more
+   epochs than fit columns*5 blocks at that width. */
+.epoch-block-chart__scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.epoch-block-chart__grid {
+  display: block;
+}
+
+.epoch-block-chart__grid rect {
+  transition: fill 0.1s ease;
+}

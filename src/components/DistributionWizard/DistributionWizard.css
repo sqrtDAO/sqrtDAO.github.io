@@ -1,4 +1,4 @@
-/* DistributionWizard — 6-step distribution setup
+/* DistributionWizard — 4-step distribution setup
    Figma source: Distribution wizard V.2 (node 3432:1220) */
 
 /* ── Backdrop ─────────────────────────────────────────── */
@@ -8,8 +8,7 @@
   z-index: 200;
   background-color: var(--sqrt-bg-canvas);
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  flex-direction: column;
   animation: dw-backdrop-in var(--motion-duration-slow) var(--motion-easing-arrive) both;
   overflow-y: auto;
 }
@@ -19,6 +18,25 @@
   to   { opacity: 1; }
 }
 
+/* ── Sticky app chrome (header + testnet ribbon) ──────── */
+.dw-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Scroll area (centers the panel below the chrome) ─── */
+.dw-scroll {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+}
+
 /* ── Panel (584 px content column) ───────────────────── */
 .dw-panel {
   display: flex;
@@ -26,7 +44,7 @@
   gap: 48px;
   width: 584px;
   max-width: calc(100vw - 48px);
-  padding: 64px 0;
+  padding: 32px 0;
   animation: dw-panel-in var(--motion-duration-slow) var(--motion-easing-arrive) 60ms both;
 }
 
@@ -41,34 +59,7 @@
   }
 }
 
-/* ── Back / close icon button ─────────────────────────── */
-.dw-back {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  padding: 8px;
-  background: transparent;
-  border: 1px solid var(--sqrt-action-secondary-rest);
-  border-radius: 8px;
-  color: var(--sqrt-text-primary);
-  cursor: pointer;
-  transition:
-    border-color var(--motion-duration-fast) var(--motion-easing-standard),
-    background-color var(--motion-duration-fast) var(--motion-easing-standard),
-    color var(--motion-duration-fast) var(--motion-easing-standard);
-}
-.dw-back:hover {
-  border-color: var(--sqrt-action-secondary-hover);
-  background-color: var(--sqrt-bg-raised);
-  color: var(--sqrt-text-accent);
-}
-.dw-back:active {
-  background-color: var(--sqrt-bg-overlay);
-}
-.dw-back:focus { outline: none; }
-.dw-back:focus-visible { border-color: var(--sqrt-border-focus); }
+/* Back / close button — now the shared IconButton component (outline/m) */
 
 /* ── Step content (key-animated) ─────────────────────── */
 .dw-content {
@@ -118,6 +109,12 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.dw-welcome-body p { margin: 0; }
+
+.dw-accent {
+  color: var(--sqrt-text-accent);
 }
 
 .dw-step-desc {
@@ -176,15 +173,21 @@
   color: var(--sqrt-text-primary);
 }
 
+.dw-supply-label--disabled {
+  color: var(--sqrt-text-disabled);
+}
+
 .dw-supply-field {
   display: flex;
   align-items: center;
   gap: 6px;
   background-color: var(--sqrt-bg-surface);
+  border: 1px solid transparent;
   border-radius: 8px;
   padding: 6px 8px;
   overflow: hidden;
-  transition: outline var(--motion-duration-fast) var(--motion-easing-standard);
+  transition: outline var(--motion-duration-fast) var(--motion-easing-standard),
+    border-color var(--motion-duration-fast) var(--motion-easing-standard);
   outline: 2px solid transparent;
   outline-offset: 0;
 }
@@ -192,6 +195,14 @@
 .dw-supply-group:focus-within .dw-supply-field {
   outline-color: var(--sqrt-border-focus);
   border-radius: 8px;
+}
+
+.dw-supply-field.is-error {
+  border-color: var(--sqrt-state-danger);
+}
+
+.dw-supply-field--disabled {
+  opacity: 0.5;
 }
 
 .dw-supply-el {
@@ -219,6 +230,29 @@
   line-height: 20px;
   color: var(--sqrt-text-tertiary);
   white-space: nowrap;
+}
+
+/* ── Validation message (below a field) ───────────────── */
+.dw-validation {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.01em;
+}
+
+.dw-validation--danger {
+  color: var(--sqrt-state-danger);
+}
+
+.dw-validation--warning {
+  color: var(--sqrt-action-primary-rest);
+}
+
+.dw-validation svg {
+  flex-shrink: 0;
 }
 
 /* ── Wallet balance row ───────────────────────────────── */
@@ -268,6 +302,133 @@
   display: flex;
   gap: 16px;
   align-items: center;
+}
+
+/* ── Backing: initial price preview ───────────────────── */
+.dw-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.dw-price-label {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.01em;
+  color: var(--sqrt-text-secondary);
+}
+
+.dw-price-value {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 24px;
+  letter-spacing: 0.02em;
+  color: var(--sqrt-text-primary);
+}
+
+.dw-price-unit {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.01em;
+  color: var(--sqrt-text-secondary);
+}
+
+/* ── Rules: after-epoch split chart ───────────────────── */
+.dw-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.dw-chart-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  height: 32px;
+  padding: 4px;
+  border: 1px solid var(--sqrt-border-strong);
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.dw-chart-bar__liquidity {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  background-color: var(--color-support-teal-900);
+  border-radius: 2px;
+}
+
+.dw-chart-bar__founder {
+  flex-shrink: 0;
+  height: 24px;
+  background-color: var(--color-support-violet-700);
+  border-radius: 2px;
+  transition: width var(--motion-duration-fast) var(--motion-easing-standard);
+}
+
+.dw-chart-bar__fee {
+  flex-shrink: 0;
+  width: 8px;
+  height: 24px;
+  background-color: var(--color-alpha-amber-45);
+  border-radius: 2px;
+}
+
+.dw-chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.01em;
+}
+
+.dw-chart-legend__item--anchor { color: var(--color-support-teal-300); }
+.dw-chart-legend__item--founder { color: var(--color-support-violet-300); }
+.dw-chart-legend__item--fee { color: var(--sqrt-text-accent); }
+
+/* ── Rules: setting card (title/desc + optional switch) ── */
+.dw-setting-card {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+}
+
+.dw-setting-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.dw-setting-card__title {
+  margin: 0;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.01em;
+  color: var(--sqrt-text-primary);
+}
+
+.dw-setting-card__desc {
+  margin: 0;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.01em;
+  color: var(--sqrt-text-secondary);
 }
 
 /* ── Release: curve cards ─────────────────────────────── */
@@ -380,16 +541,22 @@
 
 .dw-release-summary {
   margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+  background-color: var(--sqrt-bg-surface);
+  border: 1px solid var(--sqrt-border-subtle);
+  border-radius: 8px;
+  padding: 16px;
   font-family: var(--font-sans), system-ui, sans-serif;
   font-size: 16px;
   line-height: 22px;
   letter-spacing: 0.01em;
-  color: var(--sqrt-text-primary);
+  color: var(--sqrt-text-secondary);
 }
 
 .dw-release-summary strong {
   font-weight: 700;
-  color: var(--sqrt-text-accent);
+  color: var(--sqrt-text-primary);
 }
 
 /* ── Rules: section group ─────────────────────────────── */
@@ -422,33 +589,8 @@
   margin: 0;
 }
 
-.dw-edit-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  color: var(--sqrt-text-secondary);
-  cursor: pointer;
-  transition:
-    background-color var(--motion-duration-fast) var(--motion-easing-standard),
-    color var(--motion-duration-fast) var(--motion-easing-standard);
-}
-
-.dw-edit-btn:hover {
-  background-color: var(--sqrt-bg-raised);
-  color: var(--sqrt-text-primary);
-}
-
-.dw-edit-btn:focus { outline: none; }
-.dw-edit-btn:focus-visible {
-  outline: 2px solid var(--sqrt-border-focus);
-  outline-offset: 2px;
-}
-
-/* ── Footer buttons ──────────────────────────────────── */
+/* Edit (gear) and footer buttons are now the shared IconButton/Button
+   components (ghost/m and primary/m/l/outline) — no local button styles. */
 .dw-footer {
   display: flex;
   align-items: center;
@@ -456,108 +598,11 @@
   gap: 16px;
 }
 
-.dw-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border-radius: 8px;
-  font-family: var(--font-sans), system-ui, sans-serif;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    background-color var(--motion-duration-fast) var(--motion-easing-standard),
-    border-color var(--motion-duration-fast) var(--motion-easing-standard),
-    color var(--motion-duration-fast) var(--motion-easing-standard);
-}
-
-.dw-btn:focus { outline: none; }
-.dw-btn:focus-visible {
-  outline: 2px solid var(--sqrt-border-focus);
-  outline-offset: 2px;
-}
-
-/* Ghost — text only, no border (Back button) */
-.dw-btn--ghost {
-  background: transparent;
-  border: none;
-  padding: 8px 16px;
-  font-size: 16px;
-  line-height: 24px;
-  letter-spacing: 0.02em;
-  color: var(--sqrt-text-primary);
-}
-
-.dw-btn--ghost:hover {
-  color: var(--sqrt-text-accent);
-}
-
-/* Primary — amber */
-.dw-btn--primary {
-  background-color: var(--sqrt-action-primary-rest);
-  border: none;
-  padding: 8px 16px;
-  font-size: 16px;
-  line-height: 24px;
-  letter-spacing: 0.02em;
-  color: var(--sqrt-text-on-amber);
-  box-shadow: inset -1px 1px 7px rgba(0, 0, 0, 0.16);
-}
-
-.dw-btn--primary:hover {
-  background-color: var(--sqrt-action-primary-hover);
-}
-
-.dw-btn--primary:active {
-  background-color: var(--sqrt-action-primary-pressed);
-}
-
-/* Primary large — Start distribution (welcome) */
-.dw-btn--primary-l {
-  background-color: var(--sqrt-action-primary-rest);
-  border: none;
-  padding: 12px 20px;
-  font-size: 18px;
-  line-height: 24px;
-  letter-spacing: 0.02em;
-  color: var(--sqrt-text-on-amber);
-  box-shadow: inset -1px 1px 7px rgba(0, 0, 0, 0.16);
-}
-
-.dw-btn--primary-l:hover {
-  background-color: var(--sqrt-action-primary-hover);
-}
-
-/* Secondary — border only (HALF/MAX) */
-.dw-btn--secondary {
-  background: transparent;
-  border: 1px solid var(--sqrt-action-secondary-rest);
-  padding: 8px 16px;
-  font-size: 16px;
-  line-height: 24px;
-  letter-spacing: 0.02em;
-  color: var(--sqrt-text-primary);
-}
-
-.dw-btn--secondary:hover {
-  border-color: var(--sqrt-action-secondary-hover);
-  background-color: var(--sqrt-bg-raised);
-}
-
-/* SelectBox group gap override */
-.dw-selectbox-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
 /* ── Reduced motion ───────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .dw-backdrop,
   .dw-panel,
   .dw-content { animation: none; }
-  .dw-btn,
-  .dw-back,
   .dw-cal-btn,
-  .dw-edit-btn { transition: none; }
+  .dw-chart-bar__founder { transition: none; }
 }

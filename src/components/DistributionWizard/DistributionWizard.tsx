@@ -9,25 +9,29 @@ import {
   IconEqualDouble,
   IconMathFunctionY,
   IconMathIntegralX,
+  IconAlertSquare,
 } from "@tabler/icons-react";
 import Input from "@/components/Input/Input";
 import Stepper from "@/components/Stepper/Stepper";
 import Segmented from "@/components/Segmented/Segmented";
-import SelectBox from "@/components/SelectBox/SelectBox";
 import ReleaseCard from "@/components/ReleaseCard/ReleaseCard";
 import DataRow from "@/components/DataRow/DataRow";
 import Divider from "@/components/Divider/Divider";
+import Switch from "@/components/Switch/Switch";
+import { IconButton } from "@/components/IconButton/IconButton";
+import { Button } from "@/components/Button/Button";
+import Header from "@/components/Header/Header";
+import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
 import "./DistributionWizard.css";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type DistStep = "welcome" | "supply" | "release" | "backing" | "rules" | "review";
+type DistStep = "welcome" | "supply" | "release" | "rules" | "review";
 
-const STEP_LABELS = ["Supply", "Release schedule", "Backing", "Rules", "Review"];
-const STEP_ORDER: DistStep[] = ["supply", "release", "backing", "rules", "review"];
+const STEP_LABELS = ["Supply and backing", "Release strategy", "Rules", "Review"];
+const STEP_ORDER: DistStep[] = ["supply", "release", "rules", "review"];
 
-type ReleaseCurve = "fixed" | "linear" | "exponential";
-type EpochRule = "price-anchor" | "fund-share";
+type ReleaseCurve = "flat" | "linear" | "exponential";
 
 export interface DistributionWizardProps {
   onClose: () => void;
@@ -77,7 +81,7 @@ function formatDateLong(d: Date): string {
   return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
-const BACKING_ASSETS = ["USDT", "BASE", "USDC", "DAI"];
+const BACKING_ASSETS = ["USDT", "BASE", "USDC", "ETH"];
 const BACKING_ASSETS_DISABLED = [1, 2, 3];
 const RELEASE_TYPES = ["Time-based", "Epoch-based"];
 const EPOCH_DURATION_OPTIONS = ["20 mins", "2 hrs", "8 hrs", "1 day"];
@@ -87,6 +91,8 @@ const EPOCH_DURATION_MS: Record<string, number> = {
   "8 hrs": 8 * 60 * 60 * 1000,
   "1 day": 24 * 60 * 60 * 1000,
 };
+const PROTOCOL_FEE_PCT = 5;
+const FOUNDER_SHARE_CAP = 25;
 
 // ── Main component ──────────────────────────────────────────────────────────
 
@@ -99,11 +105,13 @@ export default function DistributionWizard({
   // Navigation
   const [step, setStep] = useState<DistStep>("welcome");
 
-  // Step 2 — Supply
+  // Step 2 — Supply and backing
   const [supply, setSupply] = useState("");
+  const [backingAssetIdx, setBackingAssetIdx] = useState(0);
+  const [initialLiquidity, setInitialLiquidity] = useState("");
 
-  // Step 3 — Release schedule
-  const [releaseCurve, setReleaseCurve] = useState<ReleaseCurve>("fixed");
+  // Step 3 — Release strategy
+  const [releaseCurve, setReleaseCurve] = useState<ReleaseCurve>("flat");
   const [releaseTypeIdx, setReleaseTypeIdx] = useState(0);
   const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("");
@@ -115,18 +123,21 @@ export default function DistributionWizard({
   const startTimeRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
 
-  // Step 4 — Backing
-  const [backingAssetIdx, setBackingAssetIdx] = useState(0);
-  const [backingTypeIdx, setBackingTypeIdx] = useState(0);
-  const [selfAmount, setSelfAmount] = useState("");
-  const [selfEpochs, setSelfEpochs] = useState("");
-
-  // Step 5 — Rules
+  // Step 4 — Rules
   const [minParticipation, setMinParticipation] = useState("");
   const [claimDelay, setClaimDelay] = useState("");
-  const [epochRule, setEpochRule] = useState<EpochRule>("price-anchor");
-  const [fundShare, setFundShare] = useState("");
-  const [receiverAddress, setReceiverAddress] = useState("");
+  const [founderShareOn, setFounderShareOn] = useState(false);
+  const [founderSharePercent, setFounderSharePercent] = useState("");
+  const [founderReceiverAddress, setFounderReceiverAddress] = useState("");
+
+  // Supply validation
+  const supplyNum = parseFloat(supply.replace(/,/g, "")) || 0;
+  const supplyExceedsBalance = supply !== "" && supplyNum > tokenBalance;
+
+  // Initial price preview (Initial liquidity ÷ Supply)
+  const initialLiquidityNum = parseFloat(initialLiquidity.replace(/,/g, "")) || 0;
+  const initialPrice =
+    supplyNum > 0 && initialLiquidityNum > 0 ? initialLiquidityNum / supplyNum : null;
 
   // Time-based: epoch count from date range ÷ epoch duration
   const epochsFromDates = useMemo(
@@ -136,15 +147,22 @@ export default function DistributionWizard({
   // Time-based: release amount per epoch, derived from total supply ÷ epoch count
   const releasePerEpochFromDates = useMemo(() => {
     if (!epochsFromDates) return null;
-    const supplyNum = parseFloat(supply.replace(/,/g, ""));
-    if (isNaN(supplyNum)) return null;
+    if (!supplyNum) return null;
     return supplyNum / epochsFromDates;
-  }, [supply, epochsFromDates]);
+  }, [supplyNum, epochsFromDates]);
   // Epoch-based: computed end date from start + count
   const endDateFromEpochs = useMemo(
     () => calcEndDateFromEpochs(startDate, parseInt(epochCountInput)),
     [startDate, epochCountInput]
   );
+
+  // Rules: founder share % + resulting split
+  const founderPercentNum = parseFloat(founderSharePercent) || 0;
+  const founderExceedsCap = founderShareOn && founderPercentNum > FOUNDER_SHARE_CAP;
+  const founderSharePctClamped = founderShareOn
+    ? Math.min(founderPercentNum, FOUNDER_SHARE_CAP)
+    : 0;
+  const priceAnchorPct = 100 - PROTOCOL_FEE_PCT - founderSharePctClamped;
 
   // ── Navigation helpers ───────────────────────────────────────────────────
 
@@ -163,6 +181,13 @@ export default function DistributionWizard({
     setStep(target);
   }
 
+  function handlePasteFounderAddress() {
+    navigator.clipboard
+      .readText()
+      .then((t) => setFounderReceiverAddress(t))
+      .catch(() => {});
+  }
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   const showStepper = step !== "welcome";
@@ -170,304 +195,461 @@ export default function DistributionWizard({
 
   return (
     <div className="dw-backdrop">
-      <div className="dw-panel">
+      <div className="dw-chrome">
+        <Header />
+        <TestnetRibbon />
+      </div>
+      <div className="dw-scroll">
+        <div className="dw-panel">
 
-        {/* Close button */}
-        <div>
-          <button className="dw-back" onClick={onClose} aria-label="Close">
-            <IconX size={24} strokeWidth={2} />
-          </button>
-        </div>
+          {/* Close button */}
+          <div>
+            <IconButton
+              variant="outline"
+              size="m"
+              icon={<IconX size={24} strokeWidth={2} />}
+              onClick={onClose}
+              aria-label="Close"
+            />
+          </div>
 
-        {/* Step content — key triggers enter animation on each step change */}
-        <div className="dw-content" key={step}>
+          {/* Step content — key triggers enter animation on each step change */}
+          <div className="dw-content" key={step}>
 
-          {/* ── STEP 1: Welcome ─────────────────────────────────────────── */}
-          {step === "welcome" && (
-            <>
-              <div className="dw-text">
-                <h2 className="dw-title">Welcome to Distribution engine</h2>
-                <p className="dw-section-label">Read before start</p>
-              </div>
-
-              <div className="dw-welcome-body">
-                <p>
-                  Here you can set up a fair distribution mechanism for your token.
-                  While simultaneously you are fundraising, token price discovery and
-                  providing liquidity.
-                </p>
-                <p>
-                  It happens through time-based windows we call <strong>epochs</strong>.{" "}
-                  Every epoch has a max distribution supply and users will participate in them.
-                </p>
-                <p>
-                  When epoch closes, the available tokens are distributed proportionally
-                  based on each participant&apos;s participation, and it will continued
-                  until your supply finished.
-                </p>
-              </div>
-
-              <div className="dw-footer">
-                <button
-                  className="dw-btn dw-btn--primary-l"
-                  onClick={() => setStep("supply")}
-                >
-                  Start distribution
-                </button>
-              </div>
-            </>
-          )}
-
-          {/* ── STEP 2: Supply ──────────────────────────────────────────── */}
-          {step === "supply" && (
-            <>
-              <div className="dw-text">
-                <h2 className="dw-title">Distribution</h2>
-                {showStepper && (
-                  <Stepper steps={STEP_LABELS} activeIndex={stepIdx} />
-                )}
-                <p className="dw-step-desc">
-                  Set how many of your Tokens go out across all epochs.
-                </p>
-              </div>
-
-              <div className="dw-form">
-                {/* Supply input with TOKEN suffix */}
-                <div className="dw-supply-group">
-                  <label className="dw-supply-label">Supply to distribute</label>
-                  <div className="dw-supply-field">
-                    <input
-                      className="dw-supply-el"
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="e.g. 10,000,000"
-                      value={supply}
-                      onChange={(e) =>
-                        setSupply(e.target.value.replace(/[^0-9,]/g, ""))
-                      }
-                      spellCheck={false}
-                      autoComplete="off"
-                    />
-                    <span className="dw-supply-suffix">{tokenSymbol}</span>
-                  </div>
+            {/* ── STEP 1: Welcome ───────────────────────────────────────── */}
+            {step === "welcome" && (
+              <>
+                <div className="dw-text">
+                  <h2 className="dw-title">Welcome to Distribution</h2>
+                  <p className="dw-section-label">Here&apos;s how it works</p>
                 </div>
 
-                {/* Wallet balance + HALF / MAX */}
-                <div className="dw-wallet-row">
-                  <div className="dw-balance">
-                    <span className="dw-balance-label">Wallet balance of the token</span>
-                    <div className="dw-balance-line">
-                      <span className="dw-balance-amount">
-                        {formatNumber(tokenBalance)}
+                <div className="dw-welcome-body">
+                  <p>
+                    Your token is released gradually, over timed windows called{" "}
+                    <strong>epochs</strong>, not all at once.
+                  </p>
+                  <p>
+                    In each <strong>epoch</strong>, people take part with funds. When it
+                    closes, that epoch&apos;s tokens are shared out proportionally, at one
+                    price for everyone.
+                  </p>
+                  <p>
+                    As it runs, your token <span className="dw-accent">raises funds</span>,
+                    finds a <span className="dw-accent">fair price</span>, and builds{" "}
+                    <span className="dw-accent">locked liquidity</span>, all at once.
+                  </p>
+                </div>
+
+                <div className="dw-footer">
+                  <Button variant="primary" size="l" onClick={() => setStep("supply")}>
+                    Start distribution
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {/* ── STEP 2: Supply and backing ───────────────────────────── */}
+            {step === "supply" && (
+              <>
+                <div className="dw-text">
+                  <h2 className="dw-title">Distribution</h2>
+                  {showStepper && <Stepper steps={STEP_LABELS} activeIndex={stepIdx} />}
+                  <p className="dw-step-desc">
+                    Set how many of your Tokens go out across all epochs.
+                  </p>
+                </div>
+
+                <div className="dw-form">
+                  {/* Supply set up */}
+                  <div className="dw-rules-section">
+                    <p className="dw-section-label">Supply set up</p>
+                    <div className="dw-supply-group">
+                      <label className="dw-supply-label">Supply to distribute</label>
+                      <div className={`dw-supply-field${supplyExceedsBalance ? " is-error" : ""}`}>
+                        <input
+                          className="dw-supply-el"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="e.g. 10,000,000"
+                          value={supply}
+                          onChange={(e) =>
+                            setSupply(e.target.value.replace(/[^0-9,]/g, ""))
+                          }
+                          spellCheck={false}
+                          autoComplete="off"
+                        />
+                        <span className="dw-supply-suffix">{tokenSymbol}</span>
+                      </div>
+                      {supplyExceedsBalance && (
+                        <div className="dw-validation dw-validation--danger">
+                          <IconAlertSquare size={16} strokeWidth={1.5} />
+                          <span>Insufficient balance</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="dw-wallet-row">
+                      <div className="dw-balance">
+                        <span className="dw-balance-label">Wallet balance of the token</span>
+                        <div className="dw-balance-line">
+                          <span className="dw-balance-amount">
+                            {formatNumber(tokenBalance)}
+                          </span>
+                          <span className="dw-balance-unit">{tokenSymbol}</span>
+                        </div>
+                      </div>
+                      <div className="dw-halfmax">
+                        <Button
+                          variant="outline"
+                          size="m"
+                          onClick={() =>
+                            setSupply(formatNumber(Math.floor(tokenBalance / 2)))
+                          }
+                        >
+                          HALF
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="m"
+                          onClick={() => setSupply(formatNumber(tokenBalance))}
+                        >
+                          MAX
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Divider />
+
+                  {/* Initial backing and liquidity */}
+                  <div className="dw-rules-section">
+                    <p className="dw-section-label">Initial backing and liquidity</p>
+                    <p className="dw-step-desc" style={{ fontSize: 16, lineHeight: "22px", letterSpacing: "0.01em" }}>
+                      Participants take part in epochs with this asset. It pairs with your
+                      token in a Uniswap pool.
+                    </p>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                      <p className="dw-section-label" style={{ margin: 0 }}>Paired your token with</p>
+                      <Segmented
+                        items={BACKING_ASSETS}
+                        activeIndex={backingAssetIdx}
+                        size="m"
+                        onChange={setBackingAssetIdx}
+                        disabledIndices={BACKING_ASSETS_DISABLED}
+                      />
+                    </div>
+
+                    <div className="dw-backing-inputs">
+                      <div className="dw-supply-group">
+                        <label className="dw-supply-label dw-supply-label--disabled">
+                          Initial token supply
+                        </label>
+                        <div className="dw-supply-field dw-supply-field--disabled">
+                          <input
+                            className="dw-supply-el"
+                            type="text"
+                            placeholder="first epoch release amount"
+                            value=""
+                            disabled
+                            readOnly
+                          />
+                          <span className="dw-supply-suffix">{tokenSymbol}</span>
+                        </div>
+                      </div>
+                      <div className="dw-supply-group">
+                        <label className="dw-supply-label">Initial liquidity</label>
+                        <div className="dw-supply-field">
+                          <input
+                            className="dw-supply-el"
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="e.g. 10,000,000"
+                            value={initialLiquidity}
+                            onChange={(e) =>
+                              setInitialLiquidity(e.target.value.replace(/[^0-9,]/g, ""))
+                            }
+                            spellCheck={false}
+                            autoComplete="off"
+                          />
+                          <span className="dw-supply-suffix">
+                            {BACKING_ASSETS[backingAssetIdx]}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="dw-price-row">
+                      <span className="dw-price-label">Your token initial price will be</span>
+                      <span className="dw-price-value">
+                        1 <span className="dw-price-unit">{tokenSymbol}</span> ={" "}
+                        {initialPrice !== null ? formatAmount(initialPrice) : "X"}{" "}
+                        <span className="dw-price-unit">{BACKING_ASSETS[backingAssetIdx]}</span>
                       </span>
-                      <span className="dw-balance-unit">{tokenSymbol}</span>
                     </div>
-                  </div>
-                  <div className="dw-halfmax">
-                    <button
-                      type="button"
-                      className="dw-btn dw-btn--secondary"
-                      onClick={() =>
-                        setSupply(formatNumber(Math.floor(tokenBalance / 2)))
-                      }
-                    >
-                      HALF
-                    </button>
-                    <button
-                      type="button"
-                      className="dw-btn dw-btn--secondary"
-                      onClick={() => setSupply(formatNumber(tokenBalance))}
-                    >
-                      MAX
-                    </button>
-                  </div>
-                </div>
-              </div>
 
-              <div className="dw-footer">
-                <button className="dw-btn dw-btn--ghost" onClick={goBack}>
-                  Back
-                </button>
-                <button className="dw-btn dw-btn--primary" onClick={goNext}>
-                  Continue
-                </button>
-              </div>
-            </>
-          )}
-
-          {/* ── STEP 3: Release schedule ─────────────────────────────────── */}
-          {step === "release" && (
-            <>
-              <div className="dw-text">
-                <h2 className="dw-title">Distribution</h2>
-                <Stepper steps={STEP_LABELS} activeIndex={stepIdx} />
-                <p className="dw-step-desc">
-                  Define the epoch structure and how supply releases across it.
-                </p>
-              </div>
-
-              <div className="dw-form">
-                {/* Distribution start */}
-                <div className="dw-release-type-section">
-                  <p className="dw-section-label">Distribution start</p>
-                  <div className="dw-date-row">
-                    <div className="dw-date-wrap">
-                      <label className="dw-date-label">Start date</label>
-                      <div className="dw-date-field">
-                        <input
-                          ref={startRef}
-                          type="date"
-                          className="dw-date-el"
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                        />
-                        <button
-                          type="button"
-                          className="dw-cal-btn"
-                          aria-label="Pick start date"
-                          onClick={() => startRef.current?.showPicker?.()}
-                        >
-                          <IconCalendar size={16} strokeWidth={1.5} />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="dw-date-wrap">
-                      <label className="dw-date-label">Start time (UTC)</label>
-                      <div className="dw-date-field">
-                        <input
-                          ref={startTimeRef}
-                          type="time"
-                          className="dw-date-el"
-                          value={startTime}
-                          onChange={(e) => setStartTime(e.target.value)}
-                        />
-                        <button
-                          type="button"
-                          className="dw-cal-btn"
-                          aria-label="Pick start time"
-                          onClick={() => startTimeRef.current?.showPicker?.()}
-                        >
-                          <IconClock size={16} strokeWidth={1.5} />
-                        </button>
-                      </div>
+                    <div className="dw-validation dw-validation--warning">
+                      <IconAlertSquare size={16} strokeWidth={1.5} />
+                      <span>LP token will be permanently burned</span>
                     </div>
                   </div>
                 </div>
 
-                <Divider />
+                <div className="dw-footer">
+                  <Button variant="ghost" size="m" onClick={goBack}>
+                    Back
+                  </Button>
+                  <Button variant="primary" size="m" onClick={goNext}>
+                    Continue
+                  </Button>
+                </div>
+              </>
+            )}
 
-                {/* Release curve cards */}
-                <div className="dw-curve-section">
-                  <p className="dw-section-label">
-                    Release curve (Linear and Exponential option will coming soon)
+            {/* ── STEP 3: Release strategy ─────────────────────────────── */}
+            {step === "release" && (
+              <>
+                <div className="dw-text">
+                  <h2 className="dw-title">Distribution</h2>
+                  <Stepper steps={STEP_LABELS} activeIndex={stepIdx} />
+                  <p className="dw-step-desc">
+                    Set the distribution&apos;s timing and how supply releases across it.
                   </p>
-                  <div className="dw-curve-cards">
-                    <ReleaseCard
-                      name="Fixed curve"
-                      description="Release equal amount each epoch"
-                      icon={<IconEqualDouble size={24} strokeWidth={1.5} />}
-                      state={releaseCurve === "fixed" ? "selected" : "rest"}
-                      onClick={() => setReleaseCurve("fixed")}
-                    />
-                    <ReleaseCard
-                      name="Linear curve"
-                      description="Release decreasing or increasing amount"
-                      icon={<IconMathFunctionY size={24} strokeWidth={1.5} />}
-                      state="disabled"
-                    />
-                    <ReleaseCard
-                      name="Exponential curve"
-                      description="Sharply participation-dependent"
-                      icon={<IconMathIntegralX size={24} strokeWidth={1.5} />}
-                      state="disabled"
-                    />
-                  </div>
                 </div>
 
-                <Divider />
-
-                {/* Release type + dates */}
-                <div className="dw-release-type-section">
-                  <p className="dw-section-label">Release type</p>
-
-                  <Segmented
-                    items={RELEASE_TYPES}
-                    activeIndex={releaseTypeIdx}
-                    size="m"
-                    onChange={setReleaseTypeIdx}
-                  />
-
-                  <p className="dw-release-desc">
-                    {releaseTypeIdx === 0
-                      ? "With this choice, the number of epochs is calculated automatically."
-                      : "With this choice, the distribution duration is calculated automatically."}
-                  </p>
-
-                  {/* Input row — changes based on release type */}
-                  {releaseTypeIdx === 0 ? (
+                <div className="dw-form">
+                  {/* Distribution start */}
+                  <div className="dw-release-type-section">
+                    <p className="dw-section-label">Distribution start</p>
                     <div className="dw-date-row">
                       <div className="dw-date-wrap">
-                        <label className="dw-date-label">End date</label>
+                        <label className="dw-date-label">Start date</label>
                         <div className="dw-date-field">
                           <input
-                            ref={endRef}
+                            ref={startRef}
                             type="date"
                             className="dw-date-el"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
                           />
                           <button
                             type="button"
                             className="dw-cal-btn"
-                            aria-label="Pick end date"
-                            onClick={() => endRef.current?.showPicker?.()}
+                            aria-label="Pick start date"
+                            onClick={() => startRef.current?.showPicker?.()}
                           >
                             <IconCalendar size={16} strokeWidth={1.5} />
                           </button>
                         </div>
                       </div>
-                      <div className="dw-input-flex">
-                        <Input
-                          label="Epoch duration"
-                          placeholder="Select an option"
-                          value={epochDuration}
-                          onChange={setEpochDuration}
-                          dropdown
-                          options={EPOCH_DURATION_OPTIONS}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="dw-date-row">
                       <div className="dw-date-wrap">
-                        <label className="dw-date-label">Number of epochs</label>
-                        <div className="dw-supply-field">
+                        <label className="dw-date-label">Start time (UTC)</label>
+                        <div className="dw-date-field">
                           <input
-                            className="dw-supply-el"
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="e.g. 54"
-                            value={epochCountInput}
-                            onChange={(e) =>
-                              setEpochCountInput(e.target.value.replace(/[^0-9]/g, ""))
-                            }
-                            spellCheck={false}
-                            autoComplete="off"
+                            ref={startTimeRef}
+                            type="time"
+                            className="dw-date-el"
+                            value={startTime}
+                            onChange={(e) => setStartTime(e.target.value)}
                           />
-                          <span className="dw-supply-suffix">Epochs</span>
+                          <button
+                            type="button"
+                            className="dw-cal-btn"
+                            aria-label="Pick start time"
+                            onClick={() => startTimeRef.current?.showPicker?.()}
+                          >
+                            <IconClock size={16} strokeWidth={1.5} />
+                          </button>
                         </div>
                       </div>
-                      <div className="dw-date-wrap">
-                        <label className="dw-date-label">Release per epoch</label>
+                    </div>
+                  </div>
+
+                  <Divider />
+
+                  {/* Release strategy cards */}
+                  <div className="dw-curve-section">
+                    <p className="dw-section-label">
+                      Release strategy (Linear and Exponential coming soon)
+                    </p>
+                    <div className="dw-curve-cards">
+                      <ReleaseCard
+                        name="Flat curve"
+                        description="Release equal amount each epoch"
+                        icon={<IconEqualDouble size={24} strokeWidth={1.5} />}
+                        state={releaseCurve === "flat" ? "selected" : "rest"}
+                        onClick={() => setReleaseCurve("flat")}
+                      />
+                      <ReleaseCard
+                        name="Linear curve"
+                        description="Release decreasing or increasing amount"
+                        icon={<IconMathFunctionY size={24} strokeWidth={1.5} />}
+                        state="disabled"
+                      />
+                      <ReleaseCard
+                        name="Exponential curve"
+                        description="Release scales sharply with participation."
+                        icon={<IconMathIntegralX size={24} strokeWidth={1.5} />}
+                        state="disabled"
+                      />
+                    </div>
+
+                    {/* Release type + dates */}
+                    <div className="dw-release-type-section">
+                      <Segmented
+                        items={RELEASE_TYPES}
+                        activeIndex={releaseTypeIdx}
+                        size="m"
+                        onChange={setReleaseTypeIdx}
+                      />
+
+                      <p className="dw-release-desc">
+                        {releaseTypeIdx === 0
+                          ? "With this choice, the number of epochs is calculated automatically."
+                          : "With this choice, the distribution duration is calculated automatically."}
+                      </p>
+
+                      {releaseTypeIdx === 0 ? (
+                        <div className="dw-date-row">
+                          <div className="dw-date-wrap">
+                            <label className="dw-date-label">End date</label>
+                            <div className="dw-date-field">
+                              <input
+                                ref={endRef}
+                                type="date"
+                                className="dw-date-el"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                              />
+                              <button
+                                type="button"
+                                className="dw-cal-btn"
+                                aria-label="Pick end date"
+                                onClick={() => endRef.current?.showPicker?.()}
+                              >
+                                <IconCalendar size={16} strokeWidth={1.5} />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="dw-input-flex">
+                            <Input
+                              label="Epoch duration"
+                              placeholder="Select an option"
+                              value={epochDuration}
+                              onChange={setEpochDuration}
+                              dropdown
+                              options={EPOCH_DURATION_OPTIONS}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="dw-date-row">
+                          <div className="dw-date-wrap">
+                            <label className="dw-date-label">Number of epochs</label>
+                            <div className="dw-supply-field">
+                              <input
+                                className="dw-supply-el"
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="e.g. 54"
+                                value={epochCountInput}
+                                onChange={(e) =>
+                                  setEpochCountInput(e.target.value.replace(/[^0-9]/g, ""))
+                                }
+                                spellCheck={false}
+                                autoComplete="off"
+                              />
+                              <span className="dw-supply-suffix">Epochs</span>
+                            </div>
+                          </div>
+                          <div className="dw-date-wrap">
+                            <label className="dw-date-label">Release per epoch</label>
+                            <div className="dw-supply-field">
+                              <input
+                                className="dw-supply-el"
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="e.g. 100"
+                                value={releasePerEpoch}
+                                onChange={(e) =>
+                                  setReleasePerEpoch(e.target.value.replace(/[^0-9.,]/g, ""))
+                                }
+                                spellCheck={false}
+                                autoComplete="off"
+                              />
+                              <span className="dw-supply-suffix">{tokenSymbol}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Release schedule summary */}
+                      {releaseTypeIdx === 0 && epochsFromDates !== null && (
+                        <p className="dw-release-summary">
+                          This creates <strong>{epochsFromDates} total epochs</strong>{" "}
+                          Releasing{" "}
+                          <strong>
+                            {releasePerEpochFromDates !== null
+                              ? `${formatAmount(releasePerEpochFromDates)} ${tokenSymbol}`
+                              : `— ${tokenSymbol}`}
+                          </strong>{" "}
+                          each.
+                        </p>
+                      )}
+                      {releaseTypeIdx === 1 && endDateFromEpochs !== null && (
+                        <p className="dw-release-summary">
+                          This creates{" "}
+                          <strong>
+                            {parseInt(epochCountInput)} total epochs ({epochDuration} each).
+                          </strong>{" "}
+                          Ends{" "}
+                          <strong>
+                            {formatDateLong(endDateFromEpochs)}{" "}
+                            ({parseInt(epochCountInput)} days later)
+                          </strong>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="dw-footer">
+                  <Button variant="ghost" size="m" onClick={goBack}>
+                    Back
+                  </Button>
+                  <Button variant="primary" size="m" onClick={goNext}>
+                    Continue
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {/* ── STEP 4: Rules ─────────────────────────────────────────── */}
+            {step === "rules" && (
+              <>
+                <div className="dw-text">
+                  <h2 className="dw-title">Distribution</h2>
+                  <Stepper steps={STEP_LABELS} activeIndex={stepIdx} />
+                  <p className="dw-step-desc">Optional guardrails on participation.</p>
+                </div>
+
+                <div className="dw-form">
+                  {/* Epoch setup */}
+                  <div className="dw-rules-section">
+                    <p className="dw-section-label">Epoch setup</p>
+                    <div className="dw-backing-inputs">
+                      <div className="dw-supply-group">
+                        <label className="dw-supply-label">Minimum participation (Optional)</label>
                         <div className="dw-supply-field">
                           <input
                             className="dw-supply-el"
                             type="text"
                             inputMode="numeric"
-                            placeholder="e.g. 100"
-                            value={releasePerEpoch}
+                            placeholder="e.g. 0.5"
+                            value={minParticipation}
                             onChange={(e) =>
-                              setReleasePerEpoch(e.target.value.replace(/[^0-9.,]/g, ""))
+                              setMinParticipation(e.target.value.replace(/[^0-9.]/g, ""))
                             }
                             spellCheck={false}
                             autoComplete="off"
@@ -475,467 +657,313 @@ export default function DistributionWizard({
                           <span className="dw-supply-suffix">{tokenSymbol}</span>
                         </div>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Release schedule summary */}
-                  {releaseTypeIdx === 0 && epochsFromDates !== null && (
-                    <p className="dw-release-summary">
-                      This creates <strong>{epochsFromDates} epochs.</strong> Releasing{" "}
-                      <strong>
-                        {releasePerEpochFromDates !== null
-                          ? `${formatAmount(releasePerEpochFromDates)} ${tokenSymbol}`
-                          : `— ${tokenSymbol}`}
-                      </strong>{" "}
-                      each.
-                    </p>
-                  )}
-                  {releaseTypeIdx === 1 && endDateFromEpochs !== null && (
-                    <p className="dw-release-summary">
-                      This creates{" "}
-                      <strong>{parseInt(epochCountInput)} epochs.</strong> Ends{" "}
-                      <strong>
-                        {formatDateLong(endDateFromEpochs)}{" "}
-                        ({parseInt(epochCountInput)} days later)
-                      </strong>
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="dw-footer">
-                <button className="dw-btn dw-btn--ghost" onClick={goBack}>
-                  Back
-                </button>
-                <button className="dw-btn dw-btn--primary" onClick={goNext}>
-                  Continue
-                </button>
-              </div>
-            </>
-          )}
-
-          {/* ── STEP 4: Backing ──────────────────────────────────────────── */}
-          {step === "backing" && (
-            <>
-              <div className="dw-text">
-                <h2 className="dw-title">Distribution</h2>
-                <Stepper steps={STEP_LABELS} activeIndex={stepIdx} />
-                <p className="dw-step-desc">
-                  Set the backing that gives the Distribution Token a market and runs price
-                  discovery.{" "}
-                  <br />
-                  More backing = Higher initial price
-                </p>
-              </div>
-
-              <div className="dw-form">
-                {/* Backing asset */}
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 8 }}>
-                    <p className="dw-section-label" style={{ margin: 0 }}>Backing asset</p>
-                    <Segmented
-                      items={BACKING_ASSETS}
-                      activeIndex={backingAssetIdx}
-                      size="m"
-                      onChange={setBackingAssetIdx}
-                      disabledIndices={BACKING_ASSETS_DISABLED}
-                    />
-                  </div>
-                  <p className="dw-section-label" style={{ fontSize: 16, lineHeight: "22px", letterSpacing: "0.01em" }}>
-                    The asset that backs your token&apos;s market. Participants take part in
-                    epochs with this asset. It pairs with your token in a Uniswap pool.
-                  </p>
-                </div>
-
-                <Divider />
-
-                {/* Backing type */}
-                <div className="dw-rules-section">
-                  <p className="dw-section-label">Backing type</p>
-                  <div className="dw-selectbox-group">
-                    <SelectBox
-                      label="As backing, I'll take part in epochs myself from day one (Recommended)"
-                      description="Just set the participation amount and epoch count."
-                      selected={backingTypeIdx === 0}
-                      onChange={() => setBackingTypeIdx(0)}
-                      showSlot={backingTypeIdx === 0}
-                    >
-                      <div className="dw-backing-inputs">
-                        <div className="dw-supply-group">
-                          <label className="dw-supply-label">Self participation amount</label>
-                          <div className="dw-supply-field">
-                            <input
-                              className="dw-supply-el"
-                              type="text"
-                              inputMode="numeric"
-                              placeholder="e.g. 50"
-                              value={selfAmount}
-                              onChange={(e) =>
-                                setSelfAmount(e.target.value.replace(/[^0-9,]/g, ""))
-                              }
-                              spellCheck={false}
-                              autoComplete="off"
-                            />
-                            <span className="dw-supply-suffix">
-                              {BACKING_ASSETS[backingAssetIdx].toUpperCase()}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="dw-supply-group">
-                          <label className="dw-supply-label">Self participation epochs count</label>
-                          <div className="dw-supply-field">
-                            <input
-                              className="dw-supply-el"
-                              type="text"
-                              inputMode="numeric"
-                              placeholder="e.g. 50"
-                              value={selfEpochs}
-                              onChange={(e) =>
-                                setSelfEpochs(e.target.value.replace(/[^0-9]/g, ""))
-                              }
-                              spellCheck={false}
-                              autoComplete="off"
-                            />
-                            <span className="dw-supply-suffix">Epochs</span>
-                          </div>
+                      <div className="dw-supply-group">
+                        <label className="dw-supply-label">Claim delay</label>
+                        <div className="dw-supply-field">
+                          <input
+                            className="dw-supply-el"
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="e.g. 5"
+                            value={claimDelay}
+                            onChange={(e) =>
+                              setClaimDelay(e.target.value.replace(/[^0-9]/g, ""))
+                            }
+                            spellCheck={false}
+                            autoComplete="off"
+                          />
+                          <span className="dw-supply-suffix">Days</span>
                         </div>
                       </div>
-                    </SelectBox>
-                    <SelectBox
-                      label="As backing, I'll provide the initial liquidity myself."
-                      description="Your Initial Backing is permanent. At launch it enters a Uniswap pool and cannot be withdrawn, not by you, not by anyone."
-                      selected={false}
-                      disabled
-                    />
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              <div className="dw-footer">
-                <button className="dw-btn dw-btn--ghost" onClick={goBack}>
-                  Back
-                </button>
-                <button className="dw-btn dw-btn--primary" onClick={goNext}>
-                  Continue
-                </button>
-              </div>
-            </>
-          )}
+                  <Divider />
 
-          {/* ── STEP 5: Rules ────────────────────────────────────────────── */}
-          {step === "rules" && (
-            <>
-              <div className="dw-text">
-                <h2 className="dw-title">Distribution</h2>
-                <Stepper steps={STEP_LABELS} activeIndex={stepIdx} />
-                <p className="dw-step-desc">Optional guardrails on participation.</p>
-              </div>
+                  {/* After-epoch rules */}
+                  <div className="dw-rules-section">
+                    <p className="dw-section-label">After-epoch rules</p>
+                    <p className="dw-step-desc" style={{ fontSize: 16, lineHeight: "22px", letterSpacing: "0.01em" }}>
+                      Choose how each epoch&apos;s collected funds are split when it closes.
+                      The split applies to every epoch and can&apos;t change after launch.
+                    </p>
 
-              <div className="dw-form">
-                {/* Epoch setup */}
-                <div className="dw-rules-section">
-                  <p className="dw-section-label">Epoch setup</p>
-                  <Input
-                    label="Minimum participation (Optional)"
-                    placeholder="e.g. 0.5"
-                    value={minParticipation}
-                    onChange={setMinParticipation}
-                    spellCheck={false}
-                    autoComplete="off"
-                  />
-                  <Input
-                    label="Claim delay"
-                    placeholder="e.g. 5"
-                    value={claimDelay}
-                    onChange={(v) => setClaimDelay(v.replace(/[^0-9]/g, ""))}
-                    spellCheck={false}
-                    autoComplete="off"
-                  />
-                </div>
+                    {/* Split chart */}
+                    <div className="dw-chart">
+                      <div className="dw-chart-bar">
+                        <div className="dw-chart-bar__liquidity" />
+                        <div className="dw-chart-bar__fee" />
+                        {founderSharePctClamped > 0 && (
+                          <div
+                            className="dw-chart-bar__founder"
+                            style={{ width: `${founderSharePctClamped}%` }}
+                          />
+                        )}
+                      </div>
+                      <div className="dw-chart-legend">
+                        <span className="dw-chart-legend__item dw-chart-legend__item--anchor">
+                          {priceAnchorPct}% Price anchor
+                        </span>
+                        <span className="dw-chart-legend__item dw-chart-legend__item--founder">
+                          {founderSharePctClamped}% Founder share
+                        </span>
+                        <span className="dw-chart-legend__item dw-chart-legend__item--fee">
+                          {PROTOCOL_FEE_PCT}% Protocol fee
+                        </span>
+                      </div>
+                    </div>
 
-                <Divider />
+                    {/* Price anchor — always on */}
+                    <div className="dw-setting-card">
+                      <div className="dw-setting-card__text">
+                        <p className="dw-setting-card__title">Price anchor (Buy and burn)</p>
+                        <p className="dw-setting-card__desc">
+                          The protocol buys your token from the pool and burns it, keeping
+                          the clear price aligned with the open market.
+                        </p>
+                      </div>
+                    </div>
 
-                {/* After-epoch rules */}
-                <div className="dw-rules-section">
-                  <p className="dw-section-label">After-epoch rules</p>
-                  <div className="dw-selectbox-group">
-                    <SelectBox
-                      label={<><strong>Price Anchor</strong>; Buy and burn the token from Uniswap pool.</>}
-                      description="After each epoch ends, the protocol buys the token and burns it to sync the price with Uniswap."
-                      selected={epochRule === "price-anchor"}
-                      onChange={() => setEpochRule("price-anchor")}
-                    />
-                    <SelectBox
-                      label={<>Send <strong>funds to an address</strong> after each epoch.</>}
-                      description="After each epoch ends, a portion is sent to the address you set. (20% Max)"
-                      selected={epochRule === "fund-share"}
-                      onChange={() => setEpochRule("fund-share")}
-                      showSlot={epochRule === "fund-share"}
-                    >
+                    <Divider />
+
+                    {/* Founder share — toggle */}
+                    <div className="dw-setting-card">
+                      <div className="dw-setting-card__text">
+                        <p className="dw-setting-card__title">Founder share</p>
+                        <p className="dw-setting-card__desc">
+                          Sent to your address when the epoch closes. Capped at 25%.
+                        </p>
+                      </div>
+                      <Switch on={founderShareOn} onChange={setFounderShareOn} />
+                    </div>
+
+                    {founderShareOn && (
                       <div className="dw-backing-inputs">
-                        <div className="dw-supply-group">
-                          <label className="dw-supply-label">Fund share</label>
-                          <div className="dw-supply-field">
+                        <div className="dw-supply-group" style={{ maxWidth: 160 }}>
+                          <div className={`dw-supply-field${founderExceedsCap ? " is-error" : ""}`}>
                             <input
                               className="dw-supply-el"
                               type="text"
                               inputMode="numeric"
-                              placeholder="Maximum 20%"
-                              value={fundShare}
-                              onChange={(e) => {
-                                const raw = e.target.value.replace(/[^0-9.]/g, "");
-                                const num = parseFloat(raw);
-                                setFundShare(!isNaN(num) && num > 20 ? "20" : raw);
-                              }}
+                              placeholder="Share percentage"
+                              value={founderSharePercent}
+                              onChange={(e) =>
+                                setFounderSharePercent(e.target.value.replace(/[^0-9.]/g, ""))
+                              }
                               spellCheck={false}
                               autoComplete="off"
                             />
                             <span className="dw-supply-suffix">%</span>
                           </div>
+                          {founderExceedsCap && (
+                            <div className="dw-validation dw-validation--danger">
+                              <IconAlertSquare size={16} strokeWidth={1.5} />
+                              <span>Capped at 25%</span>
+                            </div>
+                          )}
                         </div>
-                        <div className="dw-supply-group">
-                          <label className="dw-supply-label">Receiver address</label>
-                          <div className="dw-supply-field">
-                            <input
-                              className="dw-supply-el"
-                              type="text"
-                              placeholder="e.g. 0xfe3...34kj4"
-                              value={receiverAddress}
-                              onChange={(e) => setReceiverAddress(e.target.value)}
-                              spellCheck={false}
-                              autoComplete="off"
-                            />
-                          </div>
+                        <div className="dw-input-flex">
+                          <Input
+                            placeholder="Receiver address"
+                            value={founderReceiverAddress}
+                            onChange={setFounderReceiverAddress}
+                            showPaste
+                            onPaste={handlePasteFounderAddress}
+                            spellCheck={false}
+                            autoComplete="off"
+                          />
                         </div>
                       </div>
-                    </SelectBox>
-                    <SelectBox
-                      label={<><strong>Buy Back & Redistribute</strong> the token.</>}
-                      description="After each epoch ends, the protocol buys the token back and redistributes it."
-                      selected={false}
-                      disabled
+                    )}
+                  </div>
+                </div>
+
+                <div className="dw-footer">
+                  <Button variant="ghost" size="m" onClick={goBack}>
+                    Back
+                  </Button>
+                  <Button variant="primary" size="m" onClick={goNext}>
+                    Continue
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {/* ── STEP 5: Review ────────────────────────────────────────── */}
+            {step === "review" && (
+              <>
+                <div className="dw-text">
+                  <h2 className="dw-title">Distribution review</h2>
+                  <Stepper steps={STEP_LABELS} activeIndex={stepIdx} />
+                </div>
+
+                <div className="dw-form">
+
+                  {/* Supply */}
+                  <div className="dw-review-section">
+                    <div className="dw-review-header">
+                      <span className="dw-review-title">Supply</span>
+                      <IconButton
+                        variant="ghost"
+                        size="m"
+                        icon={<IconSettings size={24} strokeWidth={1.5} />}
+                        aria-label="Edit supply"
+                        onClick={() => jumpTo("supply")}
+                      />
+                    </div>
+                    <DataRow
+                      label="Total supply:"
+                      value={supply ? `${supply} ${tokenSymbol}` : `— ${tokenSymbol}`}
                     />
                   </div>
-                </div>
-              </div>
 
-              <div className="dw-footer">
-                <button className="dw-btn dw-btn--ghost" onClick={goBack}>
-                  Back
-                </button>
-                <button className="dw-btn dw-btn--primary" onClick={goNext}>
-                  Continue
-                </button>
-              </div>
-            </>
-          )}
+                  <Divider />
 
-          {/* ── STEP 6: Review ───────────────────────────────────────────── */}
-          {step === "review" && (
-            <>
-              <div className="dw-text">
-                <h2 className="dw-title">Distribution review</h2>
-                <Stepper steps={STEP_LABELS} activeIndex={stepIdx} />
-              </div>
-
-              <div className="dw-form">
-
-                {/* Supply */}
-                <div className="dw-review-section">
-                  <div className="dw-review-header">
-                    <span className="dw-review-title">Supply</span>
-                    <button
-                      className="dw-edit-btn"
-                      aria-label="Edit supply"
-                      onClick={() => jumpTo("supply")}
-                    >
-                      <IconSettings size={24} strokeWidth={1.5} />
-                    </button>
+                  {/* Release schedule */}
+                  <div className="dw-review-section">
+                    <div className="dw-review-header">
+                      <span className="dw-review-title">Release schedule</span>
+                      <IconButton
+                        variant="ghost"
+                        size="m"
+                        icon={<IconSettings size={24} strokeWidth={1.5} />}
+                        aria-label="Edit release schedule"
+                        onClick={() => jumpTo("release")}
+                      />
+                    </div>
+                    <DataRow
+                      label="Release curve:"
+                      value={releaseCurve.charAt(0).toUpperCase() + releaseCurve.slice(1)}
+                    />
+                    <DataRow label="Release type:" value={RELEASE_TYPES[releaseTypeIdx]} />
+                    <DataRow label="Release starts at:" value={formatDate(startDate)} />
+                    <DataRow
+                      label="Release ends at:"
+                      value={
+                        releaseTypeIdx === 0
+                          ? formatDate(endDate)
+                          : endDateFromEpochs
+                          ? formatDate(endDateFromEpochs.toISOString())
+                          : "—"
+                      }
+                    />
                   </div>
-                  <DataRow
-                    label="Total supply:"
-                    value={supply ? `${supply} ${tokenSymbol}` : `— ${tokenSymbol}`}
-                  />
-                </div>
 
-                <Divider />
+                  <Divider />
 
-                {/* Release schedule */}
-                <div className="dw-review-section">
-                  <div className="dw-review-header">
-                    <span className="dw-review-title">Release schedule</span>
-                    <button
-                      className="dw-edit-btn"
-                      aria-label="Edit release schedule"
-                      onClick={() => jumpTo("release")}
-                    >
-                      <IconSettings size={24} strokeWidth={1.5} />
-                    </button>
+                  {/* Backing */}
+                  <div className="dw-review-section">
+                    <div className="dw-review-header">
+                      <span className="dw-review-title">Backing</span>
+                      <IconButton
+                        variant="ghost"
+                        size="m"
+                        icon={<IconSettings size={24} strokeWidth={1.5} />}
+                        aria-label="Edit backing"
+                        onClick={() => jumpTo("supply")}
+                      />
+                    </div>
+                    <DataRow label="Backing asset:" value={BACKING_ASSETS[backingAssetIdx]} />
+                    <DataRow
+                      label="Initial liquidity:"
+                      value={
+                        initialLiquidity
+                          ? `${initialLiquidity} ${BACKING_ASSETS[backingAssetIdx]}`
+                          : "—"
+                      }
+                    />
+                    <DataRow
+                      label="Initial price:"
+                      value={
+                        initialPrice !== null
+                          ? `1 ${tokenSymbol} = ${formatAmount(initialPrice)} ${BACKING_ASSETS[backingAssetIdx]}`
+                          : "—"
+                      }
+                    />
                   </div>
-                  <DataRow
-                    label="Release curve:"
-                    value={releaseCurve.charAt(0).toUpperCase() + releaseCurve.slice(1)}
-                  />
-                  <DataRow
-                    label="Release type:"
-                    value={RELEASE_TYPES[releaseTypeIdx]}
-                  />
-                  <DataRow label="Start date:" value={formatDate(startDate)} />
-                  <DataRow label="Start time (UTC):" value={startTime || "—"} />
-                  {releaseTypeIdx === 0 ? (
-                    <>
-                      <DataRow label="End date:" value={formatDate(endDate)} />
-                      <DataRow label="Epoch duration:" value={epochDuration} />
-                      <DataRow
-                        label="Total epochs:"
-                        value={epochsFromDates !== null ? String(epochsFromDates) : "—"}
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <DataRow
-                        label="Number of epochs:"
-                        value={epochCountInput ? `${epochCountInput} Epochs` : "—"}
-                      />
-                      <DataRow
-                        label="Release per epoch:"
-                        value={releasePerEpoch ? `${releasePerEpoch} ${tokenSymbol}` : "—"}
-                      />
-                      <DataRow
-                        label="Distribution ends on:"
-                        value={endDateFromEpochs ? formatDateLong(endDateFromEpochs) : "—"}
-                      />
-                    </>
-                  )}
-                </div>
 
-                <Divider />
+                  <Divider />
 
-                {/* Backing */}
-                <div className="dw-review-section">
-                  <div className="dw-review-header">
-                    <span className="dw-review-title">Backing</span>
-                    <button
-                      className="dw-edit-btn"
-                      aria-label="Edit backing"
-                      onClick={() => jumpTo("backing")}
-                    >
-                      <IconSettings size={24} strokeWidth={1.5} />
-                    </button>
+                  {/* Rules */}
+                  <div className="dw-review-section">
+                    <div className="dw-review-header">
+                      <span className="dw-review-title">Rules</span>
+                      <IconButton
+                        variant="ghost"
+                        size="m"
+                        icon={<IconSettings size={24} strokeWidth={1.5} />}
+                        aria-label="Edit rules"
+                        onClick={() => jumpTo("rules")}
+                      />
+                    </div>
+                    <DataRow
+                      label="Minimum participation:"
+                      value={minParticipation ? `${minParticipation} ${tokenSymbol}` : "None"}
+                    />
+                    <DataRow
+                      label="Claim delay:"
+                      value={claimDelay ? `${claimDelay} DAYS` : "None"}
+                    />
+                    <DataRow
+                      label="Price anchor:"
+                      value={`${priceAnchorPct}%`}
+                    />
+                    {founderShareOn && (
+                      <>
+                        <DataRow
+                          label="Founder share:"
+                          value={`${founderSharePctClamped}%`}
+                        />
+                        <DataRow
+                          label="Receiver address:"
+                          value={founderReceiverAddress || "—"}
+                        />
+                      </>
+                    )}
                   </div>
-                  <DataRow
-                    label="Backing asset:"
-                    value={BACKING_ASSETS[backingAssetIdx].toUpperCase()}
-                  />
-                  <DataRow
-                    label="Backing type:"
-                    value={backingTypeIdx === 0 ? "Self participation" : "Initial liquidity"}
-                  />
-                  {backingTypeIdx === 0 && (
-                    <>
-                      <DataRow
-                        label="Self participation amount:"
-                        value={
-                          selfAmount
-                            ? `${selfAmount} ${BACKING_ASSETS[backingAssetIdx].toUpperCase()}`
-                            : "—"
-                        }
-                      />
-                      <DataRow
-                        label="Self participation epochs count:"
-                        value={selfEpochs ? `${selfEpochs} Epochs` : "—"}
-                      />
-                    </>
-                  )}
-                </div>
 
-                <Divider />
+                  <Divider />
 
-                {/* Rules */}
-                <div className="dw-review-section">
-                  <div className="dw-review-header">
-                    <span className="dw-review-title">Rules</span>
-                    <button
-                      className="dw-edit-btn"
-                      aria-label="Edit rules"
-                      onClick={() => jumpTo("rules")}
-                    >
-                      <IconSettings size={24} strokeWidth={1.5} />
-                    </button>
+                  {/* Allocation */}
+                  <div className="dw-review-section">
+                    <div className="dw-review-header">
+                      <span className="dw-review-title">Allocation</span>
+                      <IconButton
+                        variant="ghost"
+                        size="m"
+                        icon={<IconSettings size={24} strokeWidth={1.5} />}
+                        aria-label="Edit allocation"
+                        onClick={() => jumpTo("supply")}
+                      />
+                    </div>
+                    <DataRow label="Tokenomics:" value="100% public distribution" />
+                    <DataRow label="Allowlist:" value="No one" />
                   </div>
-                  <DataRow
-                    label="Minimum participation:"
-                    value={
-                      minParticipation ? `${minParticipation} ${tokenSymbol}` : "None"
-                    }
-                  />
-                  <DataRow
-                    label="Claim delay:"
-                    value={claimDelay ? `${claimDelay} DAYS` : "None"}
-                  />
-                  <DataRow
-                    label="After epoch rule:"
-                    value={
-                      epochRule === "price-anchor"
-                        ? "Price anchor (buy & burn)"
-                        : "Fund share to address"
-                    }
-                  />
-                  {epochRule === "fund-share" && (
-                    <>
-                      <DataRow
-                        label="Fund share:"
-                        value={fundShare ? `${fundShare}%` : "—"}
-                      />
-                      <DataRow
-                        label="Receiver address:"
-                        value={receiverAddress || "—"}
-                      />
-                    </>
-                  )}
-                </div>
 
-                <Divider />
+                  <Divider />
 
-                {/* Allocation */}
-                <div className="dw-review-section">
-                  <div className="dw-review-header">
-                    <span className="dw-review-title">Allocation</span>
-                    <button
-                      className="dw-edit-btn"
-                      aria-label="Edit allocation"
-                      onClick={() => jumpTo("supply")}
-                    >
-                      <IconSettings size={24} strokeWidth={1.5} />
-                    </button>
+                  {/* Cost details */}
+                  <div className="dw-review-section">
+                    <div className="dw-review-header">
+                      <span className="dw-review-title">Cost details</span>
+                    </div>
+                    <DataRow label="Protocol fee:" value={`${PROTOCOL_FEE_PCT}%`} />
                   </div>
-                  <DataRow label="Tokenomics:" value="100% public distribution" />
-                  <DataRow label="Allowlist:" value="No one" />
+
                 </div>
 
-                <Divider />
-
-                {/* Cost details */}
-                <div className="dw-review-section">
-                  <div className="dw-review-header">
-                    <span className="dw-review-title">Cost details</span>
-                  </div>
-                  <DataRow label="Protocol fee:" value="5%" />
+                <div className="dw-footer">
+                  <Button variant="ghost" size="m" onClick={goBack}>
+                    Back
+                  </Button>
+                  <Button variant="primary" size="m" onClick={onConfirm}>
+                    Confirm
+                  </Button>
                 </div>
+              </>
+            )}
 
-              </div>
-
-              <div className="dw-footer">
-                <button className="dw-btn dw-btn--ghost" onClick={goBack}>
-                  Back
-                </button>
-                <button className="dw-btn dw-btn--primary" onClick={onConfirm}>
-                  Confirm
-                </button>
-              </div>
-            </>
-          )}
-
+          </div>
         </div>
       </div>
     </div>

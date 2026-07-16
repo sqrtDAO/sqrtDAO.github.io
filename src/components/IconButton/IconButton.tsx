@@ -3,6 +3,15 @@
 import { forwardRef } from "react";
 import "./IconButton.css";
 
+/**
+ * sqrtDAO — IconButton  (Figma node 3058:1733)
+ *
+ * Same variants, states, and color tokens as Button (Button.tsx) — only the
+ * sizing differs (icon-only: uniform padding, larger icons, no text).
+ * state (rest | hovered | pressed | focused | disabled) is driven by the
+ * same native pseudo-classes as Button; never passed as a prop.
+ */
+
 export type IconButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "danger";
 export type IconButtonSize = "l" | "m" | "s";
 

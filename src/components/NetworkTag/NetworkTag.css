@@ -1,0 +1,19 @@
+/* NetworkTag — Figma source: "network" component (node 4358:15603) */
+
+.network-tag {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  padding: 0 4px;
+  /* Raw fill from the Figma component — not backed by a design token there either. */
+  background: #0000ff;
+  color: var(--color-pure-white);
+  font-family: var(--font-family-body), system-ui, sans-serif;
+  font-size: var(--font-size-body-s);
+  font-weight: var(--font-weight-regular);
+  line-height: 20px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}

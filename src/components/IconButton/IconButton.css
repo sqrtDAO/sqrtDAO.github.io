@@ -1,30 +1,33 @@
 /* IconButton — icon-only button
    Figma source: node 3058:1733
    Variants: primary | secondary | outline | ghost | danger
-   Sizes: l (48px) | m (40px) | s (28px) */
+   Sizes: l (48px) | m (40px) | s (28px)
+
+   Shares the exact variant/state/color logic with Button (Button.css) —
+   same --sqrt-* tokens, same --btn-inner-shadow, same --btn-focus-border
+   mechanism. Only sizing differs (icon-only buttons use larger icons and
+   uniform padding since there's no text to balance against). */
 
 .icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: none;
-  cursor: pointer;
   flex-shrink: 0;
-  transition:
-    background-color var(--motion-duration-fast) var(--motion-easing-standard),
-    border-color var(--motion-duration-fast) var(--motion-easing-standard),
-    color var(--motion-duration-fast) var(--motion-easing-standard);
+  cursor: pointer;
+  border: var(--btn-border-width) solid transparent;
+  transition: background-color var(--btn-transition),
+    border-color var(--btn-transition), color var(--btn-transition);
 }
 
 .icon-btn:focus { outline: none; }
 .icon-btn:focus-visible {
-  outline: 2px solid var(--sqrt-border-focus);
-  outline-offset: 2px;
+  border-color: var(--btn-focus-border);
 }
 
 .icon-btn:disabled {
   cursor: not-allowed;
   pointer-events: none;
+  border-color: transparent;
 }
 
 .icon-btn__icon {
@@ -36,9 +39,15 @@
 
 /* ── Sizes ── */
 
+/* Width/height are pinned explicitly (not left to padding + icon size +
+   border to sum to them) for the same reason as Button: the always-on 1px
+   transparent border, needed so hover/focus borders don't shift layout,
+   would otherwise add 2px on top of the intended 48/40/28px square. */
 .icon-btn--l {
+  width: var(--btn-l-height);
+  height: var(--btn-l-height);
   padding: 12px;
-  border-radius: 8px;
+  border-radius: var(--btn-l-radius);
 }
 .icon-btn--l .icon-btn__icon {
   width: 24px;
@@ -46,8 +55,10 @@
 }
 
 .icon-btn--m {
+  width: var(--btn-m-height);
+  height: var(--btn-m-height);
   padding: 8px;
-  border-radius: 8px;
+  border-radius: var(--btn-m-radius);
 }
 .icon-btn--m .icon-btn__icon {
   width: 24px;
@@ -55,37 +66,39 @@
 }
 
 .icon-btn--s {
+  width: var(--btn-s-height);
+  height: var(--btn-s-height);
   padding: 6px;
-  border-radius: 4px;
+  border-radius: var(--btn-s-radius);
 }
 .icon-btn--s .icon-btn__icon {
   width: 16px;
   height: 16px;
 }
 
-/* ── Primary (amber filled) ── */
-
+/* ===================== PRIMARY ===================== */
 .icon-btn--primary {
   background-color: var(--sqrt-action-primary-rest);
-  color: var(--sqrt-text-star);
-  box-shadow: inset -1px 1px 7px rgba(0, 0, 0, 0.16);
+  color: var(--sqrt-text-on-amber);
+  box-shadow: var(--btn-inner-shadow);
 }
 .icon-btn--primary:hover:not(:disabled) {
   background-color: var(--sqrt-action-primary-hover);
 }
 .icon-btn--primary:active:not(:disabled) {
   background-color: var(--sqrt-action-primary-pressed);
+  color: var(--sqrt-text-primary);              /* text + icon flip light, matches Button */
 }
 .icon-btn--primary:disabled {
   background-color: var(--sqrt-text-disabled);
+  color: var(--sqrt-text-on-amber);
 }
 
-/* ── Secondary (navy filled) ── */
-
+/* ===================== SECONDARY ===================== */
 .icon-btn--secondary {
   background-color: var(--sqrt-action-secondary-rest);
-  color: var(--sqrt-text-star);
-  box-shadow: inset -1px 1px 7px rgba(0, 0, 0, 0.16);
+  color: var(--sqrt-text-primary);
+  box-shadow: var(--btn-inner-shadow);
 }
 .icon-btn--secondary:hover:not(:disabled) {
   background-color: var(--sqrt-action-secondary-hover);
@@ -95,31 +108,14 @@
 }
 .icon-btn--secondary:disabled {
   background-color: var(--sqrt-text-disabled);
+  color: var(--sqrt-text-on-amber);
 }
 
-/* ── Danger (red filled) ── */
-
-.icon-btn--danger {
-  background-color: var(--sqrt-state-danger);
-  color: var(--sqrt-text-star);
-  box-shadow: inset -1px 1px 7px rgba(0, 0, 0, 0.16);
-}
-.icon-btn--danger:hover:not(:disabled) {
-  background-color: var(--sqrt-state-danger);
-}
-.icon-btn--danger:active:not(:disabled) {
-  background-color: var(--sqrt-state-danger);
-}
-.icon-btn--danger:disabled {
-  background-color: var(--sqrt-text-disabled);
-}
-
-/* ── Outline (border only) ── */
-
+/* ===================== OUTLINE ===================== */
 .icon-btn--outline {
   background: transparent;
-  border: 1px solid var(--sqrt-action-secondary-rest);
   color: var(--sqrt-text-primary);
+  border-color: var(--sqrt-action-secondary-rest);
 }
 .icon-btn--outline:hover:not(:disabled) {
   border-color: var(--sqrt-action-secondary-hover);
@@ -128,24 +124,37 @@
   border-color: var(--sqrt-action-secondary-pressed);
 }
 .icon-btn--outline:disabled {
+  background: transparent;
   border-color: var(--sqrt-text-disabled);
   color: var(--sqrt-text-disabled);
 }
 
-/* ── Ghost (no bg, no border) ── */
-
+/* ===================== GHOST ===================== */
 .icon-btn--ghost {
   background: transparent;
-  color: var(--sqrt-text-secondary);
-}
-.icon-btn--ghost:hover:not(:disabled) {
   color: var(--sqrt-text-primary);
 }
+.icon-btn--ghost:hover:not(:disabled) {
+  color: var(--sqrt-text-accent);                /* amber, matches Button */
+}
 .icon-btn--ghost:active:not(:disabled) {
-  color: var(--sqrt-text-accent);
+  color: var(--sqrt-text-secondary);
 }
 .icon-btn--ghost:disabled {
+  background: transparent;
   color: var(--sqrt-text-disabled);
+}
+
+/* ===================== DANGER ===================== */
+.icon-btn--danger {
+  background-color: var(--sqrt-state-danger);
+  color: var(--sqrt-text-primary);
+  box-shadow: var(--btn-inner-shadow);
+}
+/* danger keeps the same fill on hover/press — single token, matches Button */
+.icon-btn--danger:disabled {
+  background-color: var(--sqrt-text-disabled);
+  color: var(--sqrt-text-on-amber);
 }
 
 /* ── Reduced motion ── */

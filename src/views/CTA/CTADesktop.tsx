@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/Button/Button";
+import Logo from "@/components/Logo/Logo";
 import { IconBrandX, IconBrandDiscord } from "@tabler/icons-react";
 
 export default function CTADesktop({ onGetStarted }: { onGetStarted?: () => void }) {
@@ -20,7 +21,7 @@ export default function CTADesktop({ onGetStarted }: { onGetStarted?: () => void
       {/* detail label */}
       <p style={{ position: "absolute", left: 11, top: 11, fontFamily: "var(--font-sans)", fontSize: "var(--font-size-body-s)", lineHeight: "var(--font-line-height-body-s)", color: "var(--sqrt-text-secondary)", margin: 0 }}>sqrtDAO launches Q2.</p>
       {/* logo */}
-      <img src="/logo.svg" alt="sqrtDAO" width="124" style={{ position: "absolute", left: 11, top: 132 }} />
+      <Logo width={124} style={{ position: "absolute", left: 11, top: 132 }} />
       {/* kickers */}
       <p style={{ position: "absolute", left: 13, top: 218, fontFamily: "var(--font-sans)", fontSize: "var(--font-size-h4)", lineHeight: "var(--font-line-height-h4)", color: "var(--sqrt-text-secondary)", margin: 0 }}>You will set the token parameters.</p>
       <p style={{ position: "absolute", left: 13, top: 247, fontFamily: "var(--font-sans)", fontSize: "var(--font-size-h4)", lineHeight: "var(--font-line-height-h4)", color: "var(--sqrt-text-secondary)", margin: 0 }}>The protocol runs the rest.</p>

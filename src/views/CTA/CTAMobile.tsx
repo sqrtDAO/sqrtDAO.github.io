@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/Button/Button";
+import Logo from "@/components/Logo/Logo";
 import { IconBrandX, IconBrandDiscord } from "@tabler/icons-react";
 
 export default function CTAMobile({ onGetStarted }: { onGetStarted?: () => void }) {
@@ -34,7 +35,7 @@ export default function CTAMobile({ onGetStarted }: { onGetStarted?: () => void 
           <p style={{ fontFamily: "var(--font-sans)", fontSize: "var(--font-size-body-s)", lineHeight: "var(--font-line-height-body-s)", color: "var(--sqrt-text-secondary)", margin: 0 }}>sqrtDAO launches Q2.</p>
 
           {/* Logo */}
-          <img src="/logo.svg" alt="sqrtDAO" width="124" style={{ marginTop: 16 }} />
+          <Logo width={124} style={{ marginTop: 16 }} />
 
           {/* Kickers */}
           <p style={{ fontFamily: "var(--font-sans)", fontSize: "var(--font-size-body-l)", lineHeight: "var(--font-line-height-body-l)", color: "var(--sqrt-text-secondary)", margin: "24px 0 0" }}>You will set the token parameters.</p>

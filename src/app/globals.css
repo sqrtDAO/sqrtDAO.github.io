@@ -29,6 +29,7 @@
   --color-action-glow:  var(--sqrt-action-primary-glow);      /* bg-action-glow  amber α18% */
   --color-infra:        var(--sqrt-action-secondary-rest);    /* bg-infra                 #313a63 */
   --color-infra-hover:  var(--sqrt-action-secondary-hover);   /* bg-infra-hover           #67739c */
+  --color-infra-press:  var(--sqrt-action-secondary-pressed); /* bg-infra-press           #272f52 */
 
   /* ── Borders / focus (alpha values — near-transparent) ── */
   --color-subtle: var(--sqrt-border-subtle);  /* border-subtle  steel α8%   */

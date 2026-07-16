@@ -1,0 +1,52 @@
+/* TestnetRibbon — sticky scrolling ticker banner
+   Figma source: "_testnet ribbon" (node 4822:20353) */
+
+.testnet-ribbon {
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--color-infra-300);
+  padding: 4px 0;
+  flex-shrink: 0;
+}
+
+.testnet-ribbon__track {
+  display: flex;
+  width: max-content;
+  animation: testnet-ribbon-scroll 45s linear infinite;
+}
+
+.testnet-ribbon:hover .testnet-ribbon__track {
+  animation-play-state: paused;
+}
+
+.testnet-ribbon__group {
+  display: flex;
+  align-items: center;
+  gap: 48px;
+  padding-right: 48px;
+  flex-shrink: 0;
+}
+
+.testnet-ribbon__item {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: var(--font-size-body-s);
+  line-height: 20px;
+  letter-spacing: 0.01em;
+  color: var(--sqrt-text-on-amber);
+  white-space: nowrap;
+}
+
+.testnet-ribbon__item strong {
+  font-weight: 700;
+}
+
+@keyframes testnet-ribbon-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .testnet-ribbon__track {
+    animation: none;
+  }
+}

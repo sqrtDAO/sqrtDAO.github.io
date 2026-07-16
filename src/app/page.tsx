@@ -13,14 +13,12 @@ import View2BMobile from "@/views/View2/View2BMobile";
 import CTADesktop from "@/views/CTA/CTADesktop";
 import CTATablet from "@/views/CTA/CTATablet";
 import CTAMobile from "@/views/CTA/CTAMobile";
-import TokenRouter from "@/components/TokenRouter/TokenRouter";
-import TokenImport from "@/components/TokenImport/TokenImport";
 import TokenLaunch from "@/components/TokenLaunch/TokenLaunch";
 import DistributionWizard from "@/components/DistributionWizard/DistributionWizard";
 import "./landing.css";
 
 // Flow steps for the token wizard overlay
-type FlowStep = "none" | "router" | "import" | "launch" | "distribute";
+type FlowStep = "none" | "launch" | "distribute";
 
 export default function Page() {
   const bp = useBreakpoint();
@@ -71,29 +69,14 @@ export default function Page() {
         )}
 
         <section className="view">
-          {bp === "desktop" && <CTADesktop onGetStarted={() => setFlow("router")} />}
-          {bp === "tablet" && <CTATablet onGetStarted={() => setFlow("router")} />}
-          {bp === "mobile" && <CTAMobile onGetStarted={() => setFlow("router")} />}
+          {bp === "desktop" && <CTADesktop onGetStarted={() => setFlow("launch")} />}
+          {bp === "tablet" && <CTATablet onGetStarted={() => setFlow("launch")} />}
+          {bp === "mobile" && <CTAMobile onGetStarted={() => setFlow("launch")} />}
         </section>
 
       </main>
 
-      {/* Token wizard overlay — steps: router → import */}
-      {flow === "router" && (
-        <TokenRouter
-          onClose={() => setFlow("none")}
-          onLaunch={() => setFlow("launch")}
-          onDistribute={() => setFlow("import")}
-        />
-      )}
-
-      {flow === "import" && (
-        <TokenImport
-          onBack={() => setFlow("router")}
-          onConfirm={() => setFlow("distribute")}
-        />
-      )}
-
+      {/* Token wizard overlay */}
       {flow === "launch" && (
         <TokenLaunch
           onClose={() => setFlow("none")}

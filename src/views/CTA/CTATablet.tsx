@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/Button/Button";
+import Logo from "@/components/Logo/Logo";
 import { IconBrandX, IconBrandDiscord } from "@tabler/icons-react";
 
 export default function CTATablet({ onGetStarted }: { onGetStarted?: () => void }) {
@@ -8,7 +9,7 @@ export default function CTATablet({ onGetStarted }: { onGetStarted?: () => void 
     <div style={{ width: 720, margin: "0 auto" }}>
       <div style={{ background: "var(--sqrt-bg-space)", padding: "32px 24px", display: "flex", flexDirection: "column", gap: 0 }}>
         <p style={{ fontFamily: "var(--font-sans)", fontSize: "var(--font-size-body-s)", lineHeight: "var(--font-line-height-body-s)", color: "var(--sqrt-text-secondary)", margin: 0 }}>sqrtDAO launches Q2.</p>
-        <img src="/logo.svg" alt="sqrtDAO" width="100" style={{ marginTop: 24 }} />
+        <Logo width={100} style={{ marginTop: 24 }} />
         {/* teal strip */}
         <div style={{ width: 200, height: 8, display: "flex", marginTop: 24 }}>
           <div style={{ flex: 1, background: "var(--color-support-teal-900)" }} />

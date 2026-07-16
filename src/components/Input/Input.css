@@ -17,6 +17,12 @@
   align-items: center;
   gap: 6px;
   background-color: var(--sqrt-bg-surface);
+  /* Figma: py-6 (outer) + py-4 (inner) + 20px line-height = 40px exactly.
+     Height is pinned explicitly (not left to pad + line-height to sum to
+     it) because the always-on 1px transparent border — kept so focus/error
+     borders don't shift layout — would otherwise add 2px on top, same bug
+     class as Button/IconButton. */
+  height: 40px;
   border: 1px solid transparent;
   border-radius: 8px;
   padding: 6px 8px;
