@@ -45,8 +45,8 @@ export default function CTAMobile({ onGetStarted }: { onGetStarted?: () => void 
           <h2 className="headline" style={{ fontSize: "var(--font-size-h1)", lineHeight: "var(--font-line-height-h1)", marginTop: 8 }}>Be in the first cohort.</h2>
 
           {/* Buttons — center aligned, 16px gap */}
-          <div style={{ display: "flex", gap: 16, marginTop: 24, justifyContent: "center", flexWrap: "wrap" }}>
-            <Button variant="primary" leadingIcon={<IconBrandX />} onClick={() => window.open("https://x.com/DAOsqrt", "_blank", "noopener,noreferrer")}>Follow on X</Button>
+          <div style={{ display: "flex", gap: 16, marginTop: 24, justifyContent: "center" }}>
+            <Button variant="primary" leadingIcon={<IconBrandX />} onClick={() => window.open("https://x.com/sqrtDAO", "_blank", "noopener,noreferrer")}>Follow on X</Button>
             <Button variant="secondary" leadingIcon={<IconBrandDiscord />} onClick={() => window.open("https://discord.gg/hsW64egPRJ", "_blank", "noopener,noreferrer")}>Join Discord</Button>
             {onGetStarted && (
               <Button variant="outline" onClick={onGetStarted}>Launch your token</Button>
