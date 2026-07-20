@@ -3,6 +3,11 @@
     "type": "constructor",
     "inputs": [
       {
+        "name": "_creator",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
         "name": "_config",
         "type": "tuple",
         "internalType": "struct DistributorConfig",
@@ -28,16 +33,6 @@
             "internalType": "uint256"
           },
           {
-            "name": "protocolFeeBps",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "protocolFeeReceiver",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
             "name": "minParticipation",
             "type": "uint256",
             "internalType": "uint256"
@@ -53,24 +48,31 @@
             "internalType": "bool"
           },
           {
-            "name": "drainHookOnlyPassedEpochs",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "drainHook",
-            "type": "tuple",
-            "internalType": "struct Hook",
+            "name": "shares",
+            "type": "tuple[]",
+            "internalType": "struct Share[]",
             "components": [
               {
-                "name": "contractAddress",
-                "type": "address",
-                "internalType": "address"
+                "name": "shareBps",
+                "type": "uint256",
+                "internalType": "uint256"
               },
               {
-                "name": "callData",
-                "type": "bytes",
-                "internalType": "bytes"
+                "name": "hook",
+                "type": "tuple",
+                "internalType": "struct Hook",
+                "components": [
+                  {
+                    "name": "contractAddress",
+                    "type": "address",
+                    "internalType": "address"
+                  },
+                  {
+                    "name": "callData",
+                    "type": "bytes",
+                    "internalType": "bytes"
+                  }
+                ]
               }
             ]
           },
@@ -98,6 +100,16 @@
           },
           {
             "name": "allowlistDeadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "numberOfEpochs",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "totalDistributionAmount",
             "type": "uint256",
             "internalType": "uint256"
           }
@@ -160,6 +172,19 @@
   },
   {
     "type": "function",
+    "name": "CREATOR",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "DISTRIBUTION_TOKEN",
     "inputs": [],
     "outputs": [
@@ -167,19 +192,6 @@
         "name": "",
         "type": "address",
         "internalType": "contract IERC20"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "DRAIN_HOOK_ONLY_PASSED_EPOCHS",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -212,20 +224,7 @@
   },
   {
     "type": "function",
-    "name": "PARTICIPATION_TOKEN",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IERC20"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "PROTOCOL_FEE_BPS",
+    "name": "NUMBER_OF_EPOCHS",
     "inputs": [],
     "outputs": [
       {
@@ -238,13 +237,13 @@
   },
   {
     "type": "function",
-    "name": "PROTOCOL_FEE_RECEIVER",
+    "name": "PARTICIPATION_TOKEN",
     "inputs": [],
     "outputs": [
       {
         "name": "",
         "type": "address",
-        "internalType": "address"
+        "internalType": "contract IERC20"
       }
     ],
     "stateMutability": "view"
@@ -264,58 +263,8 @@
   },
   {
     "type": "function",
-    "name": "callDrainHook",
+    "name": "TOTAL_DISTRIBUTION_AMOUNT",
     "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "claim",
-    "inputs": [
-      {
-        "name": "_range",
-        "type": "tuple",
-        "internalType": "struct Range",
-        "components": [
-          {
-            "name": "from",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "length",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "claimFeeBps",
-    "inputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
     "outputs": [
       {
         "name": "",
@@ -327,7 +276,14 @@
   },
   {
     "type": "function",
-    "name": "claimFor",
+    "name": "callDrainHook",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "claim",
     "inputs": [
       {
         "name": "_user",
@@ -363,22 +319,53 @@
   },
   {
     "type": "function",
+    "name": "claimFeeBps",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "claimMany",
     "inputs": [
       {
-        "name": "ranges",
+        "name": "params",
         "type": "tuple[]",
-        "internalType": "struct Range[]",
+        "internalType": "struct ClaimParams[]",
         "components": [
           {
-            "name": "from",
-            "type": "uint256",
-            "internalType": "uint256"
+            "name": "user",
+            "type": "address",
+            "internalType": "address"
           },
           {
-            "name": "length",
-            "type": "uint256",
-            "internalType": "uint256"
+            "name": "range",
+            "type": "tuple",
+            "internalType": "struct Range",
+            "components": [
+              {
+                "name": "from",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "length",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
           }
         ]
       }
@@ -446,24 +433,6 @@
   },
   {
     "type": "function",
-    "name": "drainHook",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "contractAddress",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "callData",
-        "type": "bytes",
-        "internalType": "bytes"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "emissionFunction",
     "inputs": [],
     "outputs": [
@@ -501,6 +470,49 @@
   },
   {
     "type": "function",
+    "name": "epochUniqueParticipants",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "epochUserClaimed",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "epochUserParticipation",
     "inputs": [
       {
@@ -525,36 +537,13 @@
   },
   {
     "type": "function",
-    "name": "getInfo",
-    "inputs": [
-      {
-        "name": "user",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "range",
-        "type": "tuple",
-        "internalType": "struct Range",
-        "components": [
-          {
-            "name": "from",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "length",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
-      }
-    ],
+    "name": "getContractInfo",
+    "inputs": [],
     "outputs": [
       {
         "name": "result",
         "type": "tuple",
-        "internalType": "struct GetInfoResult",
+        "internalType": "struct GetContractInfoResult",
         "components": [
           {
             "name": "distributionToken",
@@ -592,26 +581,53 @@
             "internalType": "uint256"
           },
           {
-            "name": "epochs",
+            "name": "numberOfEpochs",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "totalDistributionAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "creator",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "shares",
             "type": "tuple[]",
-            "internalType": "struct EpochInfo[]",
+            "internalType": "struct Share[]",
             "components": [
               {
-                "name": "userParticipationAmount",
+                "name": "shareBps",
                 "type": "uint256",
                 "internalType": "uint256"
               },
               {
-                "name": "totalParticipationAmount",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "rewardAmount",
-                "type": "uint256",
-                "internalType": "uint256"
+                "name": "hook",
+                "type": "tuple",
+                "internalType": "struct Hook",
+                "components": [
+                  {
+                    "name": "contractAddress",
+                    "type": "address",
+                    "internalType": "address"
+                  },
+                  {
+                    "name": "callData",
+                    "type": "bytes",
+                    "internalType": "bytes"
+                  }
+                ]
               }
             ]
+          },
+          {
+            "name": "totalUniqueParticipants",
+            "type": "uint256",
+            "internalType": "uint256"
           }
         ]
       }
@@ -620,7 +636,70 @@
   },
   {
     "type": "function",
-    "name": "nextDrainHookToCall",
+    "name": "getEpochInfo",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "range",
+        "type": "tuple",
+        "internalType": "struct Range",
+        "components": [
+          {
+            "name": "from",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "length",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "epochs",
+        "type": "tuple[]",
+        "internalType": "struct EpochInfo[]",
+        "components": [
+          {
+            "name": "userParticipationAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "totalParticipationAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "uniqueParticipants",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "claimed",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "rewardAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "nextEpochToRelease",
     "inputs": [],
     "outputs": [
       {
@@ -673,6 +752,53 @@
   },
   {
     "type": "function",
+    "name": "participateMany",
+    "inputs": [
+      {
+        "name": "params",
+        "type": "tuple[]",
+        "internalType": "struct ParticipateParams[]",
+        "components": [
+          {
+            "name": "amountPerEpoch",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "range",
+            "type": "tuple",
+            "internalType": "struct Range",
+            "components": [
+              {
+                "name": "from",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "length",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "recipient",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "allowlistSignature",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "rewardOf",
     "inputs": [
       {
@@ -702,6 +828,55 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "shares",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "shareBps",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "hook",
+        "type": "tuple",
+        "internalType": "struct Hook",
+        "components": [
+          {
+            "name": "contractAddress",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "callData",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "totalUniqueParticipants",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "event",
@@ -758,12 +933,6 @@
     "name": "DrainHookCall",
     "inputs": [
       {
-        "name": "result",
-        "type": "bytes",
-        "indexed": false,
-        "internalType": "bytes"
-      },
-      {
         "name": "amount",
         "type": "uint256",
         "indexed": false,
@@ -774,19 +943,6 @@
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "HookFailure",
-    "inputs": [
-      {
-        "name": "returnData",
-        "type": "bytes",
-        "indexed": false,
-        "internalType": "bytes"
       }
     ],
     "anonymous": false
@@ -830,6 +986,17 @@
   },
   {
     "type": "error",
+    "name": "HookReverted",
+    "inputs": [
+      {
+        "name": "data",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "ReentrancyGuardReentrantCall",
     "inputs": []
   },
@@ -843,5 +1010,10 @@
         "internalType": "address"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "SharesNot100Percent",
+    "inputs": []
   }
 ]
