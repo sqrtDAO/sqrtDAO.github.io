@@ -1,0 +1,84 @@
+/* SelectBox — radio-style selection with content slot
+   Figma source: "select box" (node 3646:2491)
+   States: selected (bg-space), not-selected (no bg) */
+
+.select-box {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 16px;
+  border-radius: 4px;
+  width: 100%;
+  transition: background-color var(--motion-duration-fast) var(--motion-easing-standard);
+}
+
+.select-box.is-selected {
+  background-color: var(--sqrt-bg-space);
+}
+
+/* Radio button row */
+.select-box__radio {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+.select-box__radio:focus { outline: none; }
+.select-box__radio:focus-visible { outline: 2px solid var(--sqrt-border-focus); outline-offset: 2px; border-radius: 4px; }
+
+.select-box__radio-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.select-box__label {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.01em;
+  color: var(--sqrt-text-primary);
+  display: block;
+}
+
+.select-box__label strong {
+  font-weight: 700;
+}
+
+.select-box__description {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.01em;
+  color: var(--sqrt-text-tertiary);
+  display: block;
+}
+
+/* Disabled state */
+.select-box.is-disabled {
+  opacity: 0.4;
+}
+.select-box.is-disabled .select-box__radio {
+  cursor: not-allowed;
+}
+
+/* Content slot */
+.select-box__slot {
+  width: 100%;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .select-box { transition: none; }
+}

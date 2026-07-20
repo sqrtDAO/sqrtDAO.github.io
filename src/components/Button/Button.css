@@ -12,14 +12,14 @@
   font-family: var(--btn-font-family);
   font-weight: var(--btn-font-weight);
   font-size: var(--btn-l-font);
-  line-height: var(--btn-line-height);
+  line-height: var(--btn-l-line-height);
   letter-spacing: var(--btn-letter-spacing);
 
   height: var(--btn-l-height);
   padding: var(--btn-l-pad);
 
   border: var(--btn-border-width) solid transparent;
-  border-radius: var(--btn-radius);
+  border-radius: var(--btn-l-radius);
   cursor: pointer;
   white-space: nowrap;
   user-select: none;
@@ -36,17 +36,33 @@
 .sqrt-btn--m {
   gap: var(--btn-m-gap);
   font-size: var(--btn-m-font);
+  line-height: var(--btn-m-line-height);
   height: var(--btn-m-height);
   padding: var(--btn-m-pad);
+  border-radius: var(--btn-m-radius);
 }
 .sqrt-btn--m .sqrt-btn__icon svg { width: var(--btn-m-icon); height: var(--btn-m-icon); }
 
+/* ---- size: small ---- */
+.sqrt-btn--s {
+  gap: var(--btn-s-gap);
+  font-size: var(--btn-s-font);
+  line-height: var(--btn-s-line-height);
+  height: var(--btn-s-height);
+  padding: var(--btn-s-pad);
+  border-radius: var(--btn-s-radius);
+}
+.sqrt-btn--s .sqrt-btn__icon svg { width: var(--btn-s-icon); height: var(--btn-s-icon); }
+
 .sqrt-btn--full { width: 100%; }
 
-/* focus ring (keyboard) — 1px inset navy stroke, all variants */
+/* focus ring (keyboard) — 1px amber stroke, all variants
+   Figma "Selection colors" for the button component confirms border/focus
+   (--sqrt-border-focus) is the token in use — the flattened #8e6556 seen in
+   raw exports is that same amber-45%-alpha token rendered over the canvas. */
 .sqrt-btn:focus { outline: none; }
 .sqrt-btn:focus-visible,
-.sqrt-btn[data-force="focused"] { border-color: var(--sqrt-border-focus); }
+.sqrt-btn[data-force="focused"] { border-color: var(--btn-focus-border); }
 
 /* ===================== PRIMARY ===================== */
 .sqrt-btn--primary {
@@ -84,7 +100,7 @@
 .sqrt-btn--outline:active,
 .sqrt-btn--outline[data-force="pressed"] { border-color: var(--sqrt-action-secondary-press); }
 .sqrt-btn--outline:focus-visible,
-.sqrt-btn--outline[data-force="focused"] { border-color: var(--sqrt-border-focus); }
+.sqrt-btn--outline[data-force="focused"] { border-color: var(--btn-focus-border); }
 
 /* ===================== GHOST ===================== */
 .sqrt-btn--ghost {

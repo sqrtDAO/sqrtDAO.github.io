@@ -1,0 +1,50 @@
+/* Header — persistent app bar (logo, nav, wallet connect)
+   Figma source: "header" (node 4372:18762) */
+
+.sqrt-header {
+  width: 100%;
+  background-color: var(--sqrt-bg-surface);
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  /* Fixed 24px minimum gutter — matches the page content's own outer
+     padding (e.g. .ddp-body) exactly, not a fluid vw-scaled value. */
+  padding: 0 24px;
+}
+
+.sqrt-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  /* Main content container is fixed at 1320px (not fluidly scaled) — no
+     padding of its own, so the logo and wallet button sit flush with the
+     same 1320px column the page content below uses, always aligned. */
+  max-width: 1320px;
+  height: 72px;
+  padding: 10px 0;
+  /* No mobile/tablet header spec exists in Figma yet — the nav is flex-shrink:0
+     per the desktop spec, so contain any overflow locally on narrow viewports
+     instead of letting it break the page. */
+  overflow-x: auto;
+}
+
+.sqrt-header__logo {
+  flex-shrink: 0;
+}
+
+.sqrt-header__nav {
+  display: flex;
+  flex: 1 0 0;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  min-width: 0;
+}
+
+.sqrt-header__wallet-btn {
+  flex-shrink: 0;
+}
+
+/* Nav links and the wallet button are the shared Button component
+   (ghost/m and primary/m) — no component-local button styles here. */

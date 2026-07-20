@@ -1,11 +1,13 @@
 "use client";
 
+import Logo from "@/components/Logo/Logo";
+
 export default function HeroTablet() {
   return (
     <div style={{ width: 720, margin: "0 auto", display: "flex", flexDirection: "column", gap: 32 }}>
       {/* info card */}
       <div style={{ background: "var(--sqrt-bg-space)", padding: "24px 20px", display: "flex", gap: 20, alignItems: "flex-start" }}>
-        <img src="/logo.svg" alt="sqrtDAO" width="120" style={{ flexShrink: 0 }} />
+        <Logo width={120} style={{ flexShrink: 0 }} />
         <div>
           <p style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "var(--font-size-h4)", lineHeight: "var(--font-line-height-h4)", color: "var(--sqrt-text-accent)", margin: 0 }}>Launch and distribute</p>
           <p style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "var(--font-size-h4)", lineHeight: "var(--font-line-height-h4)", color: "var(--sqrt-text-secondary)", margin: "4px 0 0" }}>infrastructure for tokens.</p>

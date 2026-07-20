@@ -2,13 +2,17 @@ import React, { forwardRef } from "react";
 import "./Button.css";
 
 /**
- * sqrtDAO — Button  (Figma component set 1106:5006)
+ * sqrtDAO — Button  (Figma component set 1106:5006 + spec page 5174:27382)
  *
  * variant : primary | secondary | outline | ghost | danger
- * size    : m | l                       (Figma sizes "m" / "l")
+ * size    : s | m | l                    (Figma sizes "s" / "m" / "l")
  * state   : rest | hovered | pressed | focused | disabled
  *           → driven by native :hover / :active / :focus-visible / [disabled];
  *             never passed as a prop in production.
+ *
+ * "secondary" isn't in the combinatorial component set (only rest state was
+ * documented there) but is confirmed by the written spec page: bg #313A63,
+ * text #E8ECF1 — matches this implementation.
  *
  * Icons inherit the button's text color via currentColor, so chevron fills
  * track every state automatically (e.g. light on pressed-primary).
@@ -21,7 +25,7 @@ export type ButtonVariant =
   | "ghost"
   | "danger";
 
-export type ButtonSize = "m" | "l";
+export type ButtonSize = "s" | "m" | "l";
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {

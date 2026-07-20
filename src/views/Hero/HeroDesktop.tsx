@@ -1,11 +1,13 @@
 "use client";
 
+import Logo from "@/components/Logo/Logo";
+
 export default function HeroDesktop() {
   return (
     <div style={{ position: "absolute", inset: 0 }}>
       {/* info card — pinned top-right */}
       <div className="card tilt" style={{ position: "absolute", top: 24, right: 24, width: 432, height: 299, background: "var(--sqrt-bg-space)", borderRadius: 0, border: "none", padding: "16px 16px 16px" }}>
-        <img src="/logo.svg" alt="sqrtDAO" width="201" style={{ marginBottom: 24 }} />
+        <Logo width={201} style={{ marginBottom: 24 }} />
         <p style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "var(--font-size-h3)", lineHeight: "var(--font-line-height-h3)", color: "var(--sqrt-text-accent)", margin: 0 }}>Launch and distribute</p>
         <p style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "var(--font-size-h3)", lineHeight: "var(--font-line-height-h3)", color: "var(--sqrt-text-secondary)", margin: "4px 0 0" }}>infrastructure for tokens.</p>
         <p style={{ fontFamily: "var(--font-sans)", fontSize: "var(--font-size-h4)", lineHeight: "var(--font-line-height-h4)", color: "var(--sqrt-text-secondary)", marginTop: 16 }}>Launching Q2.</p>

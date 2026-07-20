@@ -1,0 +1,92 @@
+.charts-dev {
+  min-height: 100vh;
+  background: var(--sqrt-bg-canvas);
+  color: var(--sqrt-text-primary);
+  padding: 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  font-family: var(--font-family-body), system-ui, sans-serif;
+}
+
+.charts-dev__header h1 {
+  font-family: var(--font-family-display), system-ui, sans-serif;
+  font-size: 28px;
+  margin: 0 0 4px;
+}
+
+.charts-dev__header p {
+  color: var(--sqrt-text-secondary);
+  margin: 0 0 16px;
+}
+
+.charts-dev__controls {
+  display: flex;
+  gap: 12px;
+}
+
+.charts-dev__controls button {
+  background: var(--sqrt-bg-raised);
+  border: 1px solid var(--sqrt-border-default);
+  color: var(--sqrt-text-primary);
+  border-radius: var(--radius-s);
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.charts-dev__controls button:hover {
+  border-color: var(--sqrt-border-strong);
+}
+
+.charts-dev__section h2 {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--sqrt-text-secondary);
+  margin: 0 0 16px;
+}
+
+.charts-dev__block-card {
+  width: 872px;
+  max-width: 100%;
+  background: var(--sqrt-bg-surface);
+  border-radius: var(--radius-l);
+  padding: 24px;
+}
+
+.charts-dev__combo-card {
+  width: 856px;
+  max-width: 100%;
+  height: 368px;
+  background: var(--sqrt-bg-canvas);
+  border: 1px solid var(--sqrt-border-subtle);
+  border-radius: var(--radius-l);
+  padding: 20px 24px;
+  display: flex;
+  gap: 24px;
+  align-items: stretch;
+}
+
+.charts-dev__combo-info {
+  width: 200px;
+  flex-shrink: 0;
+}
+
+.charts-dev__combo-data span {
+  display: block;
+  color: var(--sqrt-text-secondary);
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+
+.charts-dev__combo-data strong {
+  font-family: var(--font-family-display), system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 28px;
+}
+
+.charts-dev__combo-chart {
+  flex: 1;
+  min-width: 0;
+  height: 324px;
+}

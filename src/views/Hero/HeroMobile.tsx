@@ -1,5 +1,7 @@
 "use client";
 
+import Logo from "@/components/Logo/Logo";
+
 export default function HeroMobile() {
   return (
     <div style={{ width: "calc(100% + 48px)", marginLeft: -24, marginRight: -24, display: "flex", flexDirection: "column", alignItems: "stretch" }}>
@@ -16,7 +18,7 @@ export default function HeroMobile() {
 
         <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", padding: "0 16px" }}>
           {/* Logo in the narrow left arm */}
-          <img src="/logo.svg" alt="sqrtDAO" width="124" style={{ marginTop: 36 }} />
+          <Logo width={124} style={{ marginTop: 36 }} />
 
           {/* Subheadlines */}
           <h2 className="headline" style={{ fontSize: "var(--font-size-h2)", lineHeight: "var(--font-line-height-h2)", marginTop: 40 }}>A launch is a moment</h2>
