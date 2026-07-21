@@ -46,6 +46,9 @@ export function generateMockEpochs(options: MockEpochOptions = {}): EpochData[] 
       price = Math.max(0.0004, price);
     }
 
+    // Future epochs haven't happened yet, so they can't have participation —
+    // stays 0 (renders gray/"no participation" on the block chart), matching
+    // the design intent.
     let participationVolume = 0;
     if (state === "passed" && Math.random() < participationRate) {
       participationVolume = Math.round(20 + Math.pow(Math.random(), 1.6) * 480);
@@ -54,8 +57,6 @@ export function generateMockEpochs(options: MockEpochOptions = {}): EpochData[] 
       }
     } else if (state === "current") {
       participationVolume = Math.round(30 + Math.random() * 120);
-    } else if (state === "future") {
-      participationVolume = Math.max(12, Math.round(70 * (0.35 + Math.random() * 0.7)));
     }
 
     const participated = participationVolume > 0 && Math.random() < 0.15;

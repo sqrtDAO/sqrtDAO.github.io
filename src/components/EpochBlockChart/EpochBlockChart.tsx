@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { getParticipationVolumeRange, getVolumeBucketVar, type VolumeRange } from "@/lib/charts/bucketColor";
-import { BLOCK_H, BLOCK_W, blockPosition, computeBlockLayout, gridPixelSize } from "@/lib/charts/blockLayout";
+import { BLOCK_DIMS, blockPosition, computeBlockDisplayWindow, gridPixelSize, type ChartDevice } from "@/lib/charts/blockLayout";
 import { createTooltipController, type TooltipController } from "@/lib/charts/tooltipController";
+import { useBreakpoint } from "@/hooks/useBreakpoint";
 import type { EpochData } from "@/lib/charts/types";
 import "@/components/ChartTooltip/ChartTooltip.css";
 import "./EpochBlockChart.css";
@@ -16,12 +17,13 @@ export interface EpochBlockChartProps {
   className?: string;
 }
 
-const CAPSULE_RX = BLOCK_W / 2;
 const GLOW_FILTER_ID = "epoch-block-current-glow";
 
 function fillFor(e: EpochData, volumeRange: VolumeRange): string {
   if (e.state === "current") return "var(--sqrt-action-primary-rest)";
-  if (e.state === "future") return "var(--color-alpha-steel-08)";
+  // No separate future/passed treatment — gray means zero participation,
+  // full stop (future epochs naturally have none yet, so they fall in here
+  // too, without needing a state check of their own).
   if (e.participationVolume <= 0) return "var(--color-alpha-steel-08)";
   return getVolumeBucketVar(e.participationVolume, volumeRange);
 }
@@ -43,6 +45,10 @@ export default function EpochBlockChart({
   const tooltipRef = useRef<TooltipController | null>(null);
   const hoveredRef = useRef<{ el: SVGRectElement; index: number } | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const bp = useBreakpoint();
+  const device: ChartDevice = bp === "mobile" ? "mobile" : "desktop";
+  const { width: BLOCK_W, height: BLOCK_H } = BLOCK_DIMS[device];
+  const CAPSULE_RX = BLOCK_W / 2;
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -66,15 +72,43 @@ export default function EpochBlockChart({
 
   const currentIndex = useMemo(() => findCurrentIndex(epochs), [epochs]);
   const volumeRange = useMemo(() => getParticipationVolumeRange(epochs), [epochs]);
-  const layout = useMemo(
-    () => computeBlockLayout(containerWidth, epochs.length, currentIndex),
-    [containerWidth, epochs.length, currentIndex]
+  // Never scrolls — this is the exact slice of `epochs` that fits the
+  // container at this device's fixed block size, within 5 rows, windowed
+  // around the current epoch when the full history doesn't fit.
+  const displayWindow = useMemo(
+    () => computeBlockDisplayWindow(containerWidth, epochs.length, currentIndex, device),
+    [containerWidth, epochs.length, currentIndex, device]
   );
-  const gridSize = useMemo(() => gridPixelSize(layout.columns, layout.rows), [layout]);
+  const visibleEpochs = useMemo(
+    () => epochs.slice(displayWindow.startIndex, displayWindow.endIndex),
+    [epochs, displayWindow.startIndex, displayWindow.endIndex]
+  );
+  const gridSize = useMemo(() => gridPixelSize(displayWindow.columns, displayWindow.rows, device), [displayWindow, device]);
 
   function restoreFill(el: SVGRectElement, index: number) {
-    el.setAttribute("fill", fillFor(epochs[index], volumeRange));
+    el.setAttribute("fill", fillFor(visibleEpochs[index], volumeRange));
   }
+
+  const handlePointerLeave = useCallback(() => {
+    if (hoveredRef.current) {
+      hoveredRef.current.el.setAttribute("fill", fillFor(visibleEpochs[hoveredRef.current.index], volumeRange));
+      hoveredRef.current = null;
+    }
+    tooltipRef.current?.hide();
+  }, [visibleEpochs, volumeRange]);
+
+  // Touch has no hover-out — a tap elsewhere on the screen (anywhere except
+  // the tooltip itself, so its contents stay readable/selectable) is what
+  // returns the chart to rest, mirroring desktop's mouseleave.
+  useEffect(() => {
+    function handleDocumentPointerDown(e: PointerEvent) {
+      const tooltipEl = wrapRef.current?.querySelector(".chart-tooltip");
+      if (tooltipEl && e.target instanceof Node && tooltipEl.contains(e.target)) return;
+      handlePointerLeave();
+    }
+    document.addEventListener("pointerdown", handleDocumentPointerDown);
+    return () => document.removeEventListener("pointerdown", handleDocumentPointerDown);
+  }, [handlePointerLeave]);
 
   function handlePointerMove(e: ReactPointerEvent<SVGSVGElement>) {
     const target = e.target as SVGElement;
@@ -91,7 +125,7 @@ export default function EpochBlockChart({
       hoveredRef.current = { el: rect, index };
     }
 
-    const epoch = epochs[index];
+    const epoch = visibleEpochs[index];
     const host = scrollRef.current;
     if (!host) return;
     const hostRect = host.getBoundingClientRect();
@@ -117,14 +151,6 @@ export default function EpochBlockChart({
     );
   }
 
-  function handlePointerLeave() {
-    if (hoveredRef.current) {
-      restoreFill(hoveredRef.current.el, hoveredRef.current.index);
-      hoveredRef.current = null;
-    }
-    tooltipRef.current?.hide();
-  }
-
   return (
     <div ref={wrapRef} className={`epoch-block-chart${className ? ` ${className}` : ""}`}>
       <div ref={scrollRef} className="epoch-block-chart__scroll">
@@ -136,6 +162,7 @@ export default function EpochBlockChart({
           viewBox={`0 0 ${Math.max(1, gridSize.width)} ${Math.max(1, gridSize.height)}`}
           onPointerMove={handlePointerMove}
           onPointerLeave={handlePointerLeave}
+          onClick={(e) => handlePointerMove(e as unknown as ReactPointerEvent<SVGSVGElement>)}
         >
           <defs>
             {/* objectBoundingBox % is relative to the 4x12 rect itself — a
@@ -146,8 +173,8 @@ export default function EpochBlockChart({
             </filter>
           </defs>
           {containerWidth > 0 &&
-            epochs.map((epoch, i) => {
-              const { x, y } = blockPosition(i, layout.columns);
+            visibleEpochs.map((epoch, i) => {
+              const { x, y } = blockPosition(i, displayWindow.columns, device);
               return (
                 <rect
                   key={epoch.epoch}

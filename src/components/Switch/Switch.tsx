@@ -33,18 +33,22 @@ function CircuitOpen({ className }: { className?: string }) {
 
 export default function Switch({ on = true, active = true, onChange, className }: SwitchProps) {
   const label = on ? "On" : "Off";
-  const labelClass = `sw-label${!active ? " sw-label--disabled" : on ? " sw-label--on" : ""}`;
+  const labelClass = `sw-label${
+    !active ? " sw-label--disabled" : on ? " sw-label--on" : " sw-label--off"
+  }`;
 
+  // Left slot = open-circuit icon, highlighted when the switch is OFF.
   const leftClass = [
-    "sw-slot",
-    on && active ? "sw-slot--on-active" : "",
-    on && !active ? "sw-slot--on-inactive" : "",
-  ].filter(Boolean).join(" ");
-
-  const rightClass = [
     "sw-slot",
     !on && active ? "sw-slot--off-active" : "",
     !on && !active ? "sw-slot--off-inactive" : "",
+  ].filter(Boolean).join(" ");
+
+  // Right slot = closed-circuit icon, highlighted when the switch is ON.
+  const rightClass = [
+    "sw-slot",
+    on && active ? "sw-slot--on-active" : "",
+    on && !active ? "sw-slot--on-inactive" : "",
   ].filter(Boolean).join(" ");
 
   return (
@@ -60,10 +64,10 @@ export default function Switch({ on = true, active = true, onChange, className }
       <span className={labelClass}>{label}</span>
       <span className="sw-track">
         <span className={leftClass}>
-          <CircuitClosed className="sw-icon" />
+          <CircuitOpen className="sw-icon" />
         </span>
         <span className={rightClass}>
-          <CircuitOpen className="sw-icon" />
+          <CircuitClosed className="sw-icon" />
         </span>
       </span>
     </button>

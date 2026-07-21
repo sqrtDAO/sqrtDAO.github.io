@@ -9,6 +9,7 @@
   align-items: flex-start;
   justify-content: center;
   width: 184px;
+  flex-shrink: 0;
   padding: 16px;
   border-radius: 8px;
   border: 1px solid transparent;

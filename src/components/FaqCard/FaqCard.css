@@ -1,0 +1,106 @@
+/* FaqCard — mobile FAQ accordion
+   Figma source: "_faq mobile" (node 6460:157789) + "_question" (6460:157760) */
+
+.faq-card {
+  background: var(--sqrt-bg-surface);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.faq-card__header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 16px;
+  color: var(--sqrt-text-primary);
+}
+
+.faq-card__header h2 {
+  font-family: var(--font-family-display), system-ui, sans-serif;
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-regular);
+  color: var(--sqrt-text-primary);
+  margin: 0;
+}
+
+.faq-card__content {
+  display: flex;
+  flex-direction: column;
+}
+
+/* min-height (not height) — a fixed height would clip a question that
+   wraps to 2 lines instead of just growing. */
+.faq-card__item {
+  width: 100%;
+  min-height: 64px;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px;
+  border-bottom: var(--border-width-hairline) solid var(--sqrt-border-subtle);
+  box-sizing: border-box;
+}
+
+.faq-card__item.is-active {
+  background: var(--sqrt-bg-canvas);
+  border-radius: var(--radius-l);
+  border-bottom-color: transparent;
+}
+
+.faq-card__item:last-child {
+  border-bottom: none;
+}
+
+.faq-card__question {
+  width: 100%;
+  height: auto;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: var(--sqrt-text-primary);
+  font-family: var(--font-family-body), system-ui, sans-serif;
+  font-size: var(--font-size-body);
+  line-height: 22px;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+}
+
+/* Smooth expand/collapse via a max-height transition — a generous cap
+   comfortably covers every FAQ answer at this width (~140px for the
+   longest one) with no visible clip. The answer stays always-mounted;
+   animating a child that unmounts on collapse has nothing to transition
+   from/to. (A grid-template-rows 0fr/1fr version was tried first, but this
+   wrapper is intrinsically sized within a flex column with no definite
+   outer height, and per spec an `fr` track falls back to content-based
+   sizing rather than collapsing when its grid container's size is
+   indefinite — confirmed empirically, even `0fr !important` still measured
+   ~48px here.) */
+.faq-card__answer-collapse {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height var(--motion-duration-base) var(--motion-easing-standard);
+}
+
+.faq-card__item.is-active .faq-card__answer-collapse {
+  max-height: 300px;
+}
+
+.faq-card__answer {
+  padding-top: 16px;
+}
+
+.faq-card__answer p {
+  margin: 0;
+  color: var(--sqrt-text-primary);
+  font-size: var(--font-size-body-s);
+  line-height: 20px;
+  letter-spacing: 0.01em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .faq-card__answer-collapse {
+    transition: none;
+  }
+}

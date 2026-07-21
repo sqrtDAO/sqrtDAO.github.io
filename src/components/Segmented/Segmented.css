@@ -57,6 +57,27 @@
 
 .seg-item__icon { display: flex; width: 16px; height: 16px; align-items: center; justify-content: center; }
 
+/* ── Mobile (<768px, matches useBreakpoint's mobile threshold) ──
+   Segmented controls go full-width with equally-flexed items, and
+   step up to the "l" size's 48px-tall typography (16px/24px) even
+   when the track is still passed size="m" — matches the mobile spec. */
+@media (max-width: 767px) {
+  .segmented {
+    display: flex;
+    align-self: stretch;
+    width: 100%;
+  }
+
+  .seg-item {
+    flex: 1;
+  }
+
+  .seg-item--m {
+    font-size: 16px;
+    line-height: 24px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .seg-item { transition: none; }
 }

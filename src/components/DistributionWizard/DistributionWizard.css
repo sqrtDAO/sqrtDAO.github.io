@@ -157,6 +157,18 @@
   min-width: 0;
 }
 
+/* ── Backing: "Paired your token with" label + segmented ──── */
+.dw-pairing-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* ── Rules: founder share percentage field (capped width) ─── */
+.dw-share-pct-group {
+  max-width: 160px;
+}
+
 /* ── Supply: custom input with token suffix ───────────── */
 .dw-supply-group {
   display: flex;
@@ -596,6 +608,57 @@
   align-items: center;
   justify-content: flex-end;
   gap: 16px;
+}
+
+/* ── Mobile (<768px, matches useBreakpoint's mobile threshold) ──
+   Figma source: "Mobile Distribution V.1" (node 6153:24213). Same
+   steps/logic as desktop — panel goes full-width with a 16px gutter,
+   a few rows that sit side-by-side on desktop stack full-width, the
+   footer buttons split evenly, and the release-curve cards scroll
+   horizontally instead of shrinking (same treatment as the Stepper). */
+@media (max-width: 767px) {
+  .dw-panel {
+    width: 100%;
+    max-width: 100%;
+    padding: 32px 16px;
+    gap: 32px;
+  }
+
+  .dw-content {
+    gap: 32px;
+  }
+
+  .dw-content--stepped {
+    gap: 48px;
+  }
+
+  .dw-backing-inputs {
+    flex-direction: column;
+  }
+
+  .dw-pairing-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .dw-share-pct-group {
+    max-width: none;
+  }
+
+  /* value-only on mobile — the "Your token initial price will be" lead-in
+     is dropped, matching the mobile spec. */
+  .dw-price-label {
+    display: none;
+  }
+
+  .dw-curve-cards {
+    overflow-x: auto;
+  }
+
+  .dw-footer > * {
+    flex: 1;
+  }
 }
 
 /* ── Reduced motion ───────────────────────────────────── */

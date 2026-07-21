@@ -47,3 +47,12 @@
 @media (prefers-reduced-motion: reduce) {
   .stepper-item { transition: none; }
 }
+
+/* mobile (<768px): steps no longer wrap to multiple lines — the row
+   scrolls horizontally instead, matching the mobile wizard spec. */
+@media (max-width: 767px) {
+  .stepper {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+}
