@@ -97,6 +97,22 @@
   z-index: 5;
 }
 
+/* row1/row2 only matter on mobile (real stacked rows there, see the
+   767px block) — on desktop they stay `display:contents` so their
+   children fall directly into .ddp-token-header's single flex row,
+   reproducing the original flat 5-item layout exactly. */
+.ddp-token-header__row1,
+.ddp-token-header__row2,
+.ddp-token-header__contract {
+  display: contents;
+}
+
+.ddp-token-header__creator--mobile,
+.ddp-token-header__contract-label,
+.ddp-token-header__share-icon {
+  display: none;
+}
+
 .ddp-token-header__avatar.token-avatar {
   width: 72px;
   height: 72px;
@@ -164,6 +180,12 @@
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+}
+
+/* mobile-only: opens the claim/participation dialogue (see the 767px
+   block) — desktop's form is always inline in .ddp-right, no trigger. */
+.ddp-summary__participate {
+  display: none;
 }
 
 .ddp-stat__label {
@@ -467,6 +489,20 @@
   padding: 0;
 }
 
+/* two layouts, one per breakpoint — mobile is the dedicated FaqCard
+   component (own header + accordion, see FaqCard.css), desktop is the
+   header + questions-column/answer-panel below. Different enough DOM
+   grouping (interleaved accordion vs a shared side panel) that reflowing
+   one tree with CSS isn't practical, hence two renders instead. */
+.ddp-faq__body--desktop {
+  display: flex;
+  flex-direction: column;
+}
+
+.ddp-faq__body--mobile {
+  display: none;
+}
+
 .ddp-faq__questions {
   width: 416px;
   flex-shrink: 0;
@@ -743,8 +779,8 @@
   .ddp-right {
     width: 100%;
   }
-  /* Sticky sidebar/header is desktop-only for now — mobile layout is a
-     separate pass. */
+  /* Sticky sidebar/header is desktop-only — full mobile treatment (<768px)
+     is the separate, more extensive block below. */
   .ddp-right {
     position: static;
   }
@@ -757,11 +793,209 @@
   .ddp-epoch-card__info {
     width: 100%;
   }
+  /* .ddp-epoch-card__chart's desktop `flex: 1` sets flex-basis:0% — fine
+     on the main (horizontal) axis there, but once the card switches to a
+     column layout here, height becomes the main axis and that same 0%
+     basis collapses the chart to 0px, clobbering its explicit height. */
+  .ddp-epoch-card__chart {
+    flex: none;
+    width: 100%;
+  }
   .ddp-countdown-row {
     flex-direction: column;
     align-items: stretch;
   }
   .ddp-countdown-label {
     width: 100%;
+  }
+}
+
+/* ── Mobile (<768px, matches useBreakpoint's mobile threshold) ──
+   Figma source: "DDP - mobile" (node 6252:152845). Same data/logic as
+   desktop throughout — token header splits into two rows, the epoch fund
+   split card is dropped entirely, and claim/participation move into a
+   tap-triggered dialogue instead of living in the sidebar (same states,
+   just a modal instead of an inline card). */
+@media (max-width: 767px) {
+  .ddp-body {
+    padding: 0;
+  }
+
+  .ddp-columns {
+    padding-top: 0;
+  }
+
+  .ddp-left {
+    gap: 0;
+  }
+
+  /* fund split is mobile-dropped entirely, and claim/participation moves
+     into the dialogue — nothing left in the sidebar to show. */
+  .ddp-right {
+    display: none;
+  }
+
+  /* ── token header: two rows instead of one flat row ──────── */
+  .ddp-token-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .ddp-token-header__row1 {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+  }
+
+  .ddp-token-header__row2 {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+    height: 48px;
+  }
+
+  .ddp-token-header__creator--desktop {
+    display: none;
+  }
+
+  /* stacked ticker under the token name, and both address tags hugging
+     their content width instead of stretching to fill their column
+     (default flex align-items:stretch) — per Figma node 6153:26221. */
+  .ddp-token-header__name-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .ddp-token-header__creator--mobile {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ddp-token-header__contract {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ddp-token-header__contract-label {
+    display: block;
+    font-size: var(--font-size-body);
+    color: var(--sqrt-text-tertiary);
+    letter-spacing: 0.01em;
+  }
+
+  .ddp-token-header__share {
+    display: none;
+  }
+
+  .ddp-token-header__share-icon {
+    display: inline-flex;
+  }
+
+  /* ── distribution overview: stacked stats + inline CTA ────── */
+  .ddp-summary {
+    padding: 16px;
+    gap: 24px;
+  }
+
+  .ddp-summary-row {
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .ddp-summary__participate {
+    display: flex;
+  }
+
+  /* ── epochs data: block chart ─────────────────────────────── */
+  .ddp-block-card {
+    padding: 16px 8px;
+    gap: 16px;
+  }
+
+  .ddp-block-card__stats-top,
+  .ddp-block-card__stats-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 4px;
+  }
+
+  /* ── epochs data: epoch/combo chart card — typography steps down
+     a size (h3/28 → h4/22, body-l/18 → body/16) and switches from the
+     display font to the body font for the numeric values. ─────── */
+  .ddp-epoch-card {
+    padding: 16px 12px;
+    gap: 16px;
+  }
+
+  .ddp-epoch-card__info {
+    gap: 8px;
+  }
+
+  .ddp-epoch-card__data > span:first-child {
+    font-size: var(--font-size-body);
+  }
+
+  .ddp-epoch-card__data-row strong {
+    font-family: var(--font-family-body), system-ui, sans-serif;
+    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-h4);
+    line-height: normal;
+  }
+
+  .ddp-epoch-card__data-row time {
+    font-size: var(--font-size-body);
+  }
+
+  .ddp-epoch-card__chart {
+    height: 321px;
+  }
+
+  /* ── FAQ: dedicated FaqCard component instead of the desktop
+     questions-column/answer-panel — see FaqCard.css for its styling. ── */
+  .ddp-faq__body--desktop {
+    display: none;
+  }
+
+  .ddp-faq__body--mobile {
+    display: block;
+  }
+
+  /* ── claim/participation dialogue ─────────────────────────── */
+  .ddp-dialogue-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  .ddp-dialogue {
+    width: 100%;
+    max-width: 420px;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    background: var(--sqrt-bg-surface);
+    border-radius: var(--radius-l);
+    padding: 16px 0;
+  }
+
+  .ddp-dialogue .ddp-claim-participation {
+    padding: 0 8px;
   }
 }

@@ -232,6 +232,10 @@ export default function EpochComboChart({
       );
     };
     chart.subscribeCrosshairMove(onCrosshairMove);
+    // Mobile has no hover — a tap fires subscribeClick (mouse click too,
+    // harmlessly redundant with the crosshair move desktop already gets),
+    // reusing the same handler so tapping a bar behaves like desktop hover.
+    chart.subscribeClick(onCrosshairMove);
 
     const onMouseLeave = () => {
       tooltip.hide();
@@ -242,6 +246,16 @@ export default function EpochComboChart({
       }
     };
     chartEl.addEventListener("mouseleave", onMouseLeave);
+
+    // Touch has no hover-out — a tap elsewhere on the screen (anywhere
+    // except the tooltip itself, so its contents stay readable) is what
+    // returns the chart to rest, mirroring desktop's mouseleave.
+    const onDocumentPointerDown = (e: PointerEvent) => {
+      const tooltipEl = wrap.querySelector(".chart-tooltip");
+      if (tooltipEl && e.target instanceof Node && tooltipEl.contains(e.target)) return;
+      onMouseLeave();
+    };
+    document.addEventListener("pointerdown", onDocumentPointerDown);
 
     // ---- intro (token-guarded, scale-locked) -------------------------------
     const intro = createIntroController({
@@ -268,6 +282,7 @@ export default function EpochComboChart({
       chartEl.removeEventListener("pointerdown", cancelIntro);
       chartEl.removeEventListener("wheel", cancelIntro);
       chartEl.removeEventListener("mouseleave", onMouseLeave);
+      document.removeEventListener("pointerdown", onDocumentPointerDown);
       intro.destroy();
       tooltip.destroy();
       chart.remove();

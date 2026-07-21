@@ -29,6 +29,7 @@
   transition: color var(--motion-duration-fast) var(--motion-easing-standard);
 }
 .sw-label--on      { color: var(--sqrt-text-accent); }
+.sw-label--off     { color: var(--sqrt-text-primary); }
 .sw-label--disabled { color: var(--sqrt-text-disabled); }
 
 /* Track (the outer container box) */
@@ -54,25 +55,25 @@
     color var(--motion-duration-base) var(--motion-easing-standard);
 }
 
-/* ON active — left slot glows amber */
+/* ON active — right slot (closed circuit) glows amber */
 .sw-slot--on-active {
   background-color: var(--sqrt-action-primary-rest);
   color: var(--sqrt-bg-canvas);
 }
 
-/* ON inactive — left slot surface dim */
+/* ON inactive — right slot surface dim */
 .sw-slot--on-inactive {
   background-color: var(--sqrt-bg-surface);
   color: var(--sqrt-text-tertiary);
 }
 
-/* OFF active — right slot glows indigo */
+/* OFF active — left slot (open circuit) glows indigo */
 .sw-slot--off-active {
   background-color: var(--sqrt-action-secondary-rest);
   color: var(--sqrt-text-primary);
 }
 
-/* OFF inactive — right slot surface dim */
+/* OFF inactive — left slot surface dim */
 .sw-slot--off-inactive {
   background-color: var(--sqrt-bg-surface);
   color: var(--sqrt-text-tertiary);

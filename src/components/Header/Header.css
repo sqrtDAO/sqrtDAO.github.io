@@ -10,6 +10,9 @@
   /* Fixed 24px minimum gutter — matches the page content's own outer
      padding (e.g. .ddp-body) exactly, not a fluid vw-scaled value. */
   padding: 0 24px;
+  /* Anchors .sqrt-header__mobile-menu, which floats over the page
+     (ribbon + content below) instead of pushing it down. */
+  position: relative;
 }
 
 .sqrt-header__inner {
@@ -23,9 +26,6 @@
   max-width: 1320px;
   height: 72px;
   padding: 10px 0;
-  /* No mobile/tablet header spec exists in Figma yet — the nav is flex-shrink:0
-     per the desktop spec, so contain any overflow locally on narrow viewports
-     instead of letting it break the page. */
   overflow-x: auto;
 }
 
@@ -48,3 +48,64 @@
 
 /* Nav links and the wallet button are the shared Button component
    (ghost/m and primary/m) — no component-local button styles here. */
+
+/* ── mobile (<768px, matches useBreakpoint's mobile threshold) ───────────
+   Figma source: "mobile header" (node 6153:22431) — 56px bar, 16px
+   horizontal gutter, hamburger + icon-only logo + wallet icon-button,
+   with a full-width ghost-button dropdown menu on open. Desktop's
+   logo/nav/wallet-button swap out for these mobile-only controls. ────── */
+.sqrt-header__menu-btn,
+.sqrt-header__logo--mobile,
+.sqrt-header__wallet-icon-btn {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .sqrt-header {
+    padding: 0 16px;
+  }
+
+  .sqrt-header__inner {
+    height: 56px;
+    padding: 8px 0;
+  }
+
+  .sqrt-header__logo--desktop,
+  .sqrt-header__nav,
+  .sqrt-header__wallet-btn {
+    display: none;
+  }
+
+  .sqrt-header__menu-btn,
+  .sqrt-header__logo--mobile,
+  .sqrt-header__wallet-icon-btn {
+    display: inline-flex;
+  }
+}
+
+.sqrt-header__mobile-menu {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  /* Floats over the ribbon/page content with a 4px gap below the 56px
+     bar, instead of sitting in normal flow and pushing content down —
+     per Figma node 6153:22431 (menu-open state). */
+  .sqrt-header__mobile-menu {
+    display: block;
+    position: absolute;
+    top: 60px;
+    left: 16px;
+    right: 16px;
+    z-index: 20;
+  }
+}
+
+.sqrt-header__mobile-menu-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--sqrt-bg-raised);
+  border-radius: var(--radius-m);
+  padding: 6px 0;
+}

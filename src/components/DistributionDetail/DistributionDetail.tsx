@@ -18,6 +18,7 @@ import AddressTag from "@/components/AddressTag/AddressTag";
 import { Button } from "@/components/Button/Button";
 import { IconButton } from "@/components/IconButton/IconButton";
 import EpochBlockChart from "@/components/EpochBlockChart/EpochBlockChart";
+import FaqCard from "@/components/FaqCard/FaqCard";
 import { generateMockEpochs } from "@/lib/charts/mockData";
 import type { EpochData } from "@/lib/charts/types";
 // Reuses .dw-chart-bar / .dw-chart-legend as-is for the epoch fund split —
@@ -66,7 +67,7 @@ const FAQ_ITEMS = [
 const BLOCK_LEGEND = [
   { swatch: "var(--color-charts-epochs-500)", label: "Participated (more vol → darker)" },
   { swatch: "var(--sqrt-action-primary-rest)", label: "Current" },
-  { swatch: "var(--color-alpha-steel-08)", label: "Passed / Future" },
+  { swatch: "var(--color-alpha-steel-08)", label: "No participation" },
 ];
 
 function useCountdown(msFromNow: number) {
@@ -127,7 +128,12 @@ function fmtEpochDate(timestamp: number, withTime: boolean): string {
   const day = d.getDate();
   const month = MONTHS[d.getMonth()];
   if (withTime) {
-    const time = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const time = d.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
     return `${day} ${month}, ${time}`;
   }
   return `${day} ${month}, ${d.getFullYear()}`;
@@ -150,6 +156,7 @@ export default function DistributionDetail() {
   const [hoveredEpoch, setHoveredEpoch] = useState<EpochData | null>(null);
   const [walletConnected, setWalletConnected] = useState(false);
   const [claimState, setClaimState] = useState<"idle" | "claiming" | "done">("idle");
+  const [dialogueOpen, setDialogueOpen] = useState(false);
 
   const countdown = useCountdown(12 * 86400_000 + 2 * 3600_000 + 42 * 60_000 + 21_000);
 
@@ -205,6 +212,108 @@ export default function DistributionDetail() {
       ? () => setAmount("")
       : undefined;
 
+  // Mobile: the inline "Participate" button (below the countdown) either
+  // connects the wallet — same as desktop — or opens the claim/participation
+  // dialogue, where the actual form (shared with desktop's sidebar) lives.
+  // Unlike the inline desktop button, it's never disabled: opening the
+  // dialogue doesn't require an amount yet.
+  const handleMobileParticipateClick = !walletConnected
+    ? () => setWalletConnected(true)
+    : () => setDialogueOpen(true);
+
+  // Shared between the desktop sidebar (.ddp-right) and the mobile dialogue
+  // — same states/logic either way, just a different container. idPrefix
+  // keeps the two copies' input ids (and label htmlFor) from colliding,
+  // since .ddp-right stays mounted (CSS-hidden, not unmounted) on mobile.
+  function renderClaimAndParticipation(idPrefix: string) {
+    return (
+      <>
+        {walletConnected && hasClaimableShare && (
+          <div className="ddp-claim-card">
+            <h2>Ready to claim</h2>
+            {claimState === "done" ? (
+              <div className="ddp-claim-card__done">
+                <IconSquareRoundedCheckFilled size={20} />
+                Claim share done successfully.
+              </div>
+            ) : (
+              <>
+                <div className="ddp-claim-card__amount">
+                  <span>{fmtInt(claimableAmount)}</span>
+                  <span className="ddp-claim-card__unit">{QUOTE_SYMBOL}</span>
+                </div>
+                <Button
+                  variant="primary"
+                  size="m"
+                  fullWidth
+                  className="ddp-claim-card__button"
+                  disabled={claimState === "claiming"}
+                  leadingIcon={claimState === "claiming" ? <IconLoader2 size={18} /> : undefined}
+                  onClick={handleClaim}
+                >
+                  {claimState === "claiming" ? "Processing" : "Claim all"}
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
+        <div className="ddp-participation">
+          <h2>Participation</h2>
+          <div className="ddp-participation__field">
+            <label htmlFor={`${idPrefix}-amount`}>Total participation amount</label>
+            <div className="ddp-participation__input">
+              <input
+                id={`${idPrefix}-amount`}
+                type="text"
+                inputMode="decimal"
+                placeholder="e.g. 50"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+              <span>{QUOTE_SYMBOL}</span>
+            </div>
+          </div>
+          <div className="ddp-participation__row">
+            <div className="ddp-participation__field">
+              <label htmlFor={`${idPrefix}-epochs`}>Participation epoch counts</label>
+              <div className={`ddp-participation__input${epochCount > 1 ? " is-active" : ""}`}>
+                <input id={`${idPrefix}-epochs`} type="text" readOnly value={epochCount} />
+                <span>Epochs</span>
+              </div>
+            </div>
+            <div className="ddp-participation__steppers">
+              <IconButton
+                icon={<IconMinus size={20} strokeWidth={1.75} />}
+                variant="outline"
+                size="m"
+                aria-label="Decrease epoch count"
+                disabled={epochCount <= 1}
+                onClick={() => setEpochCount((n) => Math.max(1, n - 1))}
+              />
+              <IconButton
+                icon={<IconPlus size={20} strokeWidth={1.75} />}
+                variant="secondary"
+                size="m"
+                aria-label="Increase epoch count"
+                onClick={() => setEpochCount((n) => n + 1)}
+              />
+            </div>
+          </div>
+          <Button
+            variant="primary"
+            size="m"
+            fullWidth
+            disabled={walletConnected && !canParticipate}
+            onClick={handleParticipateClick}
+          >
+            {participateLabel}
+          </Button>
+        </div>
+      </>
+    );
+  }
+
   return (
     <div className="ddp">
       <div className="ddp-chrome">
@@ -216,22 +325,47 @@ export default function DistributionDetail() {
         <div className="ddp-columns">
           <div className="ddp-left">
             <section className="ddp-token-header">
-              <TokenAvatar seed="sqrtDAO SQRT" className="ddp-token-header__avatar" />
-              <div className="ddp-token-header__info">
-                <div className="ddp-token-header__name-row">
-                  <h1>sqrtDAO</h1>
-                  <span className="ddp-ticker">SQRT</span>
+              <div className="ddp-token-header__row1">
+                <TokenAvatar seed="sqrtDAO SQRT" className="ddp-token-header__avatar" />
+                <div className="ddp-token-header__info">
+                  <div className="ddp-token-header__name-row">
+                    <h1>sqrtDAO</h1>
+                    <span className="ddp-ticker">SQRT</span>
+                  </div>
+                  {/* desktop: grouped under the name, same row as avatar/network */}
+                  <div className="ddp-token-header__creator ddp-token-header__creator--desktop">
+                    <span>Created by</span>
+                    <AddressTag value="0xfd9...jd87w" />
+                  </div>
                 </div>
-                <div className="ddp-token-header__creator">
-                  <span>Created by</span>
+                <NetworkTag network="BASE" />
+              </div>
+              <div className="ddp-token-header__row2">
+                {/* mobile: grouped with Contract address in row 2 instead */}
+                <div className="ddp-token-header__creator ddp-token-header__creator--mobile">
+                  <span className="ddp-token-header__contract-label">Created by</span>
                   <AddressTag value="0xfd9...jd87w" />
                 </div>
+                <div className="ddp-token-header__contract">
+                  <span className="ddp-token-header__contract-label">Contract address</span>
+                  <AddressTag value="0xfd9...jd87w" />
+                </div>
+                <Button
+                  variant="outline"
+                  size="m"
+                  leadingIcon={<IconShare size={16} strokeWidth={1.75} />}
+                  className="ddp-token-header__share"
+                >
+                  Share
+                </Button>
+                <IconButton
+                  icon={<IconShare size={24} strokeWidth={1.75} />}
+                  variant="outline"
+                  size="m"
+                  aria-label="Share"
+                  className="ddp-token-header__share-icon"
+                />
               </div>
-              <NetworkTag network="BASE" />
-              <AddressTag value="0xfd9...jd87w" />
-              <Button variant="outline" size="m" leadingIcon={<IconShare size={16} strokeWidth={1.75} />}>
-                Share
-              </Button>
             </section>
 
             <div className="ddp-main-content">
@@ -285,6 +419,18 @@ export default function DistributionDetail() {
                     </div>
                   </div>
                 </div>
+
+                {/* mobile-only: opens the claim/participation dialogue —
+                    desktop's equivalent lives inline in .ddp-right. */}
+                <Button
+                  variant="primary"
+                  size="m"
+                  fullWidth
+                  className="ddp-summary__participate"
+                  onClick={handleMobileParticipateClick}
+                >
+                  {participateLabel}
+                </Button>
               </section>
 
               <section className="ddp-epochs-data">
@@ -363,30 +509,39 @@ export default function DistributionDetail() {
               </section>
 
               <section className="ddp-faq">
-                <div className="ddp-faq__header">
-                  <IconMessageCircleQuestion size={32} strokeWidth={1.5} />
-                  <h2>FAQ</h2>
+                {/* desktop: header + questions column + single shared answer panel */}
+                <div className="ddp-faq__body--desktop">
+                  <div className="ddp-faq__header">
+                    <IconMessageCircleQuestion size={32} strokeWidth={1.5} />
+                    <h2>FAQ</h2>
+                  </div>
+                  <div className="ddp-faq__body">
+                    <div className="ddp-faq__questions">
+                      {FAQ_ITEMS.map((item, i) => (
+                        <button
+                          key={item.q}
+                          type="button"
+                          className={`ddp-faq__question${i === activeFaq ? " is-active" : ""}`}
+                          onClick={() => setActiveFaq(i)}
+                        >
+                          {item.q}
+                        </button>
+                      ))}
+                    </div>
+                    <div
+                      className={`ddp-faq__answer ddp-faq__answer--${
+                        activeFaq === 0 ? "first" : activeFaq === FAQ_ITEMS.length - 1 ? "last" : "middle"
+                      }`}
+                    >
+                      <p>{FAQ_ITEMS[activeFaq].a}</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="ddp-faq__body">
-                  <div className="ddp-faq__questions">
-                    {FAQ_ITEMS.map((item, i) => (
-                      <button
-                        key={item.q}
-                        type="button"
-                        className={`ddp-faq__question${i === activeFaq ? " is-active" : ""}`}
-                        onClick={() => setActiveFaq(i)}
-                      >
-                        {item.q}
-                      </button>
-                    ))}
-                  </div>
-                  <div
-                    className={`ddp-faq__answer ddp-faq__answer--${
-                      activeFaq === 0 ? "first" : activeFaq === FAQ_ITEMS.length - 1 ? "last" : "middle"
-                    }`}
-                  >
-                    <p>{FAQ_ITEMS[activeFaq].a}</p>
-                  </div>
+
+                {/* mobile: dedicated FaqCard component (own header + accordion) —
+                    same FAQ_ITEMS data as desktop, just a different presentation. */}
+                <div className="ddp-faq__body--mobile">
+                  <FaqCard items={FAQ_ITEMS} activeIndex={activeFaq} onChange={setActiveFaq} />
                 </div>
               </section>
             </div>
@@ -426,92 +581,24 @@ export default function DistributionDetail() {
             </section>
 
             <section className="ddp-claim-participation">
-              {walletConnected && hasClaimableShare && (
-                <div className="ddp-claim-card">
-                  <h2>Ready to claim</h2>
-                  {claimState === "done" ? (
-                    <div className="ddp-claim-card__done">
-                      <IconSquareRoundedCheckFilled size={20} />
-                      Claim share done successfully.
-                    </div>
-                  ) : (
-                    <>
-                      <div className="ddp-claim-card__amount">
-                        <span>{fmtInt(claimableAmount)}</span>
-                        <span className="ddp-claim-card__unit">{QUOTE_SYMBOL}</span>
-                      </div>
-                      <Button
-                        variant="primary"
-                        size="m"
-                        fullWidth
-                        className="ddp-claim-card__button"
-                        disabled={claimState === "claiming"}
-                        leadingIcon={claimState === "claiming" ? <IconLoader2 size={18} /> : undefined}
-                        onClick={handleClaim}
-                      >
-                        {claimState === "claiming" ? "Processing" : "Claim all"}
-                      </Button>
-                    </>
-                  )}
-                </div>
-              )}
-
-              <div className="ddp-participation">
-                <h2>Participation</h2>
-                <div className="ddp-participation__field">
-                  <label htmlFor="ddp-amount">Total participation amount</label>
-                  <div className="ddp-participation__input">
-                    <input
-                      id="ddp-amount"
-                      type="text"
-                      inputMode="decimal"
-                      placeholder="e.g. 50"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                    />
-                    <span>{QUOTE_SYMBOL}</span>
-                  </div>
-                </div>
-                <div className="ddp-participation__row">
-                  <div className="ddp-participation__field">
-                    <label htmlFor="ddp-epochs">Participation epoch counts</label>
-                    <div className={`ddp-participation__input${epochCount > 1 ? " is-active" : ""}`}>
-                      <input id="ddp-epochs" type="text" readOnly value={epochCount} />
-                      <span>Epochs</span>
-                    </div>
-                  </div>
-                  <div className="ddp-participation__steppers">
-                    <IconButton
-                      icon={<IconMinus size={20} strokeWidth={1.75} />}
-                      variant="outline"
-                      size="m"
-                      aria-label="Decrease epoch count"
-                      disabled={epochCount <= 1}
-                      onClick={() => setEpochCount((n) => Math.max(1, n - 1))}
-                    />
-                    <IconButton
-                      icon={<IconPlus size={20} strokeWidth={1.75} />}
-                      variant="secondary"
-                      size="m"
-                      aria-label="Increase epoch count"
-                      onClick={() => setEpochCount((n) => n + 1)}
-                    />
-                  </div>
-                </div>
-                <Button
-                  variant="primary"
-                  size="m"
-                  fullWidth
-                  disabled={walletConnected && !canParticipate}
-                  onClick={handleParticipateClick}
-                >
-                  {participateLabel}
-                </Button>
-              </div>
+              {renderClaimAndParticipation("ddp")}
             </section>
           </div>
         </div>
       </div>
+
+      {/* mobile-only: claim/participation dialogue — opened by the
+          "Participate" button in .ddp-summary once the wallet is connected.
+          Desktop never sets dialogueOpen (its form is always inline). */}
+      {dialogueOpen && (
+        <div className="ddp-dialogue-backdrop" onClick={() => setDialogueOpen(false)}>
+          <div className="ddp-dialogue" onClick={(e) => e.stopPropagation()}>
+            <div className="ddp-claim-participation">
+              {renderClaimAndParticipation("ddp-dialogue")}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

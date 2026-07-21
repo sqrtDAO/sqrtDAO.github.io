@@ -214,7 +214,10 @@ export default function DistributionWizard({
           </div>
 
           {/* Step content — key triggers enter animation on each step change */}
-          <div className="dw-content" key={step}>
+          <div
+            className={`dw-content${showStepper ? " dw-content--stepped" : ""}`}
+            key={step}
+          >
 
             {/* ── STEP 1: Welcome ───────────────────────────────────────── */}
             {step === "welcome" && (
@@ -330,8 +333,8 @@ export default function DistributionWizard({
                       token in a Uniswap pool.
                     </p>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                      <p className="dw-section-label" style={{ margin: 0 }}>Paired your token with</p>
+                    <div className="dw-pairing-row">
+                      <p className="dw-section-label">Paired your token with</p>
                       <Segmented
                         items={BACKING_ASSETS}
                         activeIndex={backingAssetIdx}
@@ -739,7 +742,7 @@ export default function DistributionWizard({
 
                     {founderShareOn && (
                       <div className="dw-backing-inputs">
-                        <div className="dw-supply-group" style={{ maxWidth: 160 }}>
+                        <div className="dw-supply-group dw-share-pct-group">
                           <div className={`dw-supply-field${founderExceedsCap ? " is-error" : ""}`}>
                             <input
                               className="dw-supply-el"
