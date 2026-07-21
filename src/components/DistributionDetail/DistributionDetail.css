@@ -1,0 +1,767 @@
+.ddp {
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--sqrt-bg-canvas);
+  display: flex;
+  flex-direction: column;
+}
+
+.ddp-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ddp-body {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  /* Fixed 24px gutter, not fluidly scaled — .ddp-columns below caps at
+     max-width:1320px and centers, so this only matters as the minimum
+     side margin on viewports narrower than 1320 + 48. Matches the
+     header's fixed 1320px content container exactly. */
+  padding: 0 24px 96px;
+}
+
+.ddp-columns {
+  display: flex;
+  gap: 24px;
+  width: 100%;
+  max-width: 1320px;
+  padding-top: 16px;
+}
+
+.ddp-left {
+  width: 872px;
+  max-width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* Only two direct children now: the sticky token-header and
+     .ddp-main-content — this 24px gap is what separates them. */
+  gap: 24px;
+}
+
+/* ── main content (distribution summary + epochs data + FAQ) ─────────────
+   Figma groups these three under one "main content" frame (node
+   4413:9605) that scrolls under the sticky distribution-info header —
+   0 padding of its own, 8px gap between its three sections (not the
+   24px used elsewhere in .ddp-left). ─────────────────────────────────── */
+.ddp-main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+}
+
+.ddp-right {
+  width: 424px;
+  max-width: 100%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  /* Sticky sidebar: align-self:flex-start stops it stretching to match
+     .ddp-left's height (the flex row's default), which would otherwise
+     leave no scroll room for position:sticky to do anything. It stays
+     pinned under the chrome (header 72px + ribbon 32px) while .ddp-left
+     scrolls, then releases once .ddp-columns' bottom edge catches up. */
+  align-self: flex-start;
+  position: sticky;
+  top: 104px;
+}
+
+/* ── generic card shell ─────────────────────────────────── */
+.ddp-card {
+  background: var(--sqrt-bg-surface);
+  border-radius: var(--radius-l);
+  padding: 24px;
+}
+
+/* ── token header ───────────────────────────────────────── */
+.ddp-token-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--sqrt-bg-canvas);
+  border-bottom: var(--border-width-hairline) solid var(--sqrt-border-default);
+  /* Sticks right below the chrome (header 72px + ribbon 32px) so the rest
+     of .ddp-left's content scrolls underneath it. z-index sits below
+     .ddp-chrome's 10 so the header/ribbon always stay on top of it. */
+  position: sticky;
+  top: 104px;
+  z-index: 5;
+}
+
+.ddp-token-header__avatar.token-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: none;
+}
+
+.ddp-token-header__avatar .token-avatar__initials {
+  font-size: 24px;
+}
+
+.ddp-token-header__info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ddp-token-header__name-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.ddp-token-header__name-row h1 {
+  font-family: var(--font-family-body), system-ui, sans-serif;
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-h4);
+  color: var(--sqrt-text-primary);
+  margin: 0;
+}
+
+.ddp-ticker {
+  font-family: var(--font-family-body), system-ui, sans-serif;
+  font-size: var(--font-size-body-l);
+  color: var(--sqrt-text-secondary);
+}
+
+.ddp-token-header__creator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-body);
+  color: var(--sqrt-text-tertiary);
+  white-space: nowrap;
+}
+
+/* ── summary (stats + countdown) ────────────────────────── */
+.ddp-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 0;
+}
+
+.ddp-summary-row {
+  display: flex;
+  gap: 16px;
+}
+
+.ddp-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ddp-stat__label {
+  font-size: var(--font-size-body-l);
+  color: var(--sqrt-text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.ddp-stat__value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.ddp-stat__value-primary {
+  font-family: var(--font-family-display), system-ui, sans-serif;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-h2);
+  letter-spacing: -0.01em;
+  color: var(--sqrt-text-primary);
+}
+
+.ddp-stat__slash {
+  font-size: var(--font-size-body-l);
+  color: var(--sqrt-text-secondary);
+}
+
+.ddp-stat__value-secondary {
+  font-family: var(--font-family-display), system-ui, sans-serif;
+  font-weight: var(--font-weight-regular);
+  font-size: var(--font-size-h3);
+  color: var(--sqrt-text-secondary);
+}
+
+.ddp-stat__unit {
+  font-size: var(--font-size-body-l);
+  color: var(--sqrt-text-secondary);
+}
+
+/* ── countdown row ──────────────────────────────────────── */
+.ddp-countdown-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.ddp-countdown-label {
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--font-size-body-l);
+  color: var(--sqrt-text-secondary);
+}
+
+.ddp-countdown-sub {
+  display: flex;
+  gap: 4px;
+  font-size: var(--font-size-body-s);
+}
+
+.ddp-countdown-sub span:first-child {
+  color: var(--sqrt-text-tertiary);
+}
+
+.ddp-countdown-sub__value {
+  color: var(--sqrt-text-primary);
+}
+
+.ddp-countdown-clock {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+}
+
+.ddp-countdown-segment {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+}
+
+.ddp-countdown-segment strong {
+  font-family: var(--font-family-display), system-ui, sans-serif;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-h2);
+  letter-spacing: -0.01em;
+  color: var(--sqrt-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ddp-countdown-segment span {
+  font-size: var(--font-size-body-l);
+  color: var(--sqrt-text-secondary);
+}
+
+.ddp-countdown-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--sqrt-border-default);
+}
+
+/* ── epochs data (block chart + epoch/combo chart, one Figma frame) ──────
+   Outer shell is a plain bg-surface/8px-padding box (0 radius — same
+   pattern as the FAQ card); the block-chart section sits directly on it
+   with no card chrome of its own, and only the epoch/combo card underneath
+   gets its own bg-canvas + radius-l. ─────────────────────────────────── */
+.ddp-epochs-data {
+  background: var(--sqrt-bg-surface);
+  border-radius: 0;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.ddp-block-card {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ddp-block-card__stats-top,
+.ddp-block-card__stats-bottom {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.ddp-block-card__stats-bottom {
+  justify-content: flex-end;
+}
+
+.ddp-inline-stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-family-body), system-ui, sans-serif;
+  font-size: var(--font-size-body-s);
+  line-height: 20px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.ddp-inline-stat__label {
+  color: var(--sqrt-text-tertiary);
+}
+
+.ddp-inline-stat__value {
+  color: var(--sqrt-text-primary);
+}
+
+.ddp-block-card__legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.ddp-block-card__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-body-s);
+  color: var(--sqrt-text-secondary);
+}
+
+.ddp-block-card__legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ── epoch (combo chart) card ───────────────────────────── */
+.ddp-epoch-card {
+  background: var(--sqrt-bg-canvas);
+  border-radius: var(--radius-l);
+  padding: 20px 24px;
+  display: flex;
+  gap: 24px;
+  align-items: stretch;
+}
+
+.ddp-epoch-card__info {
+  width: 312px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  justify-content: center;
+}
+
+.ddp-epoch-card__data {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ddp-epoch-card__data > span:first-child {
+  font-size: var(--font-size-body-l);
+  color: var(--sqrt-text-secondary);
+}
+
+.ddp-epoch-card__data-row {
+  display: flex;
+  align-items: baseline;
+}
+
+.ddp-epoch-card__data-row--epoch {
+  justify-content: space-between;
+  width: 100%;
+}
+
+.ddp-epoch-card__data-row--price {
+  align-items: center;
+  gap: 8px;
+}
+
+.ddp-epoch-card__data-row--participation {
+  gap: 4px;
+}
+
+.ddp-epoch-card__data-row strong {
+  font-family: var(--font-family-display), system-ui, sans-serif;
+  font-weight: 400;
+  font-size: var(--font-size-h3);
+  color: var(--sqrt-text-primary);
+}
+
+.ddp-epoch-card__data-row strong.is-accent {
+  color: var(--sqrt-text-accent);
+}
+
+.ddp-epoch-card__data-row time {
+  font-size: var(--font-size-body-l);
+  color: var(--sqrt-text-primary);
+}
+
+.ddp-epoch-card__data-row time.is-accent {
+  color: var(--sqrt-text-accent);
+}
+
+.ddp-epoch-card__unit {
+  font-size: var(--font-size-body-l);
+  color: var(--sqrt-text-primary);
+}
+
+.ddp-epoch-card__by {
+  font-size: var(--font-size-body-l);
+  color: var(--sqrt-text-secondary);
+}
+
+.ddp-epoch-card__note {
+  font-size: var(--font-size-body-s);
+  color: var(--sqrt-text-primary);
+  margin: 0;
+}
+
+.ddp-epoch-card__chart {
+  flex: 1;
+  min-width: 0;
+  height: 324px;
+}
+
+/* ── FAQ ─────────────────────────────────────────────────── */
+.ddp-faq {
+  background: var(--sqrt-bg-surface);
+  border-radius: 0;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.ddp-faq__header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  color: var(--sqrt-text-primary);
+}
+
+.ddp-faq__header h2 {
+  font-family: var(--font-family-display), system-ui, sans-serif;
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-regular);
+  color: var(--sqrt-text-primary);
+  margin: 0;
+}
+
+.ddp-faq__body {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+}
+
+.ddp-faq__questions {
+  width: 416px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ddp-faq__question {
+  text-align: left;
+  height: 64px;
+  padding: 20px 24px;
+  background: transparent;
+  border: none;
+  border-bottom: var(--border-width-hairline) solid var(--sqrt-border-subtle);
+  color: var(--sqrt-text-primary);
+  font-family: var(--font-family-body), system-ui, sans-serif;
+  font-size: var(--font-size-body-l);
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.ddp-faq__question.is-active {
+  background: var(--sqrt-bg-canvas);
+  border-radius: var(--radius-m) 0 0 var(--radius-m);
+  border-bottom-color: transparent;
+}
+
+.ddp-faq__answer {
+  flex: 1;
+  min-width: 0;
+  background: var(--sqrt-bg-canvas);
+  padding: 32px;
+  gap: 16px;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.ddp-faq__answer--first {
+  border-radius: 0 var(--radius-l) var(--radius-l) var(--radius-l);
+}
+
+.ddp-faq__answer--middle {
+  border-radius: var(--radius-l);
+}
+
+.ddp-faq__answer--last {
+  border-radius: var(--radius-l) var(--radius-l) var(--radius-l) 0;
+}
+
+.ddp-faq__answer p {
+  margin: 0;
+  color: var(--sqrt-text-primary);
+  font-size: var(--font-size-body-l);
+  line-height: var(--font-line-height-body-l);
+  letter-spacing: 0.02em;
+}
+
+/* ── epoch fund split (reuses .dw-chart-bar / .dw-chart-legend from
+   DistributionWizard — same visual language, deliberately not duplicated
+   as new tokens/classes) ─────────────────────────────────── */
+.ddp-fund-split {
+  display: flex;
+  flex-direction: column;
+  /* No bg/radius/padding of its own — sits directly on the page canvas,
+     unlike the claim/participation card below it. Confirmed against the
+     Figma component: no fill, no corner radius, no horizontal inset —
+     the 424px column width is filled edge-to-edge. */
+}
+
+.ddp-fund-split__header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 0;
+}
+
+.ddp-fund-split__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ddp-fund-split__title-row h2 {
+  font-family: var(--font-family-display), system-ui, sans-serif;
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-regular);
+  color: var(--sqrt-text-primary);
+  margin: 0;
+}
+
+.ddp-fund-split__header p {
+  font-size: var(--font-size-body);
+  line-height: var(--font-line-height-body);
+  color: var(--sqrt-text-secondary);
+  margin: 0;
+}
+
+.ddp-fund-split__chart {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── claim & participation (one Figma frame, node 4333:15225) ────────────
+   Outer shell: bg-surface, 8px padding, 0 radius, no gap of its own — same
+   "epochs data"/FAQ pattern. The claim card is transparent and provides its
+   own spacing via padding; the participation card underneath owns its own
+   bg-canvas + radius-l. ─────────────────────────────────────────────── */
+.ddp-claim-participation {
+  background: var(--sqrt-bg-surface);
+  border-radius: 0;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── claim card — rest / claiming / done ─────────────────── */
+.ddp-claim-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 20px 24px;
+}
+
+.ddp-claim-card h2 {
+  font-family: var(--font-family-display), system-ui, sans-serif;
+  font-size: var(--font-size-h3);
+  font-weight: 400;
+  /* Figma pins this to 100% leading (tight, no extra line-box); left
+     unset it inherits body's 1.55, which alone accounts for most of the
+     card's height drifting away from spec. */
+  line-height: 1;
+  color: var(--sqrt-text-primary);
+  margin: 0;
+}
+
+.ddp-claim-card__amount {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.ddp-claim-card__amount span:first-child {
+  font-family: var(--font-family-body), system-ui, sans-serif;
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-h4);
+  line-height: 1;
+  color: var(--sqrt-text-primary);
+}
+
+.ddp-claim-card__unit {
+  font-size: var(--font-size-body-s);
+  line-height: 20px;
+  color: var(--sqrt-text-secondary);
+}
+
+.ddp-claim-card__button svg {
+  animation: ddp-claim-spin 0.9s linear infinite;
+}
+
+@keyframes ddp-claim-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ddp-claim-card__done {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--sqrt-state-success);
+  font-size: var(--font-size-body-l);
+  line-height: var(--font-line-height-body-l);
+  letter-spacing: 0.02em;
+}
+
+/* ── participation ──────────────────────────────────────── */
+.ddp-participation {
+  background: var(--sqrt-bg-canvas);
+  border-radius: var(--radius-l);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ddp-participation h2 {
+  font-family: var(--font-family-display), system-ui, sans-serif;
+  font-size: var(--font-size-h3);
+  font-weight: 400;
+  color: var(--sqrt-text-primary);
+  margin: 0;
+}
+
+.ddp-participation__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.ddp-participation__field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ddp-participation__field label {
+  font-size: var(--font-size-body);
+  color: var(--sqrt-text-primary);
+}
+
+.ddp-participation__input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--sqrt-bg-surface);
+  border: var(--border-width-hairline) solid transparent;
+  border-radius: var(--radius-m);
+  /* Same 40px math as the shared Input component: py-6 (12) + py-4 (8) +
+     20px line-height = 40px. Pinned explicitly since this field doesn't
+     use the shared Input component (no border here, but kept consistent
+     with it for the same crucial cross-component height alignment). */
+  height: 40px;
+  padding: 6px 8px;
+}
+
+/* "typing" (amount field, native focus) / "more epochs" (epoch-count
+   field, once it differs from the default of 1) Figma states — both are
+   the same amber focus border, just driven by different real signals. */
+.ddp-participation__input:focus-within,
+.ddp-participation__input.is-active {
+  border-color: var(--sqrt-border-focus);
+}
+
+.ddp-participation__input input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  padding: 4px 0;
+  color: var(--sqrt-text-primary);
+  font-family: var(--font-family-body), system-ui, sans-serif;
+  font-size: var(--font-size-body-s);
+  line-height: 20px;
+}
+
+.ddp-participation__input input::placeholder {
+  color: var(--sqrt-text-tertiary);
+}
+
+.ddp-participation__input span {
+  flex-shrink: 0;
+  font-size: var(--font-size-body-s);
+  color: var(--sqrt-text-tertiary);
+}
+
+.ddp-participation__steppers {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 960px) {
+  .ddp-columns {
+    flex-direction: column;
+  }
+  .ddp-left,
+  .ddp-right {
+    width: 100%;
+  }
+  /* Sticky sidebar/header is desktop-only for now — mobile layout is a
+     separate pass. */
+  .ddp-right {
+    position: static;
+  }
+  .ddp-token-header {
+    position: static;
+  }
+  .ddp-epoch-card {
+    flex-direction: column;
+  }
+  .ddp-epoch-card__info {
+    width: 100%;
+  }
+  .ddp-countdown-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ddp-countdown-label {
+    width: 100%;
+  }
+}

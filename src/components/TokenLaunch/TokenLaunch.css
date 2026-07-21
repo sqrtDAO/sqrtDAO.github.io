@@ -1,0 +1,139 @@
+/* TokenLaunch — single-step launch form
+   Figma source: Launch wizard V.2 (node 3030:6802) */
+
+/* ── Backdrop ─────────────────────────────────────────── */
+.tl-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background-color: var(--sqrt-bg-canvas);
+  display: flex;
+  flex-direction: column;
+  animation: tl-backdrop-in var(--motion-duration-slow) var(--motion-easing-arrive) both;
+  overflow-y: auto;
+}
+
+@keyframes tl-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Sticky app chrome (header + testnet ribbon) ──────── */
+.tl-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Scroll area (centers the panel below the chrome) ─── */
+.tl-scroll {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+}
+
+/* ── Panel (584 px content column) ───────────────────── */
+.tl-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  width: 584px;
+  max-width: calc(100vw - 48px);
+  padding: 64px 0;
+  animation: tl-panel-in var(--motion-duration-slow) var(--motion-easing-arrive) 60ms both;
+}
+
+@keyframes tl-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Back / close button — now the shared IconButton component (outline/m) */
+
+/* ── Content (fades/slides in on mount) ──────────────── */
+.tl-content {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  animation: tl-step-in var(--motion-duration-base) var(--motion-easing-arrive) both;
+}
+
+@keyframes tl-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Text group ───────────────────────────────────────── */
+.tl-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tl-title {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 36px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--sqrt-text-primary);
+  margin: 0;
+}
+
+.tl-subtitle {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 24px;
+  letter-spacing: 0.02em;
+  color: var(--sqrt-text-secondary);
+  margin: 0;
+}
+
+/* ── Avatar + form row ────────────────────────────────── */
+.tl-row {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.tl-form {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Footer buttons are the shared Button component (outline/m, primary/m) —
+   no local button styles here. */
+.tl-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+/* ── Reduced motion ───────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .tl-backdrop,
+  .tl-panel,
+  .tl-content { animation: none; }
+}

@@ -1,0 +1,49 @@
+/* Stepper — horizontal step list
+   Figma source: "stepper" (node 3660:1759) + "_stepper item" (node 3658:1737)
+   States: active (amber h4), passed (primary h4), not-active (secondary body-l) */
+
+.stepper {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.stepper-item {
+  display: flex;
+  align-items: center;
+  padding: 4px 6px;
+  white-space: nowrap;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  transition: color var(--motion-duration-fast) var(--motion-easing-standard);
+}
+
+/* active: amber, h4 weight/size */
+.stepper-item--active,
+.stepper-item--hovered {
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--sqrt-text-accent);
+}
+
+/* passed: primary color, h4 weight/size */
+.stepper-item--passed {
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--sqrt-text-primary);
+}
+
+/* not-active: secondary color, body-l size */
+.stepper-item--not-active {
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 24px;
+  letter-spacing: 0.02em;
+  color: var(--sqrt-text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stepper-item { transition: none; }
+}

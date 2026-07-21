@@ -1,0 +1,42 @@
+/* Shared chart tooltip — DOM node is created/positioned imperatively by
+   src/lib/charts/tooltipController.ts. This file only owns the look. */
+
+.chart-tooltip {
+  position: absolute;
+  z-index: 6;
+  pointer-events: none;
+  width: 236px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--sqrt-bg-overlay);
+  border: var(--border-width-hairline) solid var(--sqrt-border-default);
+  border-radius: var(--radius-s);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.chart-tooltip--on {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.chart-tooltip__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13.5px;
+}
+
+.chart-tooltip__row span {
+  color: var(--sqrt-text-tertiary);
+}
+
+.chart-tooltip__row b {
+  font-weight: 500;
+  color: var(--sqrt-text-primary);
+  white-space: nowrap;
+}

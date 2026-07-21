@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import HeroBackground from "@/components/HeroBackground/HeroBackground";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 import HeroDesktop from "@/views/Hero/HeroDesktop";
@@ -13,10 +13,16 @@ import View2BMobile from "@/views/View2/View2BMobile";
 import CTADesktop from "@/views/CTA/CTADesktop";
 import CTATablet from "@/views/CTA/CTATablet";
 import CTAMobile from "@/views/CTA/CTAMobile";
+import TokenLaunch from "@/components/TokenLaunch/TokenLaunch";
+import DistributionWizard from "@/components/DistributionWizard/DistributionWizard";
 import "./landing.css";
+
+// Flow steps for the token wizard overlay
+type FlowStep = "none" | "launch" | "distribute";
 
 export default function Page() {
   const bp = useBreakpoint();
+  const [flow, setFlow] = useState<FlowStep>("none");
 
   useEffect(() => {
     const onTilt = (e: PointerEvent) => {
@@ -63,12 +69,27 @@ export default function Page() {
         )}
 
         <section className="view">
-          {bp === "desktop" && <CTADesktop />}
-          {bp === "tablet" && <CTATablet />}
-          {bp === "mobile" && <CTAMobile />}
+          {bp === "desktop" && <CTADesktop onGetStarted={() => setFlow("launch")} />}
+          {bp === "tablet" && <CTATablet onGetStarted={() => setFlow("launch")} />}
+          {bp === "mobile" && <CTAMobile onGetStarted={() => setFlow("launch")} />}
         </section>
 
       </main>
+
+      {/* Token wizard overlay */}
+      {flow === "launch" && (
+        <TokenLaunch
+          onClose={() => setFlow("none")}
+          onDistribute={() => setFlow("distribute")}
+        />
+      )}
+
+      {flow === "distribute" && (
+        <DistributionWizard
+          onClose={() => setFlow("none")}
+          onConfirm={() => setFlow("none")}
+        />
+      )}
     </>
   );
 }

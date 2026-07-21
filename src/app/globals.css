@@ -5,6 +5,70 @@
 @theme inline {
   --font-sans: var(--font-sans);
   --font-display: var(--font-display);
+
+  /* ── Backgrounds ── */
+  --color-canvas:  var(--sqrt-bg-canvas);   /* bg-canvas  #0b0d12 */
+  --color-surface: var(--sqrt-bg-surface);  /* bg-surface #12151c */
+  --color-raised:  var(--sqrt-bg-raised);   /* bg-raised  #1a1e27 */
+  --color-overlay: var(--sqrt-bg-overlay);  /* bg-overlay #232834 */
+  --color-black:   var(--sqrt-bg-space);    /* bg-black   #000000 */
+
+  /* ── Text / content ── */
+  --color-primary:   var(--sqrt-text-primary);    /* text-primary   #e8ecf1 */
+  --color-secondary: var(--sqrt-text-secondary);  /* text-secondary #a7b0bc */
+  --color-tertiary:  var(--sqrt-text-tertiary);   /* text-tertiary  #7b8593 */
+  --color-disabled:  var(--sqrt-text-disabled);   /* text-disabled  #57606d */
+  --color-accent:    var(--sqrt-text-accent);     /* text-accent    #ffc247 */
+  --color-on-amber:  var(--sqrt-text-on-amber);   /* text-on-amber  #090a0c */
+  --color-star:      var(--sqrt-text-star);       /* text-star      #ffffff */
+
+  /* ── Action / brand amber ── */
+  --color-action:       var(--sqrt-action-primary-rest);      /* bg-action / text-action  #ff9a47 */
+  --color-action-hover: var(--sqrt-action-primary-hover);     /* bg-action-hover          #ffac70 */
+  --color-action-press: var(--sqrt-action-primary-pressed);   /* bg-action-press          #e6883f */
+  --color-action-glow:  var(--sqrt-action-primary-glow);      /* bg-action-glow  amber α18% */
+  --color-infra:        var(--sqrt-action-secondary-rest);    /* bg-infra                 #313a63 */
+  --color-infra-hover:  var(--sqrt-action-secondary-hover);   /* bg-infra-hover           #67739c */
+  --color-infra-press:  var(--sqrt-action-secondary-pressed); /* bg-infra-press           #272f52 */
+
+  /* ── Borders / focus (alpha values — near-transparent) ── */
+  --color-subtle: var(--sqrt-border-subtle);  /* border-subtle  steel α8%   */
+  --color-muted:  var(--sqrt-border-default); /* border-muted   steel α12%  */
+  --color-strong: var(--sqrt-border-strong);  /* border-strong  steel α20%  */
+  --color-focus:  var(--sqrt-border-focus);   /* border-focus / ring-focus  amber α45% */
+
+  /* ── States ── */
+  --color-live:    var(--sqrt-state-live);    /* text-live / bg-live       #ff9a47 */
+  --color-success: var(--sqrt-state-success); /* text-success / bg-success #3fa88a */
+  --color-danger:  var(--sqrt-state-danger);  /* text-danger / bg-danger   #d65f54 */
+  --color-info:    var(--sqrt-state-info);    /* text-info / bg-info       #67739c */
+
+  /* ── Font sizes → text-{name} utilities (Tailwind v4 uses --text-* namespace) ── */
+  --text-display-xl: var(--font-size-display-xl); /* text-display-xl 112px */
+  --text-display-l:  var(--font-size-display-l);  /* text-display-l   84px */
+  --text-display-m:  var(--font-size-display-m);  /* text-display-m   64px */
+  --text-h1:         var(--font-size-h1);         /* text-h1          48px */
+  --text-h2:         var(--font-size-h2);         /* text-h2          36px */
+  --text-h3:         var(--font-size-h3);         /* text-h3          28px */
+  --text-h4:         var(--font-size-h4);         /* text-h4          22px */
+  --text-body-l:     var(--font-size-body-l);     /* text-body-l      18px */
+  --text-body:       var(--font-size-body);       /* text-body        16px */
+  --text-body-s:     var(--font-size-body-s);     /* text-body-s      14px */
+  --text-label:      var(--font-size-label);      /* text-label       13px */
+  --text-caption:    var(--font-size-caption);    /* text-caption     12px */
+  --text-numeral:    var(--font-size-numeral);    /* text-numeral     56px */
+
+  /* ── Radius → rounded-{name} utilities ── */
+  /* rounded-xl intentionally skipped: our 24px ≠ TW default 12px */
+  --radius-xs:   var(--radius-xs);    /* rounded-xs    2px */
+  --radius-s:    var(--radius-s);     /* rounded-s     4px */
+  --radius-m:    var(--radius-m);     /* rounded-m     8px */
+  --radius-l:    var(--radius-l);     /* rounded-l    16px */
+  --radius-pill: var(--radius-pill);  /* rounded-pill 999px */
+
+  /* ── Named spacing (additive — default numeric scale untouched) ── */
+  --spacing-gutter:  var(--space-gutter);        /* gap-gutter / p-gutter / m-gutter  24px */
+  --spacing-section: var(--sqrt-space-section);  /* p-section / pb-section           128px */
 }
 
 :root { color-scheme: dark; }

@@ -1,0 +1,62 @@
+/* Segmented — tab-style segmented control
+   Figma source: "segemented" (node 3312:1808) + "_item" (node 3312:1760)
+   Sizes: s (28px track), m (40px track), l (48px track) */
+
+/* ── Track ── */
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start; /* prevent stretching in flex-column parents */
+  background-color: var(--sqrt-bg-space);
+  border-radius: 8px;
+}
+
+.segmented--s { gap: 4px; padding: 4px; }
+.segmented--m { gap: 8px; padding: 6px; }
+.segmented--l { gap: 8px; padding: 6px; }
+
+/* ── Item ── */
+.seg-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 500;
+  transition:
+    background-color var(--motion-duration-fast) var(--motion-easing-standard),
+    color var(--motion-duration-fast) var(--motion-easing-standard);
+}
+.seg-item:focus { outline: none; }
+.seg-item:focus-visible { box-shadow: 0 0 0 2px var(--sqrt-border-focus); }
+
+/* Size variants */
+.seg-item--s { padding: 2px 6px; font-size: 14px; line-height: 16px; letter-spacing: 0.02em; }
+.seg-item--m { padding: 6px 8px; font-size: 14px; line-height: 16px; letter-spacing: 0.02em; }
+.seg-item--l { padding: 6px 8px; font-size: 16px; line-height: 24px; letter-spacing: 0.02em; }
+
+/* States */
+.seg-item--rest    { color: var(--sqrt-text-primary); }
+.seg-item--hovered { color: var(--sqrt-action-primary-hover); }
+.seg-item--rest:hover { color: var(--sqrt-action-primary-hover); }
+.seg-item--selected {
+  background-color: var(--sqrt-bg-surface);
+  color: var(--sqrt-action-primary-rest);
+}
+
+.seg-item--disabled,
+.seg-item--disabled:hover {
+  color: var(--sqrt-text-disabled);
+  cursor: not-allowed;
+}
+
+.seg-item__icon { display: flex; width: 16px; height: 16px; align-items: center; justify-content: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .seg-item { transition: none; }
+}

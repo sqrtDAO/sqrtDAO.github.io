@@ -1,0 +1,90 @@
+/* ReleaseCard — 184px selection card with 4 states
+   Figma source: "_release-card" (node 3347:1058)
+   States: rest, hovered, selected (amber border), disabled */
+
+.release-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: center;
+  width: 184px;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  transition:
+    background-color var(--motion-duration-fast) var(--motion-easing-standard),
+    border-color var(--motion-duration-fast) var(--motion-easing-standard);
+}
+.release-card:focus { outline: none; }
+.release-card:focus-visible { border-color: var(--sqrt-border-focus); }
+
+/* State: rest */
+.release-card--rest {
+  background-color: var(--sqrt-bg-surface);
+}
+.release-card--rest .release-card__icon { color: var(--sqrt-text-secondary); }
+.release-card--rest .release-card__name { color: var(--sqrt-text-primary); }
+.release-card--rest .release-card__desc  { color: var(--sqrt-text-secondary); }
+
+/* State: hovered */
+.release-card--hovered,
+.release-card--rest:hover {
+  background-color: var(--sqrt-bg-raised);
+}
+.release-card--hovered .release-card__icon { color: var(--sqrt-text-secondary); }
+.release-card--hovered .release-card__name { color: var(--sqrt-text-primary); }
+.release-card--hovered .release-card__desc  { color: var(--sqrt-text-secondary); }
+
+/* State: selected */
+.release-card--selected {
+  background-color: var(--sqrt-bg-surface);
+  border-color: var(--sqrt-action-primary-rest);
+}
+.release-card--selected .release-card__icon { color: var(--sqrt-text-accent); }
+.release-card--selected .release-card__name { color: var(--sqrt-text-accent); }
+.release-card--selected .release-card__desc  { color: var(--sqrt-text-primary); }
+
+/* State: disabled */
+.release-card--disabled {
+  background-color: var(--sqrt-bg-surface);
+  cursor: not-allowed;
+}
+.release-card--disabled .release-card__icon,
+.release-card--disabled .release-card__name,
+.release-card--disabled .release-card__desc  { color: var(--sqrt-text-disabled); }
+
+.release-card__icon { display: flex; }
+
+.release-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.release-card__name {
+  display: block;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.release-card__desc {
+  display: block;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.01em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .release-card { transition: none; }
+}
