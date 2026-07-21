@@ -1,12 +1,10 @@
 import { type Address } from "viem";
-import { base, mainnet, sepolia } from "wagmi/chains";
-import { anvil } from "@/components/RainbowKitRoot/RainbowKitRoot";
+import { base, baseSepolia,anvil} from "wagmi/chains";
 
 export type ChainId =
   | typeof anvil.id
   | typeof base.id
-  | typeof mainnet.id
-  | typeof sepolia.id;
+  | typeof baseSepolia.id;
 
 export interface ContractAddresses {
   factory: Address;
@@ -19,10 +17,7 @@ const addresses: Record<ChainId, ContractAddresses> = {
   [base.id]: {
     factory: "0x0000000000000000000000000000000000000000",
   },
-  [mainnet.id]: {
-    factory: "0x0000000000000000000000000000000000000000",
-  },
-  [sepolia.id]: {
+  [baseSepolia.id]: {
     factory: "0x0000000000000000000000000000000000000000",
   },
 };

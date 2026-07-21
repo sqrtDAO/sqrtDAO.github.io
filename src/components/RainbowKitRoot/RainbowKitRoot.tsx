@@ -4,19 +4,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
-import { base, mainnet, sepolia } from "wagmi/chains";
-import { defineChain } from "viem";
+import { anvil, base, mainnet, sepolia } from "wagmi/chains";
 import { useState, type ReactNode } from "react";
 import "@rainbow-me/rainbowkit/styles.css";
-
-export const anvil = /*#__PURE__*/ defineChain({
-  id: 31_337,
-  name: "Anvil",
-  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-  rpcUrls: {
-    default: { http: ["http://127.0.0.1:8545"] },
-  },
-});
 
 const config = getDefaultConfig({
   appName: "sqrtDAO",
