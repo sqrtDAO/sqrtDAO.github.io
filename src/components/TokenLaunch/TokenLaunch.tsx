@@ -9,21 +9,33 @@ import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
 import { IconButton } from "@/components/IconButton/IconButton";
 import { Button } from "@/components/Button/Button";
 import "./TokenLaunch.css";
+import { parseEther } from "viem";
 
-interface TokenLaunchProps {
-  onClose: () => void;
-  onDistribute: () => void;
-}
+export default function TokenLaunch(props: {
+  onCancel: () => void;
+  onFinish: (tokenDetails: TokenDetails) => void;
+}) {
+  const [name, setTokenName] = useState("");
+  const [symbol, setTokenSymbol] = useState("");
+  const [totalSupplyStr, setTotalSupplyStr] = useState("");
 
-export default function TokenLaunch({ onClose, onDistribute }: TokenLaunchProps) {
-  const [tokenName, setTokenName] = useState("");
-  const [tokenSymbol, setTokenSymbol] = useState("");
-  const [totalSupply, setTotalSupply] = useState("");
+  const onContinueClick = () => {
+    try {
+      if (name === "") throw "Empty name";
+      if (symbol === "") throw "Empty symbol";
+      if (totalSupplyStr === "") throw "Empty total supply";
+      const totalSupply = parseEther(totalSupplyStr);
+      props.onFinish({ name, symbol, totalSupply });
+    } catch (e) {
+      console.log(`validation error: ${e}`);
+      // TODO show validation error
+    }
+  };
 
   return (
     <div className="tl-backdrop">
       <div className="tl-chrome">
-        <Header onDistributeClick={onDistribute} />
+        <Header />
         <TestnetRibbon />
       </div>
       <div className="tl-scroll">
@@ -33,7 +45,7 @@ export default function TokenLaunch({ onClose, onDistribute }: TokenLaunchProps)
               variant="outline"
               size="m"
               icon={<IconChevronLeft size={24} strokeWidth={2} />}
-              onClick={onClose}
+              onClick={props.onCancel}
               aria-label="Go back"
             />
           </div>
@@ -42,17 +54,18 @@ export default function TokenLaunch({ onClose, onDistribute }: TokenLaunchProps)
             <div className="tl-text">
               <h2 className="tl-title">Launch token</h2>
               <p className="tl-subtitle">
-                Creating a new token is free and easy, but the actual fight is about its PRICE.
+                Creating a new token is free and easy, but the actual fight is
+                about its PRICE.
               </p>
             </div>
 
             <div className="tl-row">
-              <TokenAvatar seed={tokenSymbol || tokenName} />
+              <TokenAvatar seed={symbol} />
               <div className="tl-form">
                 <Input
                   label="Token Name"
                   placeholder="The full name, e.g. Dev Protocol."
-                  value={tokenName}
+                  value={name}
                   onChange={setTokenName}
                   spellCheck={false}
                   autoComplete="off"
@@ -60,7 +73,7 @@ export default function TokenLaunch({ onClose, onDistribute }: TokenLaunchProps)
                 <Input
                   label="Token symbol"
                   placeholder="The ticker, e.g. DEV."
-                  value={tokenSymbol}
+                  value={symbol}
                   onChange={(v) => setTokenSymbol(v.toUpperCase())}
                   spellCheck={false}
                   autoComplete="off"
@@ -68,8 +81,8 @@ export default function TokenLaunch({ onClose, onDistribute }: TokenLaunchProps)
                 <Input
                   label="Total supply"
                   placeholder="How many tokens to create?"
-                  value={totalSupply}
-                  onChange={(v) => setTotalSupply(v.replace(/[^0-9]/g, ""))}
+                  value={totalSupplyStr}
+                  onChange={(v) => setTotalSupplyStr(v.replace(/[^0-9]/g, ""))}
                   spellCheck={false}
                   autoComplete="off"
                 />
@@ -77,10 +90,10 @@ export default function TokenLaunch({ onClose, onDistribute }: TokenLaunchProps)
             </div>
 
             <div className="tl-footer">
-              <Button variant="outline" size="m" onClick={onClose}>
+              <Button variant="outline" size="m" onClick={props.onCancel}>
                 Cancel
               </Button>
-              <Button variant="primary" size="m" onClick={onDistribute}>
+              <Button variant="primary" size="m" onClick={onContinueClick}>
                 Continue
               </Button>
             </div>
@@ -90,3 +103,9 @@ export default function TokenLaunch({ onClose, onDistribute }: TokenLaunchProps)
     </div>
   );
 }
+
+export type TokenDetails = {
+  name: string;
+  symbol: string;
+  totalSupply: bigint;
+};
