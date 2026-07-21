@@ -20,8 +20,8 @@ export default function CTATablet({ onGetStarted }: { onGetStarted?: () => void 
         <p style={{ fontFamily: "var(--font-sans)", fontSize: "var(--font-size-h4)", lineHeight: "var(--font-line-height-h4)", color: "var(--sqrt-text-secondary)", margin: "24px 0 0" }}>You will set the token parameters.</p>
         <p style={{ fontFamily: "var(--font-sans)", fontSize: "var(--font-size-h4)", lineHeight: "var(--font-line-height-h4)", color: "var(--sqrt-text-secondary)", margin: "4px 0 0" }}>The protocol runs the rest.</p>
         <h2 className="headline" style={{ fontSize: "var(--font-size-display-m)", lineHeight: "var(--font-line-height-display-m)", letterSpacing: "var(--font-letter-spacing-display-m)", marginTop: 8 }}>Be in the first cohort.</h2>
-        <div style={{ display: "flex", gap: 16, marginTop: 32, flexWrap: "wrap" }}>
-          <Button variant="primary" leadingIcon={<IconBrandX />} onClick={() => window.open("https://x.com/DAOsqrt", "_blank", "noopener,noreferrer")}>Follow on X</Button>
+        <div style={{ display: "flex", gap: 16, marginTop: 32 }}>
+          <Button variant="primary" leadingIcon={<IconBrandX />} onClick={() => window.open("https://x.com/sqrtDAO", "_blank", "noopener,noreferrer")}>Follow on X</Button>
           <Button variant="secondary" leadingIcon={<IconBrandDiscord />} onClick={() => window.open("https://discord.gg/hsW64egPRJ", "_blank", "noopener,noreferrer")}>Join Discord</Button>
           {onGetStarted && (
             <Button variant="outline" onClick={onGetStarted}>Launch your token</Button>
