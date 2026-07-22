@@ -25,6 +25,7 @@ export default function TokenLaunch(props: {
       if (symbol === "") throw "Empty symbol";
       if (totalSupplyStr === "") throw "Empty total supply";
       const totalSupply = parseEther(totalSupplyStr);
+      if (totalSupply <= 0) throw "total supply Can't be less than zero";
       props.onFinish({ name, symbol, totalSupply });
     } catch (e) {
       console.log(`validation error: ${e}`);

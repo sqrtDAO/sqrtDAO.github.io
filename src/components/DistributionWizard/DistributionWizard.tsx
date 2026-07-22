@@ -23,22 +23,22 @@ import { Button } from "@/components/Button/Button";
 import Header from "@/components/Header/Header";
 import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
 import "./DistributionWizard.css";
+import { TokenDetails } from "../TokenLaunch/TokenLaunch";
+import { Address, formatEther } from "viem";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type DistStep = "welcome" | "supply" | "release" | "rules" | "review";
 
-const STEP_LABELS = ["Supply and backing", "Release strategy", "Rules", "Review"];
+const STEP_LABELS = [
+  "Supply and backing",
+  "Release strategy",
+  "Rules",
+  "Review",
+];
 const STEP_ORDER: DistStep[] = ["supply", "release", "rules", "review"];
 
 type ReleaseCurve = "flat" | "linear" | "exponential";
-
-export interface DistributionWizardProps {
-  onClose: () => void;
-  onConfirm: () => void;
-  tokenSymbol?: string;
-  tokenBalance?: number;
-}
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -46,11 +46,11 @@ function stepperIndex(step: DistStep): number {
   return STEP_ORDER.indexOf(step); // -1 for "welcome"
 }
 
-function formatNumber(n: number): string {
-  return n.toLocaleString("en-US");
-}
-
-function calcEpochs(start: string, end: string, durationMs: number): number | null {
+function calcEpochs(
+  start: string,
+  end: string,
+  durationMs: number,
+): number | null {
   if (!start || !end) return null;
   const diff = new Date(end).getTime() - new Date(start).getTime();
   if (diff <= 0) return null;
@@ -78,7 +78,11 @@ function formatDate(iso: string): string {
 }
 
 function formatDateLong(d: Date): string {
-  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 const BACKING_ASSETS = ["USDT", "BASE", "USDC", "ETH"];
@@ -91,24 +95,41 @@ const EPOCH_DURATION_MS: Record<string, number> = {
   "8 hrs": 8 * 60 * 60 * 1000,
   "1 day": 24 * 60 * 60 * 1000,
 };
-const PROTOCOL_FEE_PCT = 5;
+const PROTOCOL_FEE_PCT = 5; // TODO read it from contract
 const FOUNDER_SHARE_CAP = 25;
 
+export type DistributionDetails = {
+  supply: bigint;
+  participationToken: Address;
+  initialParticipationLiquidity: bigint;
+  initialDistributionLiquidity: bigint;
+  startTime: bigint;
+  endTime: bigint;
+  epochDuration: bigint;
+  numberOfEpochs: bigint;
+  releasePerEpoch: bigint;
+  minimumParticipation: bigint;
+  claimDelay: bigint;
+  founderShareBps: bigint; // can be 0%
+  founderShareReceiver: Address;
+};
 // ── Main component ──────────────────────────────────────────────────────────
 
-export default function DistributionWizard({
-  onClose,
-  onConfirm,
-  tokenSymbol = "TOKEN",
-  tokenBalance = 20_000_000,
-}: DistributionWizardProps) {
+export default function DistributionWizard(props: {
+  token: TokenDetails;
+  onCancel: () => void;
+  onFinish: (distributionDetails: DistributionDetails) => void;
+}) {
   // Navigation
   const [step, setStep] = useState<DistStep>("welcome");
 
   // Step 2 — Supply and backing
   const [supply, setSupply] = useState("");
   const [backingAssetIdx, setBackingAssetIdx] = useState(0);
-  const [initialLiquidity, setInitialLiquidity] = useState("");
+  const [initialParticipationLiquidity, setInitialParticipationLiquidity] =
+    useState("");
+  const [initialDistributionLiquidity, setInitialDistributionLiquidity] =
+    useState("");
 
   // Step 3 — Release strategy
   const [releaseCurve, setReleaseCurve] = useState<ReleaseCurve>("flat");
@@ -130,19 +151,24 @@ export default function DistributionWizard({
   const [founderSharePercent, setFounderSharePercent] = useState("");
   const [founderReceiverAddress, setFounderReceiverAddress] = useState("");
 
-  // Supply validation
-  const supplyNum = parseFloat(supply.replace(/,/g, "")) || 0;
-  const supplyExceedsBalance = supply !== "" && supplyNum > tokenBalance;
-
   // Initial price preview (Initial liquidity ÷ Supply)
-  const initialLiquidityNum = parseFloat(initialLiquidity.replace(/,/g, "")) || 0;
+  const totalSupplyF = parseFloat(formatEther(props.token.totalSupply));
+  const backingLiquidity = parseFloat(initialParticipationLiquidity);
+  const tokenLiquidity = parseFloat(initialDistributionLiquidity);
   const initialPrice =
-    supplyNum > 0 && initialLiquidityNum > 0 ? initialLiquidityNum / supplyNum : null;
+    tokenLiquidity > 0 && backingLiquidity > 0
+      ? backingLiquidity / tokenLiquidity
+      : null;
+
+  // Supply validation
+  const supplyNum = parseFloat(supply.replace(/,/g, ""));
+  const supplyExceedsBalance =
+    supply !== "" && supplyNum + tokenLiquidity > totalSupplyF;
 
   // Time-based: epoch count from date range ÷ epoch duration
   const epochsFromDates = useMemo(
     () => calcEpochs(startDate, endDate, EPOCH_DURATION_MS[epochDuration]),
-    [startDate, endDate, epochDuration]
+    [startDate, endDate, epochDuration],
   );
   // Time-based: release amount per epoch, derived from total supply ÷ epoch count
   const releasePerEpochFromDates = useMemo(() => {
@@ -150,15 +176,17 @@ export default function DistributionWizard({
     if (!supplyNum) return null;
     return supplyNum / epochsFromDates;
   }, [supplyNum, epochsFromDates]);
+
   // Epoch-based: computed end date from start + count
   const endDateFromEpochs = useMemo(
     () => calcEndDateFromEpochs(startDate, parseInt(epochCountInput)),
-    [startDate, epochCountInput]
+    [startDate, epochCountInput],
   );
 
   // Rules: founder share % + resulting split
   const founderPercentNum = parseFloat(founderSharePercent) || 0;
-  const founderExceedsCap = founderShareOn && founderPercentNum > FOUNDER_SHARE_CAP;
+  const founderExceedsCap =
+    founderShareOn && founderPercentNum > FOUNDER_SHARE_CAP;
   const founderSharePctClamped = founderShareOn
     ? Math.min(founderPercentNum, FOUNDER_SHARE_CAP)
     : 0;
@@ -166,7 +194,25 @@ export default function DistributionWizard({
 
   // ── Navigation helpers ───────────────────────────────────────────────────
 
+  const stepValidation = () => {
+    switch (step) {
+      case "supply":
+        if (supplyExceedsBalance) return false;
+        if (initialPrice === null) return false;
+        return true;
+      case "release":
+        return true;
+      case "rules":
+        return true;
+      case "review":
+        return true;
+      default:
+        return true;
+    }
+  };
+
   function goNext() {
+    if (!stepValidation()) return;
     const idx = STEP_ORDER.indexOf(step);
     if (idx < STEP_ORDER.length - 1) setStep(STEP_ORDER[idx + 1]);
   }
@@ -188,6 +234,11 @@ export default function DistributionWizard({
       .catch(() => {});
   }
 
+  const onConfirm = () => {
+    // TODO
+    // props.onFinish()
+  };
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   const showStepper = step !== "welcome";
@@ -201,14 +252,13 @@ export default function DistributionWizard({
       </div>
       <div className="dw-scroll">
         <div className="dw-panel">
-
           {/* Close button */}
           <div>
             <IconButton
               variant="outline"
               size="m"
               icon={<IconX size={24} strokeWidth={2} />}
-              onClick={onClose}
+              onClick={props.onCancel}
               aria-label="Close"
             />
           </div>
@@ -218,7 +268,6 @@ export default function DistributionWizard({
             className={`dw-content${showStepper ? " dw-content--stepped" : ""}`}
             key={step}
           >
-
             {/* ── STEP 1: Welcome ───────────────────────────────────────── */}
             {step === "welcome" && (
               <>
@@ -233,19 +282,25 @@ export default function DistributionWizard({
                     <strong>epochs</strong>, not all at once.
                   </p>
                   <p>
-                    In each <strong>epoch</strong>, people take part with funds. When it
-                    closes, that epoch&apos;s tokens are shared out proportionally, at one
-                    price for everyone.
+                    In each <strong>epoch</strong>, people take part with funds.
+                    When it closes, that epoch&apos;s tokens are shared out
+                    proportionally, at one price for everyone.
                   </p>
                   <p>
-                    As it runs, your token <span className="dw-accent">raises funds</span>,
-                    finds a <span className="dw-accent">fair price</span>, and builds{" "}
-                    <span className="dw-accent">locked liquidity</span>, all at once.
+                    As it runs, your token{" "}
+                    <span className="dw-accent">raises funds</span>, finds a{" "}
+                    <span className="dw-accent">fair price</span>, and builds{" "}
+                    <span className="dw-accent">locked liquidity</span>, all at
+                    once.
                   </p>
                 </div>
 
                 <div className="dw-footer">
-                  <Button variant="primary" size="l" onClick={() => setStep("supply")}>
+                  <Button
+                    variant="primary"
+                    size="l"
+                    onClick={() => setStep("supply")}
+                  >
                     Start distribution
                   </Button>
                 </div>
@@ -257,7 +312,9 @@ export default function DistributionWizard({
               <>
                 <div className="dw-text">
                   <h2 className="dw-title">Distribution</h2>
-                  {showStepper && <Stepper steps={STEP_LABELS} activeIndex={stepIdx} />}
+                  {showStepper && (
+                    <Stepper steps={STEP_LABELS} activeIndex={stepIdx} />
+                  )}
                   <p className="dw-step-desc">
                     Set how many of your Tokens go out across all epochs.
                   </p>
@@ -268,8 +325,12 @@ export default function DistributionWizard({
                   <div className="dw-rules-section">
                     <p className="dw-section-label">Supply set up</p>
                     <div className="dw-supply-group">
-                      <label className="dw-supply-label">Supply to distribute</label>
-                      <div className={`dw-supply-field${supplyExceedsBalance ? " is-error" : ""}`}>
+                      <label className="dw-supply-label">
+                        Supply to distribute
+                      </label>
+                      <div
+                        className={`dw-supply-field${supplyExceedsBalance ? " is-error" : ""}`}
+                      >
                         <input
                           className="dw-supply-el"
                           type="text"
@@ -282,7 +343,9 @@ export default function DistributionWizard({
                           spellCheck={false}
                           autoComplete="off"
                         />
-                        <span className="dw-supply-suffix">{tokenSymbol}</span>
+                        <span className="dw-supply-suffix">
+                          {props.token.symbol}
+                        </span>
                       </div>
                       {supplyExceedsBalance && (
                         <div className="dw-validation dw-validation--danger">
@@ -294,12 +357,16 @@ export default function DistributionWizard({
 
                     <div className="dw-wallet-row">
                       <div className="dw-balance">
-                        <span className="dw-balance-label">Wallet balance of the token</span>
+                        <span className="dw-balance-label">
+                          Wallet balance of the token
+                        </span>
                         <div className="dw-balance-line">
                           <span className="dw-balance-amount">
-                            {formatNumber(tokenBalance)}
+                            {formatEther(props.token.totalSupply)}
                           </span>
-                          <span className="dw-balance-unit">{tokenSymbol}</span>
+                          <span className="dw-balance-unit">
+                            {props.token.symbol}
+                          </span>
                         </div>
                       </div>
                       <div className="dw-halfmax">
@@ -307,7 +374,9 @@ export default function DistributionWizard({
                           variant="outline"
                           size="m"
                           onClick={() =>
-                            setSupply(formatNumber(Math.floor(tokenBalance / 2)))
+                            setSupply(
+                              formatEther(props.token.totalSupply / BigInt(2)),
+                            )
                           }
                         >
                           HALF
@@ -315,7 +384,9 @@ export default function DistributionWizard({
                         <Button
                           variant="outline"
                           size="m"
-                          onClick={() => setSupply(formatNumber(tokenBalance))}
+                          onClick={() =>
+                            setSupply(formatEther(props.token.totalSupply))
+                          }
                         >
                           MAX
                         </Button>
@@ -327,10 +398,19 @@ export default function DistributionWizard({
 
                   {/* Initial backing and liquidity */}
                   <div className="dw-rules-section">
-                    <p className="dw-section-label">Initial backing and liquidity</p>
-                    <p className="dw-step-desc" style={{ fontSize: 16, lineHeight: "22px", letterSpacing: "0.01em" }}>
-                      Participants take part in epochs with this asset. It pairs with your
-                      token in a Uniswap pool.
+                    <p className="dw-section-label">
+                      Initial backing and liquidity
+                    </p>
+                    <p
+                      className="dw-step-desc"
+                      style={{
+                        fontSize: 16,
+                        lineHeight: "22px",
+                        letterSpacing: "0.01em",
+                      }}
+                    >
+                      Participants take part in epochs with this asset. It pairs
+                      with your token in a Uniswap pool.
                     </p>
 
                     <div className="dw-pairing-row">
@@ -346,32 +426,43 @@ export default function DistributionWizard({
 
                     <div className="dw-backing-inputs">
                       <div className="dw-supply-group">
-                        <label className="dw-supply-label dw-supply-label--disabled">
+                        <label className="dw-supply-label">
                           Initial token supply
                         </label>
-                        <div className="dw-supply-field dw-supply-field--disabled">
+                        <div className="dw-supply-field">
                           <input
                             className="dw-supply-el"
                             type="text"
                             placeholder="first epoch release amount"
-                            value=""
-                            disabled
-                            readOnly
+                            value={initialDistributionLiquidity}
+                            onChange={(e) =>
+                              setInitialDistributionLiquidity(
+                                e.target.value.replace(/[^0-9,]/g, ""),
+                              )
+                            }
+                            spellCheck={false}
+                            autoComplete="off"
                           />
-                          <span className="dw-supply-suffix">{tokenSymbol}</span>
+                          <span className="dw-supply-suffix">
+                            {props.token.symbol}
+                          </span>
                         </div>
                       </div>
                       <div className="dw-supply-group">
-                        <label className="dw-supply-label">Initial liquidity</label>
+                        <label className="dw-supply-label">
+                          Initial liquidity
+                        </label>
                         <div className="dw-supply-field">
                           <input
                             className="dw-supply-el"
                             type="text"
                             inputMode="numeric"
                             placeholder="e.g. 10,000,000"
-                            value={initialLiquidity}
+                            value={initialParticipationLiquidity}
                             onChange={(e) =>
-                              setInitialLiquidity(e.target.value.replace(/[^0-9,]/g, ""))
+                              setInitialParticipationLiquidity(
+                                e.target.value.replace(/[^0-9,]/g, ""),
+                              )
                             }
                             spellCheck={false}
                             autoComplete="off"
@@ -384,11 +475,21 @@ export default function DistributionWizard({
                     </div>
 
                     <div className="dw-price-row">
-                      <span className="dw-price-label">Your token initial price will be</span>
+                      <span className="dw-price-label">
+                        Your token initial price will be:
+                      </span>
                       <span className="dw-price-value">
-                        1 <span className="dw-price-unit">{tokenSymbol}</span> ={" "}
-                        {initialPrice !== null ? formatAmount(initialPrice) : "X"}{" "}
-                        <span className="dw-price-unit">{BACKING_ASSETS[backingAssetIdx]}</span>
+                        1{" "}
+                        <span className="dw-price-unit">
+                          {props.token.symbol}
+                        </span>{" "}
+                        ={" "}
+                        {initialPrice !== null
+                          ? formatAmount(initialPrice)
+                          : "X"}{" "}
+                        <span className="dw-price-unit">
+                          {BACKING_ASSETS[backingAssetIdx]}
+                        </span>
                       </span>
                     </div>
 
@@ -417,7 +518,8 @@ export default function DistributionWizard({
                   <h2 className="dw-title">Distribution</h2>
                   <Stepper steps={STEP_LABELS} activeIndex={stepIdx} />
                   <p className="dw-step-desc">
-                    Set the distribution&apos;s timing and how supply releases across it.
+                    Set the distribution&apos;s timing and how supply releases
+                    across it.
                   </p>
                 </div>
 
@@ -447,7 +549,9 @@ export default function DistributionWizard({
                         </div>
                       </div>
                       <div className="dw-date-wrap">
-                        <label className="dw-date-label">Start time (UTC)</label>
+                        <label className="dw-date-label">
+                          Start time (UTC)
+                        </label>
                         <div className="dw-date-field">
                           <input
                             ref={startTimeRef}
@@ -549,7 +653,9 @@ export default function DistributionWizard({
                       ) : (
                         <div className="dw-date-row">
                           <div className="dw-date-wrap">
-                            <label className="dw-date-label">Number of epochs</label>
+                            <label className="dw-date-label">
+                              Number of epochs
+                            </label>
                             <div className="dw-supply-field">
                               <input
                                 className="dw-supply-el"
@@ -558,7 +664,9 @@ export default function DistributionWizard({
                                 placeholder="e.g. 54"
                                 value={epochCountInput}
                                 onChange={(e) =>
-                                  setEpochCountInput(e.target.value.replace(/[^0-9]/g, ""))
+                                  setEpochCountInput(
+                                    e.target.value.replace(/[^0-9]/g, ""),
+                                  )
                                 }
                                 spellCheck={false}
                                 autoComplete="off"
@@ -567,7 +675,9 @@ export default function DistributionWizard({
                             </div>
                           </div>
                           <div className="dw-date-wrap">
-                            <label className="dw-date-label">Release per epoch</label>
+                            <label className="dw-date-label">
+                              Release per epoch
+                            </label>
                             <div className="dw-supply-field">
                               <input
                                 className="dw-supply-el"
@@ -576,12 +686,16 @@ export default function DistributionWizard({
                                 placeholder="e.g. 100"
                                 value={releasePerEpoch}
                                 onChange={(e) =>
-                                  setReleasePerEpoch(e.target.value.replace(/[^0-9.,]/g, ""))
+                                  setReleasePerEpoch(
+                                    e.target.value.replace(/[^0-9.,]/g, ""),
+                                  )
                                 }
                                 spellCheck={false}
                                 autoComplete="off"
                               />
-                              <span className="dw-supply-suffix">{tokenSymbol}</span>
+                              <span className="dw-supply-suffix">
+                                {props.token.symbol}
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -590,12 +704,13 @@ export default function DistributionWizard({
                       {/* Release schedule summary */}
                       {releaseTypeIdx === 0 && epochsFromDates !== null && (
                         <p className="dw-release-summary">
-                          This creates <strong>{epochsFromDates} total epochs</strong>{" "}
+                          This creates{" "}
+                          <strong>{epochsFromDates} total epochs</strong>{" "}
                           Releasing{" "}
                           <strong>
                             {releasePerEpochFromDates !== null
-                              ? `${formatAmount(releasePerEpochFromDates)} ${tokenSymbol}`
-                              : `— ${tokenSymbol}`}
+                              ? `${formatAmount(releasePerEpochFromDates)} ${props.token.symbol}`
+                              : `— ${props.token.symbol}`}
                           </strong>{" "}
                           each.
                         </p>
@@ -604,12 +719,13 @@ export default function DistributionWizard({
                         <p className="dw-release-summary">
                           This creates{" "}
                           <strong>
-                            {parseInt(epochCountInput)} total epochs ({epochDuration} each).
+                            {parseInt(epochCountInput)} total epochs (
+                            {epochDuration} each).
                           </strong>{" "}
                           Ends{" "}
                           <strong>
-                            {formatDateLong(endDateFromEpochs)}{" "}
-                            ({parseInt(epochCountInput)} days later)
+                            {formatDateLong(endDateFromEpochs)} (
+                            {parseInt(epochCountInput)} days later)
                           </strong>
                         </p>
                       )}
@@ -634,7 +750,9 @@ export default function DistributionWizard({
                 <div className="dw-text">
                   <h2 className="dw-title">Distribution</h2>
                   <Stepper steps={STEP_LABELS} activeIndex={stepIdx} />
-                  <p className="dw-step-desc">Optional guardrails on participation.</p>
+                  <p className="dw-step-desc">
+                    Optional guardrails on participation.
+                  </p>
                 </div>
 
                 <div className="dw-form">
@@ -643,7 +761,9 @@ export default function DistributionWizard({
                     <p className="dw-section-label">Epoch setup</p>
                     <div className="dw-backing-inputs">
                       <div className="dw-supply-group">
-                        <label className="dw-supply-label">Minimum participation (Optional)</label>
+                        <label className="dw-supply-label">
+                          Minimum participation (Optional)
+                        </label>
                         <div className="dw-supply-field">
                           <input
                             className="dw-supply-el"
@@ -652,12 +772,16 @@ export default function DistributionWizard({
                             placeholder="e.g. 0.5"
                             value={minParticipation}
                             onChange={(e) =>
-                              setMinParticipation(e.target.value.replace(/[^0-9.]/g, ""))
+                              setMinParticipation(
+                                e.target.value.replace(/[^0-9.]/g, ""),
+                              )
                             }
                             spellCheck={false}
                             autoComplete="off"
                           />
-                          <span className="dw-supply-suffix">{tokenSymbol}</span>
+                          <span className="dw-supply-suffix">
+                            {props.token.symbol}
+                          </span>
                         </div>
                       </div>
                       <div className="dw-supply-group">
@@ -670,7 +794,9 @@ export default function DistributionWizard({
                             placeholder="e.g. 5"
                             value={claimDelay}
                             onChange={(e) =>
-                              setClaimDelay(e.target.value.replace(/[^0-9]/g, ""))
+                              setClaimDelay(
+                                e.target.value.replace(/[^0-9]/g, ""),
+                              )
                             }
                             spellCheck={false}
                             autoComplete="off"
@@ -686,9 +812,17 @@ export default function DistributionWizard({
                   {/* After-epoch rules */}
                   <div className="dw-rules-section">
                     <p className="dw-section-label">After-epoch rules</p>
-                    <p className="dw-step-desc" style={{ fontSize: 16, lineHeight: "22px", letterSpacing: "0.01em" }}>
-                      Choose how each epoch&apos;s collected funds are split when it closes.
-                      The split applies to every epoch and can&apos;t change after launch.
+                    <p
+                      className="dw-step-desc"
+                      style={{
+                        fontSize: 16,
+                        lineHeight: "22px",
+                        letterSpacing: "0.01em",
+                      }}
+                    >
+                      Choose how each epoch&apos;s collected funds are split
+                      when it closes. The split applies to every epoch and
+                      can&apos;t change after launch.
                     </p>
 
                     {/* Split chart */}
@@ -719,10 +853,13 @@ export default function DistributionWizard({
                     {/* Price anchor — always on */}
                     <div className="dw-setting-card">
                       <div className="dw-setting-card__text">
-                        <p className="dw-setting-card__title">Price anchor (Buy and burn)</p>
+                        <p className="dw-setting-card__title">
+                          Price anchor (Buy and burn)
+                        </p>
                         <p className="dw-setting-card__desc">
-                          The protocol buys your token from the pool and burns it, keeping
-                          the clear price aligned with the open market.
+                          The protocol buys your token from the pool and burns
+                          it, keeping the clear price aligned with the open
+                          market.
                         </p>
                       </div>
                     </div>
@@ -734,16 +871,22 @@ export default function DistributionWizard({
                       <div className="dw-setting-card__text">
                         <p className="dw-setting-card__title">Founder share</p>
                         <p className="dw-setting-card__desc">
-                          Sent to your address when the epoch closes. Capped at 25%.
+                          Sent to your address when the epoch closes. Capped at
+                          25%.
                         </p>
                       </div>
-                      <Switch on={founderShareOn} onChange={setFounderShareOn} />
+                      <Switch
+                        on={founderShareOn}
+                        onChange={setFounderShareOn}
+                      />
                     </div>
 
                     {founderShareOn && (
                       <div className="dw-backing-inputs">
                         <div className="dw-supply-group dw-share-pct-group">
-                          <div className={`dw-supply-field${founderExceedsCap ? " is-error" : ""}`}>
+                          <div
+                            className={`dw-supply-field${founderExceedsCap ? " is-error" : ""}`}
+                          >
                             <input
                               className="dw-supply-el"
                               type="text"
@@ -751,7 +894,9 @@ export default function DistributionWizard({
                               placeholder="Share percentage"
                               value={founderSharePercent}
                               onChange={(e) =>
-                                setFounderSharePercent(e.target.value.replace(/[^0-9.]/g, ""))
+                                setFounderSharePercent(
+                                  e.target.value.replace(/[^0-9.]/g, ""),
+                                )
                               }
                               spellCheck={false}
                               autoComplete="off"
@@ -801,7 +946,6 @@ export default function DistributionWizard({
                 </div>
 
                 <div className="dw-form">
-
                   {/* Supply */}
                   <div className="dw-review-section">
                     <div className="dw-review-header">
@@ -816,7 +960,11 @@ export default function DistributionWizard({
                     </div>
                     <DataRow
                       label="Total supply:"
-                      value={supply ? `${supply} ${tokenSymbol}` : `— ${tokenSymbol}`}
+                      value={
+                        supply
+                          ? `${supply} ${props.token.symbol}`
+                          : `— ${formatEther(props.token.totalSupply)}`
+                      }
                     />
                   </div>
 
@@ -836,18 +984,27 @@ export default function DistributionWizard({
                     </div>
                     <DataRow
                       label="Release curve:"
-                      value={releaseCurve.charAt(0).toUpperCase() + releaseCurve.slice(1)}
+                      value={
+                        releaseCurve.charAt(0).toUpperCase() +
+                        releaseCurve.slice(1)
+                      }
                     />
-                    <DataRow label="Release type:" value={RELEASE_TYPES[releaseTypeIdx]} />
-                    <DataRow label="Release starts at:" value={formatDate(startDate)} />
+                    <DataRow
+                      label="Release type:"
+                      value={RELEASE_TYPES[releaseTypeIdx]}
+                    />
+                    <DataRow
+                      label="Release starts at:"
+                      value={formatDate(startDate)}
+                    />
                     <DataRow
                       label="Release ends at:"
                       value={
                         releaseTypeIdx === 0
                           ? formatDate(endDate)
                           : endDateFromEpochs
-                          ? formatDate(endDateFromEpochs.toISOString())
-                          : "—"
+                            ? formatDate(endDateFromEpochs.toISOString())
+                            : "—"
                       }
                     />
                   </div>
@@ -866,12 +1023,15 @@ export default function DistributionWizard({
                         onClick={() => jumpTo("supply")}
                       />
                     </div>
-                    <DataRow label="Backing asset:" value={BACKING_ASSETS[backingAssetIdx]} />
+                    <DataRow
+                      label="Backing asset:"
+                      value={BACKING_ASSETS[backingAssetIdx]}
+                    />
                     <DataRow
                       label="Initial liquidity:"
                       value={
-                        initialLiquidity
-                          ? `${initialLiquidity} ${BACKING_ASSETS[backingAssetIdx]}`
+                        initialParticipationLiquidity
+                          ? `${initialParticipationLiquidity} ${BACKING_ASSETS[backingAssetIdx]}`
                           : "—"
                       }
                     />
@@ -879,7 +1039,7 @@ export default function DistributionWizard({
                       label="Initial price:"
                       value={
                         initialPrice !== null
-                          ? `1 ${tokenSymbol} = ${formatAmount(initialPrice)} ${BACKING_ASSETS[backingAssetIdx]}`
+                          ? `1 ${props.token.symbol} = ${formatAmount(initialPrice)} ${BACKING_ASSETS[backingAssetIdx]}`
                           : "—"
                       }
                     />
@@ -901,7 +1061,11 @@ export default function DistributionWizard({
                     </div>
                     <DataRow
                       label="Minimum participation:"
-                      value={minParticipation ? `${minParticipation} ${tokenSymbol}` : "None"}
+                      value={
+                        minParticipation
+                          ? `${minParticipation} ${props.token.symbol}`
+                          : "None"
+                      }
                     />
                     <DataRow
                       label="Claim delay:"
@@ -939,7 +1103,10 @@ export default function DistributionWizard({
                         onClick={() => jumpTo("supply")}
                       />
                     </div>
-                    <DataRow label="Tokenomics:" value="100% public distribution" />
+                    <DataRow
+                      label="Tokenomics:"
+                      value="100% public distribution"
+                    />
                     <DataRow label="Allowlist:" value="No one" />
                   </div>
 
@@ -950,9 +1117,11 @@ export default function DistributionWizard({
                     <div className="dw-review-header">
                       <span className="dw-review-title">Cost details</span>
                     </div>
-                    <DataRow label="Protocol fee:" value={`${PROTOCOL_FEE_PCT}%`} />
+                    <DataRow
+                      label="Protocol fee:"
+                      value={`${PROTOCOL_FEE_PCT}%`}
+                    />
                   </div>
-
                 </div>
 
                 <div className="dw-footer">
@@ -965,7 +1134,6 @@ export default function DistributionWizard({
                 </div>
               </>
             )}
-
           </div>
         </div>
       </div>
