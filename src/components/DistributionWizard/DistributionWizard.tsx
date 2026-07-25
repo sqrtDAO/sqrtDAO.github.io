@@ -24,7 +24,7 @@ import Header from "@/components/Header/Header";
 import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
 import "./DistributionWizard.css";
 import { TokenDetails } from "../TokenLaunch/TokenLaunch";
-import { Address, formatEther } from "viem";
+import { Address, formatEther, isAddress } from "viem";
 
 export type DistributionDetails = {
   supply: bigint;
@@ -72,8 +72,8 @@ export default function DistributionWizard(props: {
   const endRef = useRef<HTMLInputElement>(null);
 
   // Step 4 — Rules
-  const [minParticipation, setMinParticipation] = useState("");
-  const [claimDelay, setClaimDelay] = useState("");
+  const [minParticipation, setMinParticipation] = useState("0");
+  const [claimDelay, setClaimDelay] = useState("0");
   const [founderShareOn, setFounderShareOn] = useState(false);
   const [founderSharePercent, setFounderSharePercent] = useState("");
   const [founderReceiverAddress, setFounderReceiverAddress] = useState("");
@@ -153,6 +153,12 @@ export default function DistributionWizard(props: {
 
         return true;
       case "rules":
+        if (minParticipation === "") return false;
+        if (claimDelay === "") return false;
+        if (founderShareOn) {
+          if (!isAddress(founderReceiverAddress)) return false;
+          if (parseInt(founderSharePercent) > FOUNDER_SHARE_CAP) return false;
+        }
         return true;
       case "review":
         return true;
@@ -756,7 +762,7 @@ export default function DistributionWizard(props: {
                             autoComplete="off"
                           />
                           <span className="dw-supply-suffix">
-                            {props.token.symbol}
+                            {BACKING_ASSETS[backingAssetIdx]}
                           </span>
                         </div>
                       </div>
@@ -847,8 +853,8 @@ export default function DistributionWizard(props: {
                       <div className="dw-setting-card__text">
                         <p className="dw-setting-card__title">Founder share</p>
                         <p className="dw-setting-card__desc">
-                          Sent to your address when the epoch closes. Capped at
-                          25%.
+                          Sent to your address when the epoch closes. Capped at{" "}
+                          {FOUNDER_SHARE_CAP}%.
                         </p>
                       </div>
                       <Switch
@@ -1172,6 +1178,12 @@ const formatDateLong = (d: Date) => {
     year: "numeric",
   });
 };
+
+/// returns milliseconds
+function parseTime(timeStr: string) {
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  return (hours * 3600 + minutes * 60) * 1000;
+}
 
 const BACKING_ASSETS = ["USDT", "BASE", "USDC", "ETH"];
 const BACKING_ASSETS_DISABLED = [1, 2, 3];
