@@ -160,8 +160,6 @@ export default function DistributionWizard(props: {
           if (parseInt(founderSharePercent) > FOUNDER_SHARE_CAP) return false;
         }
         return true;
-      case "review":
-        return true;
       default:
         return true;
     }
@@ -1057,6 +1055,10 @@ export default function DistributionWizard(props: {
                       label="Price anchor:"
                       value={`${priceAnchorPct}%`}
                     />
+                    <DataRow
+                      label="Protocol fee:"
+                      value={`${PROTOCOL_FEE_PCT}%`}
+                    />
                     {founderShareOn && (
                       <>
                         <DataRow
@@ -1064,8 +1066,8 @@ export default function DistributionWizard(props: {
                           value={`${founderSharePctClamped}%`}
                         />
                         <DataRow
-                          label="Receiver address:"
-                          value={founderReceiverAddress || "—"}
+                          label="Founder receiver address:"
+                          value={formatAddress(founderReceiverAddress) || "—"}
                         />
                       </>
                     )}
@@ -1093,17 +1095,6 @@ export default function DistributionWizard(props: {
                   </div>
 
                   <Divider />
-
-                  {/* Cost details */}
-                  <div className="dw-review-section">
-                    <div className="dw-review-header">
-                      <span className="dw-review-title">Cost details</span>
-                    </div>
-                    <DataRow
-                      label="Protocol fee:"
-                      value={`${PROTOCOL_FEE_PCT}%`}
-                    />
-                  </div>
                 </div>
 
                 <div className="dw-footer">
@@ -1180,10 +1171,13 @@ const formatDateLong = (d: Date) => {
 };
 
 /// returns milliseconds
-function parseTime(timeStr: string) {
+const parseTime = (timeStr: string) => {
   const [hours, minutes] = timeStr.split(":").map(Number);
   return (hours * 3600 + minutes * 60) * 1000;
-}
+};
+
+const formatAddress = (address: string) =>
+  `${address.slice(0, 6)}...${address.slice(-4)}`;
 
 const BACKING_ASSETS = ["USDT", "BASE", "USDC", "ETH"];
 const BACKING_ASSETS_DISABLED = [1, 2, 3];
