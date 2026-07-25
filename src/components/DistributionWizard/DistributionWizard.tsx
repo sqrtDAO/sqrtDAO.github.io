@@ -131,14 +131,17 @@ export default function DistributionWizard(props: {
       case "release":
         // common
         if (startDate === "") return false;
+        if (startDate === "") return false;
         if (startTime === "") return false;
+
+        const _startDate = new Date(startDate).getTime();
+        if (Date.now() > _startDate + parseTime(startTime)) return false;
 
         if (releaseTypeIdx === 0) {
           // Time base
 
           if (endDate === "") return false;
-          if (new Date(endDate).getTime() <= new Date(startDate).getTime())
-            return false;
+          if (new Date(endDate).getTime() <= _startDate) return false;
         } else {
           // Epoch base
 
