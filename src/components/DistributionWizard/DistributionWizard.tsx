@@ -26,78 +26,6 @@ import "./DistributionWizard.css";
 import { TokenDetails } from "../TokenLaunch/TokenLaunch";
 import { Address, formatEther } from "viem";
 
-// ── Types ──────────────────────────────────────────────────────────────────
-
-type DistStep = "welcome" | "supply" | "release" | "rules" | "review";
-
-const STEP_LABELS = [
-  "Supply and backing",
-  "Release strategy",
-  "Rules",
-  "Review",
-];
-const STEP_ORDER: DistStep[] = ["supply", "release", "rules", "review"];
-
-type ReleaseCurve = "flat" | "linear" | "exponential";
-
-// ── Helpers ─────────────────────────────────────────────────────────────────
-
-function stepperIndex(step: DistStep): number {
-  return STEP_ORDER.indexOf(step); // -1 for "welcome"
-}
-
-function calcEpochs(
-  start: string,
-  end: string,
-  durationMs: number,
-): number | null {
-  if (!start || !end) return null;
-  const diff = new Date(end).getTime() - new Date(start).getTime();
-  if (diff <= 0) return null;
-  return Math.round(diff / durationMs);
-}
-
-function formatAmount(n: number): string {
-  return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
-}
-
-function calcEndDateFromEpochs(start: string, epochs: number): Date | null {
-  if (!start || isNaN(epochs) || epochs <= 0) return null;
-  const d = new Date(start);
-  d.setDate(d.getDate() + epochs);
-  return d;
-}
-
-function formatDate(iso: string): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function formatDateLong(d: Date): string {
-  return d.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-const BACKING_ASSETS = ["USDT", "BASE", "USDC", "ETH"];
-const BACKING_ASSETS_DISABLED = [1, 2, 3];
-const RELEASE_TYPES = ["Time-based", "Epoch-based"];
-const EPOCH_DURATION_OPTIONS = ["20 mins", "2 hrs", "8 hrs", "1 day"];
-const EPOCH_DURATION_MS: Record<string, number> = {
-  "20 mins": 20 * 60 * 1000,
-  "2 hrs": 2 * 60 * 60 * 1000,
-  "8 hrs": 8 * 60 * 60 * 1000,
-  "1 day": 24 * 60 * 60 * 1000,
-};
-const PROTOCOL_FEE_PCT = 5; // TODO read it from contract
-const FOUNDER_SHARE_CAP = 25;
-
 export type DistributionDetails = {
   supply: bigint;
   participationToken: Address;
@@ -113,7 +41,6 @@ export type DistributionDetails = {
   founderShareBps: bigint; // can be 0%
   founderShareReceiver: Address;
 };
-// ── Main component ──────────────────────────────────────────────────────────
 
 export default function DistributionWizard(props: {
   token: TokenDetails;
@@ -138,7 +65,7 @@ export default function DistributionWizard(props: {
   const [startTime, setStartTime] = useState("");
   const [endDate, setEndDate] = useState("");
   const [epochDuration, setEpochDuration] = useState(EPOCH_DURATION_OPTIONS[3]);
-  const [epochCountInput, setEpochCountInput] = useState("");
+  const [numberOfEpochs, setNumberOfEpochs] = useState("");
   const [releasePerEpoch, setReleasePerEpoch] = useState("");
   const startRef = useRef<HTMLInputElement>(null);
   const startTimeRef = useRef<HTMLInputElement>(null);
@@ -179,8 +106,8 @@ export default function DistributionWizard(props: {
 
   // Epoch-based: computed end date from start + count
   const endDateFromEpochs = useMemo(
-    () => calcEndDateFromEpochs(startDate, parseInt(epochCountInput)),
-    [startDate, epochCountInput],
+    () => calcEndDateFromEpochs(startDate, parseInt(numberOfEpochs)),
+    [startDate, numberOfEpochs],
   );
 
   // Rules: founder share % + resulting split
@@ -195,12 +122,32 @@ export default function DistributionWizard(props: {
   // ── Navigation helpers ───────────────────────────────────────────────────
 
   const stepValidation = () => {
+    // TODO show error
     switch (step) {
       case "supply":
         if (supplyExceedsBalance) return false;
         if (initialPrice === null) return false;
         return true;
       case "release":
+        // common
+        if (startDate === "") return false;
+        if (startTime === "") return false;
+
+        if (releaseTypeIdx === 0) {
+          // Time base
+
+          if (endDate === "") return false;
+          if (new Date(endDate).getTime() <= new Date(startDate).getTime())
+            return false;
+        } else {
+          // Epoch base
+
+          if (numberOfEpochs === "") return false;
+          if (releasePerEpoch === "") return false;
+          if (parseInt(numberOfEpochs) === 0) return false;
+          if (parseInt(releasePerEpoch) === 0) return false;
+        }
+
         return true;
       case "rules":
         return true;
@@ -651,52 +598,78 @@ export default function DistributionWizard(props: {
                           </div>
                         </div>
                       ) : (
-                        <div className="dw-date-row">
-                          <div className="dw-date-wrap">
-                            <label className="dw-date-label">
-                              Number of epochs
-                            </label>
-                            <div className="dw-supply-field">
-                              <input
-                                className="dw-supply-el"
-                                type="text"
-                                inputMode="numeric"
-                                placeholder="e.g. 54"
-                                value={epochCountInput}
-                                onChange={(e) =>
-                                  setEpochCountInput(
-                                    e.target.value.replace(/[^0-9]/g, ""),
-                                  )
-                                }
-                                spellCheck={false}
-                                autoComplete="off"
-                              />
-                              <span className="dw-supply-suffix">Epochs</span>
+                        <div>
+                          <div className="dw-date-row">
+                            <div className="dw-date-wrap">
+                              <label className="dw-date-label">
+                                Number of epochs
+                              </label>
+                              <div className="dw-supply-field">
+                                <input
+                                  className="dw-supply-el"
+                                  type="text"
+                                  inputMode="numeric"
+                                  placeholder="e.g. 54"
+                                  value={numberOfEpochs}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(
+                                      /[^0-9]/g,
+                                      "",
+                                    );
+                                    setNumberOfEpochs(value);
+                                    setReleasePerEpoch(
+                                      (
+                                        parseInt(supply) / parseInt(value)
+                                      ).toString(),
+                                    );
+                                  }}
+                                  spellCheck={false}
+                                  autoComplete="off"
+                                />
+                                <span className="dw-supply-suffix">Epochs</span>
+                              </div>
+                            </div>
+                            <div className="dw-date-wrap">
+                              <label className="dw-date-label">
+                                Release per epoch
+                              </label>
+                              <div className="dw-supply-field">
+                                <input
+                                  className="dw-supply-el"
+                                  type="text"
+                                  inputMode="numeric"
+                                  placeholder="e.g. 100"
+                                  value={releasePerEpoch}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(
+                                      /[^0-9.,]/g,
+                                      "",
+                                    );
+                                    setReleasePerEpoch(value);
+                                    setNumberOfEpochs(
+                                      (
+                                        parseInt(supply) / parseInt(value)
+                                      ).toString(),
+                                    );
+                                  }}
+                                  spellCheck={false}
+                                  autoComplete="off"
+                                />
+                                <span className="dw-supply-suffix">
+                                  {props.token.symbol}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                          <div className="dw-date-wrap">
-                            <label className="dw-date-label">
-                              Release per epoch
-                            </label>
-                            <div className="dw-supply-field">
-                              <input
-                                className="dw-supply-el"
-                                type="text"
-                                inputMode="numeric"
-                                placeholder="e.g. 100"
-                                value={releasePerEpoch}
-                                onChange={(e) =>
-                                  setReleasePerEpoch(
-                                    e.target.value.replace(/[^0-9.,]/g, ""),
-                                  )
-                                }
-                                spellCheck={false}
-                                autoComplete="off"
-                              />
-                              <span className="dw-supply-suffix">
-                                {props.token.symbol}
-                              </span>
-                            </div>
+                          <div className="dw-input-flex">
+                            <Input
+                              label="Epoch duration"
+                              placeholder="Select an option"
+                              value={epochDuration}
+                              onChange={setEpochDuration}
+                              dropdown
+                              options={EPOCH_DURATION_OPTIONS}
+                            />
                           </div>
                         </div>
                       )}
@@ -719,13 +692,13 @@ export default function DistributionWizard(props: {
                         <p className="dw-release-summary">
                           This creates{" "}
                           <strong>
-                            {parseInt(epochCountInput)} total epochs (
+                            {parseInt(numberOfEpochs)} total epochs (
                             {epochDuration} each).
                           </strong>{" "}
                           Ends{" "}
                           <strong>
                             {formatDateLong(endDateFromEpochs)} (
-                            {parseInt(epochCountInput)} days later)
+                            {parseInt(numberOfEpochs)} days later)
                           </strong>
                         </p>
                       )}
@@ -1140,3 +1113,72 @@ export default function DistributionWizard(props: {
     </div>
   );
 }
+
+// ── Types ──────────────────────────────────────────────────────────────────
+
+type DistStep = "welcome" | "supply" | "release" | "rules" | "review";
+
+const STEP_LABELS = [
+  "Supply and backing",
+  "Release strategy",
+  "Rules",
+  "Review",
+];
+const STEP_ORDER: DistStep[] = ["supply", "release", "rules", "review"];
+
+type ReleaseCurve = "flat" | "linear" | "exponential";
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+const stepperIndex = (step: DistStep) => STEP_ORDER.indexOf(step); // -1 for "welcome"
+
+const calcEpochs = (
+  start: string,
+  end: string,
+  durationMs: number,
+): number | null => {
+  if (!start || !end) return null;
+  const diff = new Date(end).getTime() - new Date(start).getTime();
+  if (diff <= 0) return null;
+  return Math.round(diff / durationMs);
+};
+
+const formatAmount = (n: number) =>
+  n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+
+const calcEndDateFromEpochs = (start: string, epochs: number): Date | null => {
+  if (!start || isNaN(epochs) || epochs <= 0) return null;
+  const d = new Date(start);
+  d.setDate(d.getDate() + epochs);
+  return d;
+};
+
+const formatDate = (iso: string) => {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
+const formatDateLong = (d: Date) => {
+  return d.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
+const BACKING_ASSETS = ["USDT", "BASE", "USDC", "ETH"];
+const BACKING_ASSETS_DISABLED = [1, 2, 3];
+const RELEASE_TYPES = ["Time-based", "Epoch-based"];
+const EPOCH_DURATION_OPTIONS = ["20 mins", "2 hrs", "8 hrs", "1 day"];
+const EPOCH_DURATION_MS: Record<string, number> = {
+  "20 mins": 20 * 60 * 1000,
+  "2 hrs": 2 * 60 * 60 * 1000,
+  "8 hrs": 8 * 60 * 60 * 1000,
+  "1 day": 24 * 60 * 60 * 1000,
+};
+const PROTOCOL_FEE_PCT = 5; // TODO read it from contract
+const FOUNDER_SHARE_CAP = 25;
