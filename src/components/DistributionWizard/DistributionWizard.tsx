@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   IconX,
   IconCalendar,
@@ -25,21 +25,24 @@ import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
 import "./DistributionWizard.css";
 import { TokenDetails } from "../TokenLaunch/TokenLaunch";
 import { Address, formatEther, isAddress } from "viem";
+import { getFactoryV1ContractReadonly } from "@/contracts/contracts";
+import { usePublicClient } from "wagmi";
 
 export type DistributionDetails = {
-  supply: bigint;
+  totalDistributionAmount: bigint;
   participationToken: Address;
   initialParticipationLiquidity: bigint;
   initialDistributionLiquidity: bigint;
-  startTime: bigint;
-  endTime: bigint;
-  epochDuration: bigint;
+  startTime: bigint; // in seconds
+  endTime: bigint; // in seconds
+  epochDuration: bigint; // in seconds
   numberOfEpochs: bigint;
   releasePerEpoch: bigint;
   minimumParticipation: bigint;
-  claimDelay: bigint;
+  claimDelay: bigint; // in seconds
   founderShareBps: bigint; // can be 0%
   founderShareReceiver: Address;
+  protocolFeeBps: bigint;
 };
 
 export default function DistributionWizard(props: {
@@ -49,6 +52,9 @@ export default function DistributionWizard(props: {
 }) {
   // Navigation
   const [step, setStep] = useState<DistStep>("welcome");
+
+  const publicClient = usePublicClient();
+  const [protocolFeePercent, setProtocolFeePercent] = useState<number>(0); // not bps
 
   // Step 2 — Supply and backing
   const [supply, setSupply] = useState("");
@@ -117,7 +123,16 @@ export default function DistributionWizard(props: {
   const founderSharePctClamped = founderShareOn
     ? Math.min(founderPercentNum, FOUNDER_SHARE_CAP)
     : 0;
-  const priceAnchorPct = 100 - PROTOCOL_FEE_PCT - founderSharePctClamped;
+  const priceAnchorPct = 100 - protocolFeePercent - founderSharePctClamped;
+
+  useEffect(() => {
+    if (!publicClient) return;
+    getFactoryV1ContractReadonly(publicClient)
+      .read.protocolFeeBps()
+      .then((fee) => {
+        setProtocolFeePercent(Number(fee) / 10000);
+      });
+  }, [publicClient]);
 
   // ── Navigation helpers ───────────────────────────────────────────────────
 
@@ -825,7 +840,7 @@ export default function DistributionWizard(props: {
                           {founderSharePctClamped}% Founder share
                         </span>
                         <span className="dw-chart-legend__item dw-chart-legend__item--fee">
-                          {PROTOCOL_FEE_PCT}% Protocol fee
+                          {protocolFeePercent}% Protocol fee
                         </span>
                       </div>
                     </div>
@@ -1057,7 +1072,7 @@ export default function DistributionWizard(props: {
                     />
                     <DataRow
                       label="Protocol fee:"
-                      value={`${PROTOCOL_FEE_PCT}%`}
+                      value={`${protocolFeePercent}%`}
                     />
                     {founderShareOn && (
                       <>
@@ -1189,5 +1204,4 @@ const EPOCH_DURATION_MS: Record<string, number> = {
   "8 hrs": 8 * 60 * 60 * 1000,
   "1 day": 24 * 60 * 60 * 1000,
 };
-const PROTOCOL_FEE_PCT = 5; // TODO read it from contract
 const FOUNDER_SHARE_CAP = 25;
