@@ -13,7 +13,7 @@ import { NOISE_SIZE } from "./noiseTexture";
  * texture instead of computing sin()-based hash per fragment.
  */
 
-export const VERTEX_SHADER = `attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}`;
+export const VERTEX_SHADER = `precision highp float;attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}`;
 
 const NOISE_GLSL = `
 uniform sampler2D u_noise;
@@ -75,7 +75,7 @@ uniform float u_intensity,u_grain,u_mesh,u_speed,u_hover;
 uniform vec3 u_colA,u_colB,u_colC;
 uniform sampler2D u_cloudTex;
 ${NOISE_GLSL}
-float hash(vec2 q){return fract(sin(dot(q,vec2(127.1,311.7)))*43758.5453);}
+float hash(vec2 q){ q=mod(q,256.0); return fract(sin(dot(q,vec2(127.1,311.7)))*43758.5453); }
 void main(){
 ${POINTER_WARP_GLSL}
   float prox=exp(-dist*dist*3.0);

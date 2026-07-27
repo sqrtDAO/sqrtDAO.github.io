@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import SmokeMeshBackground from "@/components/v1/SmokeMeshBackground/SmokeMeshBackground";
+import SmokeMeshBackground from "@/components/SmokeMeshBackground/SmokeMeshBackground";
 import "./page.css";
 
 const DEFAULTS = {
@@ -9,7 +9,7 @@ const DEFAULTS = {
   colorB: "#C4892A",
   colorC: "#E8E2F0",
   intensity: 0.85,
-  grain: 0.34,
+  grain: 0,
   mesh: 1.0,
   speed: 0.7,
   hover: 1.0,

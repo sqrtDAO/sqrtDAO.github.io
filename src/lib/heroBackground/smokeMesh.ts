@@ -24,7 +24,7 @@ export interface SmokeMeshBackground {
 const DEFAULTS: SmokeMeshOptions = {
   colors: ["#6B4F9E", "#C4892A", "#E8E2F0"],
   intensity: 0.85,
-  grain: 0.34,
+  grain: 0,
   mesh: 1.0,
   speed: 0.7,
   hover: 1.0,
@@ -39,8 +39,6 @@ const REDUCED_TIME = 5.0;
 // speed stays constant in wall-clock time regardless of the render cadence.
 const HOVER_TAU_MS = 230;
 const MOUSE_TAU_MS = 362;
-const THROTTLE_SAMPLE_FRAMES = 60;
-const THROTTLE_MS_PER_FRAME = 45;
 
 function hex2rgb(hex: string): [number, number, number] {
   let h = hex.replace("#", "");
@@ -87,13 +85,13 @@ function createRenderTargetTexture(gl: WebGLRenderingContext, width: number, hei
   return texture;
 }
 
-interface CreateOptions extends Partial<SmokeMeshOptions> {
-  /** Called once after the first frame has actually been drawn (for load crossfade). */
-  onFirstFrame?: () => void;
-}
-
-export function createSmokeMeshBackground(canvas: HTMLCanvasElement, opts: CreateOptions = {}): SmokeMeshBackground {
+export function createSmokeMeshBackground(
+  canvas: HTMLCanvasElement,
+  opts: Partial<SmokeMeshOptions> = {},
+): SmokeMeshBackground {
   const o: SmokeMeshOptions = { ...DEFAULTS, ...opts, colors: (opts.colors as [string, string, string]) ?? DEFAULTS.colors };
+  // No auto-throttle on dprCap: see DECISIONS.md "Adaptive DPR throttle removed" before
+  // re-adding one -- the previous version misfired on fast hardware.
   let dprCap = o.quality;
   let scale = o.scale;
   let [colA, colB, colC] = [hex2rgb(o.colors[0]), hex2rgb(o.colors[1] ?? o.colors[0]), hex2rgb(o.colors[2] ?? o.colors[1] ?? o.colors[0])];
@@ -254,11 +252,6 @@ export function createSmokeMeshBackground(canvas: HTMLCanvasElement, opts: Creat
   const start = performance.now();
   let lastTick = performance.now();
   let drawAccum = 0;
-  let firstFrameDrawn = false;
-  let throttled = false;
-  let throttleFrames = 0;
-  let throttleAccumMs = 0;
-  let lastDrawTime = performance.now();
 
   function drawPass(
     program: WebGLProgram,
@@ -315,11 +308,6 @@ export function createSmokeMeshBackground(canvas: HTMLCanvasElement, opts: Creat
     // is currently bound, which right after the cloud pass is still cloudFramebuffer, wiping the
     // texture pass 2 is about to sample. Don't reintroduce it without rebinding first.)
     drawPass(compositeProgram, attribComposite, null, canvas.width, canvas.height);
-
-    if (!firstFrameDrawn) {
-      firstFrameDrawn = true;
-      opts.onFirstFrame?.();
-    }
   }
 
   function tick(now: number) {
@@ -336,20 +324,6 @@ export function createSmokeMeshBackground(canvas: HTMLCanvasElement, opts: Creat
     drawAccum += dt;
     if (drawAccum >= FRAME_INTERVAL_MS) {
       drawAccum %= FRAME_INTERVAL_MS;
-
-      if (!throttled) {
-        throttleAccumMs += now - lastDrawTime;
-        throttleFrames++;
-        if (throttleFrames >= THROTTLE_SAMPLE_FRAMES) {
-          if (throttleAccumMs / throttleFrames > THROTTLE_MS_PER_FRAME && dprCap > 1.0) {
-            dprCap = 1.0;
-            resize();
-          }
-          throttled = true;
-        }
-      }
-      lastDrawTime = now;
-
       draw((now - start) / 1000);
     }
     raf = requestAnimationFrame(tick);
