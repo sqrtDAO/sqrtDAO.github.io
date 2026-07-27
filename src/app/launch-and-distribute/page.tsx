@@ -11,12 +11,17 @@ import {
   getFactoryV1Contract,
   getTokenV1Contract,
 } from "@/contracts/contracts";
-import { useWalletClient } from "wagmi";
-import { encodeFunctionData, encodePacked, zeroAddress } from "viem";
+import { useWalletClient, usePublicClient } from "wagmi";
+import {
+  decodeEventLog,
+  encodeFunctionData,
+  encodePacked,
+  zeroAddress,
+} from "viem";
 import { EMPTY_PERMIT2 } from "@/lib/utils/permit2";
 import { quickSqrtPriceX96 } from "@/lib/utils/sqrtPricex96";
 import { getAddresses } from "@/contracts/contract-addresses";
-import { transferToHookAbi } from "@/contracts/abis";
+import { factoryV1Abi, transferToHookAbi } from "@/contracts/abis";
 
 // Flow steps for the token wizard overlay
 type FlowStep = "launch" | "distribute";
@@ -26,6 +31,7 @@ export default function Page() {
   const [token, setToken] = useState<TokenDetails | null>(null);
 
   const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
 
   const onCancel = () => document.location.replace("/");
   const onDistributionConfirm = async (dd: DistributionDetails) => {
@@ -37,11 +43,6 @@ export default function Page() {
       dd.participationToken,
     );
     const addresses = getAddresses(walletClient!.chain.id);
-
-    await participationToken.write.approve(
-      [factory.address, dd.initialParticipationLiquidity],
-      { account: walletClient!.account, chain: walletClient!.chain },
-    );
 
     const _sqrtPriceX96 = quickSqrtPriceX96(
       Number(dd.initialParticipationLiquidity),
@@ -82,7 +83,17 @@ export default function Page() {
     const buyBackAndBurnShareBps =
       BigInt(10000) - (dd.founderShareBps + dd.protocolFeeBps);
 
-    factory.write.createTokenAndLiquidityAndDistribution(
+    const txHash = await participationToken.write.approve(
+      [factory.address, dd.initialParticipationLiquidity],
+      { account: walletClient!.account, chain: walletClient!.chain },
+    );
+
+    const approveReceipt = await publicClient!.waitForTransactionReceipt({
+      hash: txHash,
+    });
+    if (approveReceipt.status === "reverted") return; //TODO error
+
+    const hash = await factory.write.createTokenAndLiquidityAndDistribution(
       [
         token!.name,
         token!.symbol,
@@ -110,6 +121,26 @@ export default function Page() {
       ],
       { account: walletClient!.account, chain: walletClient!.chain },
     );
+
+    const receipt = await publicClient!.waitForTransactionReceipt({ hash });
+
+    if (receipt.status === "reverted") return; //TODO error
+
+    for (const log of receipt.logs) {
+      try {
+        const event = decodeEventLog({
+          abi: factoryV1Abi,
+          data: log.data,
+          topics: log.topics,
+        });
+        if (event.eventName === "NewDistributor") {
+          const distributor = (event.args as { distributor: `0x${string}` })
+            .distributor;
+          document.location.href = `/distribution/?address=${distributor}`;
+          return;
+        }
+      } catch {}
+    }
   };
 
   const onTokenFinish = (_token: TokenDetails) => {
