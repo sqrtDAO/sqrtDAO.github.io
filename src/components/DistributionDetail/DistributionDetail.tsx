@@ -159,7 +159,7 @@ function fmtEpochDate(timestamp: number, withTime: boolean): string {
 function buildEpochs(
   contractInfo: DistributorContractInfo,
   currentEpoch: bigint,
-  epochInfo: EpochInfo[] | undefined,
+  epochInfo: readonly EpochInfo[] | undefined,
   decimals: number,
 ): EpochData[] {
   const numberOfEpochs = Number(contractInfo.numberOfEpochs);
@@ -242,10 +242,10 @@ export default function DistributionDetail({
   const {
     contractInfo,
     currentEpoch,
-    epochInfo,
-    tokenName: onchainTokenName,
-    tokenSymbol: onchainTokenSymbol,
-    quoteSymbol: onchainQuoteSymbol,
+    epochsInfo,
+    tokenName,
+    tokenSymbol,
+    participationTokenSymbol,
     isLoading,
   } = useDistributorData(contractAddress as Address);
 
@@ -281,14 +281,11 @@ export default function DistributionDetail({
     if (isLoading) return;
 
     if (contractInfo && currentEpoch !== undefined) {
-      const built = buildEpochs(contractInfo, currentEpoch, epochInfo, 18);
+      const built = buildEpochs(contractInfo, currentEpoch, epochsInfo, 18);
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setEpochs(built);
     }
-  }, [isLoading, contractInfo, currentEpoch, epochInfo]);
-
-  const tokenName = onchainTokenName ?? "N/A";
-  const tokenSymbol = onchainTokenSymbol ?? "N/A";
+  }, [isLoading, contractInfo, currentEpoch, epochsInfo]);
 
   const [endTimestampMs, setEndTimestampMs] = useState(0);
   useEffect(() => {
@@ -387,7 +384,7 @@ export default function DistributionDetail({
                 <div className="ddp-claim-card__amount">
                   <span>{fmtInt(claimableAmount)}</span>
                   <span className="ddp-claim-card__unit">
-                    {onchainQuoteSymbol}
+                    {participationTokenSymbol}
                   </span>
                 </div>
                 <Button
@@ -425,7 +422,7 @@ export default function DistributionDetail({
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
               />
-              <span>{onchainQuoteSymbol}</span>
+              <span>{participationTokenSymbol}</span>
             </div>
           </div>
           <div className="ddp-participation__row">
@@ -597,7 +594,7 @@ export default function DistributionDetail({
                         {fmtInt(stats.totalParticipation)}
                       </span>
                       <span className="ddp-stat__unit">
-                        {onchainQuoteSymbol}
+                        {participationTokenSymbol}
                       </span>
                     </div>
                   </div>
@@ -661,7 +658,7 @@ export default function DistributionDetail({
                   </div>
                   <EpochBlockChart
                     epochs={epochs}
-                    quoteSymbol={onchainQuoteSymbol}
+                    quoteSymbol={participationTokenSymbol}
                     tokenSymbol={tokenSymbol}
                   />
                   <div className="ddp-block-card__legend">
@@ -721,7 +718,7 @@ export default function DistributionDetail({
                           {displayClearPrice?.toFixed(4) ?? "—"}
                         </strong>
                         <span className="ddp-epoch-card__unit">
-                          {onchainQuoteSymbol}
+                          {participationTokenSymbol}
                         </span>
                       </div>
                     </div>
@@ -732,7 +729,7 @@ export default function DistributionDetail({
                           {fmtInt(displayParticipation)}
                         </strong>
                         <span className="ddp-epoch-card__unit">
-                          {onchainQuoteSymbol}
+                          {participationTokenSymbol}
                         </span>
                         <span className="ddp-epoch-card__by">by</span>
                         <strong className={isHovering ? "is-accent" : ""}>
@@ -749,7 +746,7 @@ export default function DistributionDetail({
                   <div className="ddp-epoch-card__chart">
                     <EpochComboChart
                       epochs={epochs}
-                      quoteSymbol={onchainQuoteSymbol}
+                      quoteSymbol={participationTokenSymbol}
                       tokenSymbol={tokenSymbol}
                       onHoverEpoch={setHoveredEpoch}
                     />

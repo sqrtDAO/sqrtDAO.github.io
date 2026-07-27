@@ -1,10 +1,12 @@
-import { type Address, zeroAddress } from "viem";
+import { type Address } from "viem";
 import {
-  useReadDistributorV1GetContractInfo,
-  useReadDistributorV1GetEpochInfo,
-  useReadDistributorV1CurrentEpoch,
-} from "@/contracts/abis";
-import { useReadTokenV1Name, useReadTokenV1Symbol } from "@/contracts/abis";
+  getDistributorV1Contract,
+  getTokenV1Contract,
+} from "@/contracts/contracts";
+import { Client } from "viem/tempo";
+import { useEffect, useState } from "react";
+import { usePublicClient, useWalletClient } from "wagmi";
+import { wallet } from "viem/tempo/actions";
 
 export type DistributorContractInfo = {
   distributionToken: Address;
@@ -17,7 +19,13 @@ export type DistributorContractInfo = {
   numberOfEpochs: bigint;
   totalDistributionAmount: bigint;
   creator: Address;
-  shares: readonly { readonly shareBps: bigint; readonly hook: { readonly contractAddress: Address; readonly callData: `0x${string}` } }[];
+  shares: readonly {
+    readonly shareBps: bigint;
+    readonly hook: {
+      readonly contractAddress: Address;
+      readonly callData: `0x${string}`;
+    };
+  }[];
   totalUniqueParticipants: bigint;
 };
 
@@ -29,57 +37,80 @@ export type EpochInfo = {
   rewardAmount: bigint;
 };
 
-export function useDistributorData(contractAddress?: Address) {
-  const enabled = !!contractAddress;
+export function useDistributorData(contractAddress: Address) {
+  const { data: walletClient } = useWalletClient();
 
-  const { data: contractInfo, isLoading: infoLoading, error: infoError } =
-    useReadDistributorV1GetContractInfo({
-      address: contractAddress,
-      query: { enabled },
-    });
+  const [contractInfo, setContractInfo] = useState<
+    DistributorContractInfo | undefined
+  >(undefined);
+  const [currentEpoch, setCurrentEpoch] = useState<number | undefined>(
+    undefined,
+  );
 
-  const { data: currentEpoch, isLoading: epochLoading } =
-    useReadDistributorV1CurrentEpoch({
-      address: contractAddress,
-      query: { enabled },
-    });
+  const [tokenName, setTokenName] = useState<string | undefined>(undefined);
+  const [tokenSymbol, setTokenSymbol] = useState<string | undefined>(undefined);
+  const [participationTokenSymbol, setParticipationTokenSymbol] = useState<
+    string | undefined
+  >(undefined);
 
-  const numberOfEpochs = (contractInfo as DistributorContractInfo | undefined)?.numberOfEpochs;
+  const [epochs, setEpochs] = useState<readonly EpochInfo[] | undefined>(
+    undefined,
+  );
 
-  const { data: epochInfo, isLoading: epochsLoading } =
-    useReadDistributorV1GetEpochInfo({
-      address: contractAddress,
-      args: [zeroAddress, { from: BigInt(0), length: numberOfEpochs ?? BigInt(0) }],
-      query: { enabled: enabled && !!numberOfEpochs && numberOfEpochs > BigInt(0) },
-    });
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | undefined>(undefined);
 
-  const distributionToken = (contractInfo as DistributorContractInfo | undefined)?.distributionToken;
+  useEffect(() => {
+    (async () => {
+      if (!walletClient) return;
+      setIsLoading(true);
+      try {
+        const distributor = getDistributorV1Contract(
+          walletClient,
+          contractAddress,
+        );
+        const info = await distributor.read.getContractInfo();
+        setContractInfo(info);
+        const currentEpoch =
+          (Date.now() / 1000 - Number(info.startingTimestamp)) /
+          Number(info.epochDuration);
+        setCurrentEpoch(currentEpoch);
 
-  const { data: tokenName } = useReadTokenV1Name({
-    address: distributionToken,
-    query: { enabled: !!distributionToken },
-  });
+        const token = getTokenV1Contract(walletClient, info.distributionToken);
+        setTokenName(await token.read.name());
+        setTokenSymbol(await token.read.symbol());
 
-  const { data: tokenSymbol } = useReadTokenV1Symbol({
-    address: distributionToken,
-    query: { enabled: !!distributionToken },
-  });
+        const pToken = getTokenV1Contract(
+          walletClient,
+          info.participationToken,
+        );
+        setParticipationTokenSymbol(await pToken.read.symbol());
 
-  const participationToken = (contractInfo as DistributorContractInfo | undefined)?.participationToken;
-
-  const { data: quoteSymbol } = useReadTokenV1Symbol({
-    address: participationToken,
-    query: { enabled: !!participationToken },
-  });
+        setEpochs(
+          await distributor.read.getEpochInfo([
+            walletClient.account.address,
+            {
+              from: BigInt(currentEpoch < 100 ? 0 : currentEpoch - 100),
+              length: BigInt(currentEpoch + 100),
+            },
+          ]),
+        );
+      } catch (e) {
+        setError("Error while loading on-chain data");
+        console.error(e);
+      }
+      setIsLoading(false);
+    })();
+  }, [contractAddress, walletClient]);
 
   return {
     contractInfo: contractInfo as DistributorContractInfo | undefined,
     currentEpoch: currentEpoch as bigint | undefined,
-    epochInfo: epochInfo as EpochInfo[] | undefined,
+    epochsInfo: epochs,
     tokenName,
     tokenSymbol,
-    quoteSymbol,
-    isLoading: infoLoading || epochLoading || epochsLoading,
-    error: infoError,
+    participationTokenSymbol,
+    isLoading,
+    error,
   };
 }
