@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import HeroBackground from "@/components/HeroBackground/HeroBackground";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 import HeroDesktop from "@/views/Hero/HeroDesktop";
@@ -13,20 +13,16 @@ import View2BMobile from "@/views/View2/View2BMobile";
 import CTADesktop from "@/views/CTA/CTADesktop";
 import CTATablet from "@/views/CTA/CTATablet";
 import CTAMobile from "@/views/CTA/CTAMobile";
-import TokenLaunch from "@/components/TokenLaunch/TokenLaunch";
-import DistributionWizard from "@/components/DistributionWizard/DistributionWizard";
 import "./landing.css";
-
-// Flow steps for the token wizard overlay
-type FlowStep = "none" | "launch" | "distribute";
 
 export default function Page() {
   const bp = useBreakpoint();
-  const [flow, setFlow] = useState<FlowStep>("none");
 
   useEffect(() => {
     const onTilt = (e: PointerEvent) => {
-      const card = (e.target as HTMLElement).closest(".card") as HTMLElement | null;
+      const card = (e.target as HTMLElement).closest(
+        ".card",
+      ) as HTMLElement | null;
       if (!card) return;
       const r = card.getBoundingClientRect();
       const px = (e.clientX - r.left) / r.width - 0.5;
@@ -34,7 +30,9 @@ export default function Page() {
       card.style.transform = `rotateY(${(px * 8).toFixed(2)}deg) rotateX(${(-py * 8).toFixed(2)}deg)`;
     };
     const onOut = (e: PointerEvent) => {
-      const card = (e.target as HTMLElement).closest(".card") as HTMLElement | null;
+      const card = (e.target as HTMLElement).closest(
+        ".card",
+      ) as HTMLElement | null;
       if (card) card.style.transform = "";
     };
     document.addEventListener("pointermove", onTilt);
@@ -45,11 +43,13 @@ export default function Page() {
     };
   }, []);
 
+  const onGetStarted = () =>
+    document.location.replace("/launch-and-distribute");
+
   return (
     <>
       <HeroBackground />
       <main className="landing">
-
         <section className="view">
           {bp === "desktop" && <HeroDesktop />}
           {bp === "tablet" && <HeroTablet />}
@@ -69,27 +69,11 @@ export default function Page() {
         )}
 
         <section className="view">
-          {bp === "desktop" && <CTADesktop onGetStarted={() => setFlow("launch")} />}
-          {bp === "tablet" && <CTATablet onGetStarted={() => setFlow("launch")} />}
-          {bp === "mobile" && <CTAMobile onGetStarted={() => setFlow("launch")} />}
+          {bp === "desktop" && <CTADesktop onGetStarted={onGetStarted} />}
+          {bp === "tablet" && <CTATablet onGetStarted={onGetStarted} />}
+          {bp === "mobile" && <CTAMobile onGetStarted={onGetStarted} />}
         </section>
-
       </main>
-
-      {/* Token wizard overlay */}
-      {flow === "launch" && (
-        <TokenLaunch
-          onClose={() => setFlow("none")}
-          onDistribute={() => setFlow("distribute")}
-        />
-      )}
-
-      {flow === "distribute" && (
-        <DistributionWizard
-          onClose={() => setFlow("none")}
-          onConfirm={() => setFlow("none")}
-        />
-      )}
     </>
   );
 }

@@ -2,9 +2,9 @@
 
 ## Our setup
 
-- pnpm  (don't use npm)
+- pnpm (don't use npm)
 - typescript (strict mode)
-- Next.js  (use App Router for all routing)
+- Next.js (use App Router for all routing)
 - tailwind (don't write inline styles and css)
 - wagmi and viem for contract interaction
 
@@ -25,6 +25,7 @@
 
 - Create small, focused functions/components that do one thing well.
 - We don't like classes, just simply use functions.
+- don't use `interface`, use `type`
 - Use composition over inheritance.
 - Extract reusable logic into custom hooks `src/hooks/use*.ts`
 - Extract reusable UI into components `src/components/*.tsx`
@@ -38,6 +39,7 @@
 - After you finished the task, run linting and formatting before submitting changes. `pnpm lint --fix` and `pnpm format`
 
 ### Branches
+
 - `main` don't touch it!
 - `dev` don't commit on it, but always get this branch updates before you start something
 - `feat/<something>` this is our naming convention for feature branch
