@@ -50,7 +50,7 @@ export default function HeroBackground() {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     let mouse = [0.5, 0.5];
-    let tm = [0.5, 0.5];
+    const tm = [0.5, 0.5];
 
     const onMouseMove = (e: MouseEvent) => {
       mouse = [e.clientX / window.innerWidth, e.clientY / window.innerHeight];

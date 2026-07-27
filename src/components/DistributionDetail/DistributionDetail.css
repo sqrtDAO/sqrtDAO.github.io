@@ -999,3 +999,8 @@
     padding: 0 8px;
   }
 }
+
+.ddp-loading {
+  animation: ddp-claim-spin 0.9s linear infinite;
+  color: var(--sqrt-text-secondary);
+}

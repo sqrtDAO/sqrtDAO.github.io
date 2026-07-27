@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import {
   IconLoader2,
@@ -10,6 +10,8 @@ import {
   IconShare,
   IconSquareRoundedCheckFilled,
 } from "@tabler/icons-react";
+import { type Address, formatUnits } from "viem";
+import { useChainId } from "wagmi";
 import Header from "@/components/Header/Header";
 import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
 import TokenAvatar from "@/components/TokenAvatar/TokenAvatar";
@@ -19,23 +21,22 @@ import { Button } from "@/components/Button/Button";
 import { IconButton } from "@/components/IconButton/IconButton";
 import EpochBlockChart from "@/components/EpochBlockChart/EpochBlockChart";
 import FaqCard from "@/components/FaqCard/FaqCard";
-import { generateMockEpochs } from "@/lib/charts/mockData";
+import { useDistributorData } from "@/hooks/useDistributorData";
+import type {
+  DistributorContractInfo,
+  EpochInfo,
+} from "@/hooks/useDistributorData";
 import type { EpochData } from "@/lib/charts/types";
-// Reuses .dw-chart-bar / .dw-chart-legend as-is for the epoch fund split —
-// same visual language as the Distribution Wizard's split chart.
 import "@/components/DistributionWizard/DistributionWizard.css";
 import "./DistributionDetail.css";
+import { getAddresses } from "@/contracts/contract-addresses";
 
-const EpochComboChart = dynamic(() => import("@/components/EpochComboChart/EpochComboChart"), {
-  ssr: false,
-});
-
-const SUPPLY_PER_EPOCH = 122;
-const TOKEN_SYMBOL = "TOKEN";
-const QUOTE_SYMBOL = "USDT";
-const PRICE_ANCHOR_PCT = 95;
-const FOUNDER_SHARE_PCT = 0;
-const PROTOCOL_FEE_PCT = 5;
+const EpochComboChart = dynamic(
+  () => import("@/components/EpochComboChart/EpochComboChart"),
+  {
+    ssr: false,
+  },
+);
 
 const FAQ_ITEMS = [
   {
@@ -65,21 +66,22 @@ const FAQ_ITEMS = [
 ];
 
 const BLOCK_LEGEND = [
-  { swatch: "var(--color-charts-epochs-500)", label: "Participated (more vol → darker)" },
+  {
+    swatch: "var(--color-charts-epochs-500)",
+    label: "Participated (more vol → darker)",
+  },
   { swatch: "var(--sqrt-action-primary-rest)", label: "Current" },
   { swatch: "var(--color-alpha-steel-08)", label: "No participation" },
 ];
 
-function useCountdown(msFromNow: number) {
-  const [remaining, setRemaining] = useState(msFromNow);
+function useCountdown(endTimestamp: number) {
+  const [remaining, setRemaining] = useState(0);
   useEffect(() => {
-    const end = Date.now() + msFromNow;
-    const tick = () => setRemaining(Math.max(0, end - Date.now()));
+    const tick = () => setRemaining(Math.max(0, endTimestamp - Date.now()));
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [endTimestamp]);
   const totalSeconds = Math.floor(remaining / 1000);
   return {
     days: Math.floor(totalSeconds / 86400),
@@ -112,17 +114,32 @@ function InlineStat({
       {value}
     </span>
   );
-  return <div className="ddp-inline-stat">{valueFirst ? [valueEl, labelEl] : [labelEl, valueEl]}</div>;
+  return (
+    <div className="ddp-inline-stat">
+      {valueFirst ? [valueEl, labelEl] : [labelEl, valueEl]}
+    </div>
+  );
 }
 
 function estimateParticipants(volume: number): number {
   return volume > 0 ? Math.max(1, Math.round(volume / 870)) : 0;
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
-// Figma spells epoch dates day-first ("12 May, 12:32:45" / "10 May, 2026"),
-// which toLocaleString("en-US") won't produce (it reorders to month-first).
 function fmtEpochDate(timestamp: number, withTime: boolean): string {
   const d = new Date(timestamp);
   const day = d.getDate();
@@ -139,26 +156,156 @@ function fmtEpochDate(timestamp: number, withTime: boolean): string {
   return `${day} ${month}, ${d.getFullYear()}`;
 }
 
-export default function DistributionDetail() {
-  // Generated client-only: Math.random() inside would otherwise differ
-  // between the server render and the client's first render and trigger a
-  // hydration mismatch. Starts empty; populates once mounted.
+function buildEpochs(
+  contractInfo: DistributorContractInfo,
+  currentEpoch: bigint,
+  epochInfo: readonly EpochInfo[] | undefined,
+  decimals: number,
+): EpochData[] {
+  const numberOfEpochs = Number(contractInfo.numberOfEpochs);
+  const epochDurationSec = Number(contractInfo.epochDuration);
+  const startingTimestampSec = Number(contractInfo.startingTimestamp);
+  const totalDistribution = Number(
+    formatUnits(contractInfo.totalDistributionAmount, decimals),
+  );
+  const supplyPerEpoch =
+    numberOfEpochs > 0 ? totalDistribution / numberOfEpochs : 0;
+  const currentIdx = Number(currentEpoch);
+
+  const epochs: EpochData[] = [];
+  for (let i = 0; i < numberOfEpochs; i++) {
+    const state: "passed" | "current" | "future" =
+      i < currentIdx ? "passed" : i === currentIdx ? "current" : "future";
+    const timestamp = (startingTimestampSec + i * epochDurationSec) * 1000;
+    const info = epochInfo?.[i];
+    const participationVolume = info
+      ? Number(formatUnits(info.totalParticipationAmount, decimals))
+      : 0;
+    const rewardAmount = info
+      ? Number(formatUnits(info.rewardAmount, decimals))
+      : 0;
+    const supply = rewardAmount > 0 ? rewardAmount : supplyPerEpoch;
+    const clearPrice =
+      state === "passed" && participationVolume > 0 && rewardAmount > 0
+        ? rewardAmount / participationVolume
+        : null;
+
+    epochs.push({
+      epoch: i + 1,
+      state,
+      participationVolume,
+      clearPrice,
+      supply,
+      participated: false,
+      timestamp,
+    });
+  }
+  return epochs;
+}
+
+function computeShares(
+  contractInfo: DistributorContractInfo,
+  chainId: number,
+): { priceAnchorPct: number; founderSharePct: number; protocolFeePct: number } {
+  const shares = contractInfo.shares;
+  const addresses = getAddresses(chainId);
+
+  // detects price anchor hook from contract address
+  const priceAnchor = shares.find(
+    (e) => e.hook.contractAddress === addresses.buyAndBurnHook,
+  );
+  const priceAnchorPct = Math.round(
+    priceAnchor ? Number(priceAnchor.shareBps) / 100 : 0,
+  );
+
+  // protocol fee is always last one because factory contract injects it
+  const protocolFeePct =
+    Math.round(Number(shares[shares.length - 1].shareBps)) / 100;
+
+  // contract checks if bps s sum up to 100% so we can do this
+  const founderSharePct = 100 - (protocolFeePct + priceAnchorPct);
+
+  return {
+    priceAnchorPct,
+    founderSharePct,
+    protocolFeePct,
+  };
+}
+
+export default function DistributionDetail({
+  contractAddress,
+}: {
+  contractAddress: string;
+}) {
+  const chainId = useChainId();
+
+  const {
+    contractInfo,
+    currentEpoch,
+    epochsInfo,
+    tokenName,
+    tokenSymbol,
+    participationTokenSymbol,
+    isLoading,
+  } = useDistributorData(contractAddress as Address);
+
   const [epochs, setEpochs] = useState<EpochData[]>([]);
-  useEffect(() => {
-    // Intentional one-time client-only sync, not a cascading-render antipattern:
-    // Math.random()-based mock data must never run during SSR.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setEpochs(generateMockEpochs());
-  }, []);
   const [activeFaq, setActiveFaq] = useState(0);
   const [amount, setAmount] = useState("");
   const [epochCount, setEpochCount] = useState(1);
   const [hoveredEpoch, setHoveredEpoch] = useState<EpochData | null>(null);
   const [walletConnected, setWalletConnected] = useState(false);
-  const [claimState, setClaimState] = useState<"idle" | "claiming" | "done">("idle");
+  const [claimState, setClaimState] = useState<"idle" | "claiming" | "done">(
+    "idle",
+  );
   const [dialogueOpen, setDialogueOpen] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+  const shareTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const countdown = useCountdown(12 * 86400_000 + 2 * 3600_000 + 42 * 60_000 + 21_000);
+  const handleShare = useCallback(() => {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      setShareCopied(true);
+      if (shareTimeoutRef.current) clearTimeout(shareTimeoutRef.current);
+      shareTimeoutRef.current = setTimeout(() => setShareCopied(false), 1500);
+    });
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (shareTimeoutRef.current) clearTimeout(shareTimeoutRef.current);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    if (contractInfo && currentEpoch !== undefined) {
+      const built = buildEpochs(contractInfo, currentEpoch, epochsInfo, 18);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setEpochs(built);
+    }
+  }, [isLoading, contractInfo, currentEpoch, epochsInfo]);
+
+  const [endTimestampMs, setEndTimestampMs] = useState(0);
+  useEffect(() => {
+    if (!contractInfo) return;
+    const endSec =
+      Number(contractInfo.startingTimestamp) +
+      Number(contractInfo.numberOfEpochs) * Number(contractInfo.epochDuration);
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setEndTimestampMs(endSec * 1000);
+  }, [contractInfo]);
+
+  const countdown = useCountdown(endTimestampMs);
+
+  const supplyPerEpoch = useMemo(() => {
+    if (!contractInfo) return 0;
+    const num = Number(contractInfo.numberOfEpochs);
+    if (num === 0) return 0;
+    return Number(formatUnits(contractInfo.totalDistributionAmount, 18)) / num;
+  }, [contractInfo]);
 
   const stats = useMemo(() => {
     const closed = epochs.filter((e) => e.state === "passed");
@@ -166,32 +313,37 @@ export default function DistributionDetail() {
     const future = epochs.filter((e) => e.state === "future");
     const totalParticipation = epochs.reduce(
       (sum, e) => sum + (e.state !== "future" ? e.participationVolume : 0),
-      0
+      0,
     );
     const lastClosed = closed[closed.length - 1];
     return {
       totalEpochs: epochs.length,
       closedCount: closed.length,
       epochsLeft: future.length,
-      distributedSupply: SUPPLY_PER_EPOCH * closed.length,
-      totalSupply: SUPPLY_PER_EPOCH * epochs.length,
+      distributedSupply: supplyPerEpoch * closed.length,
+      totalSupply: supplyPerEpoch * epochs.length,
       totalParticipation,
       uniqueParticipants: Math.round(closed.length * 83.5),
-      supplyRemaining: SUPPLY_PER_EPOCH * future.length,
+      supplyRemaining: supplyPerEpoch * future.length,
       current,
       lastClearPrice: lastClosed?.clearPrice ?? null,
     };
-  }, [epochs]);
+  }, [epochs, supplyPerEpoch]);
+
+  const sharesPct = useMemo(() => {
+    if (!contractInfo)
+      return { priceAnchorPct: 0, founderSharePct: 0, protocolFeePct: 0 };
+    return computeShares(contractInfo, chainId);
+  }, [contractInfo, chainId]);
 
   const isHovering = hoveredEpoch != null;
   const displayEpoch = hoveredEpoch ?? stats.current ?? null;
-  const displayClearPrice = isHovering ? (displayEpoch?.clearPrice ?? stats.lastClearPrice) : stats.lastClearPrice;
+  const displayClearPrice = isHovering
+    ? (displayEpoch?.clearPrice ?? stats.lastClearPrice)
+    : stats.lastClearPrice;
   const displayParticipation = displayEpoch?.participationVolume ?? 0;
   const displayParticipants = estimateParticipants(displayParticipation);
 
-  // Claim card only appears once connected and the wallet has a claimable
-  // share — mocked here as "at least one epoch has closed", with the share
-  // itself a small illustrative slice of the supply distributed so far.
   const hasClaimableShare = stats.closedCount > 0;
   const claimableAmount = Math.round(stats.distributedSupply * 0.015);
 
@@ -212,19 +364,10 @@ export default function DistributionDetail() {
       ? () => setAmount("")
       : undefined;
 
-  // Mobile: the inline "Participate" button (below the countdown) either
-  // connects the wallet — same as desktop — or opens the claim/participation
-  // dialogue, where the actual form (shared with desktop's sidebar) lives.
-  // Unlike the inline desktop button, it's never disabled: opening the
-  // dialogue doesn't require an amount yet.
   const handleMobileParticipateClick = !walletConnected
     ? () => setWalletConnected(true)
     : () => setDialogueOpen(true);
 
-  // Shared between the desktop sidebar (.ddp-right) and the mobile dialogue
-  // — same states/logic either way, just a different container. idPrefix
-  // keeps the two copies' input ids (and label htmlFor) from colliding,
-  // since .ddp-right stays mounted (CSS-hidden, not unmounted) on mobile.
   function renderClaimAndParticipation(idPrefix: string) {
     return (
       <>
@@ -240,7 +383,9 @@ export default function DistributionDetail() {
               <>
                 <div className="ddp-claim-card__amount">
                   <span>{fmtInt(claimableAmount)}</span>
-                  <span className="ddp-claim-card__unit">{QUOTE_SYMBOL}</span>
+                  <span className="ddp-claim-card__unit">
+                    {participationTokenSymbol}
+                  </span>
                 </div>
                 <Button
                   variant="primary"
@@ -248,7 +393,11 @@ export default function DistributionDetail() {
                   fullWidth
                   className="ddp-claim-card__button"
                   disabled={claimState === "claiming"}
-                  leadingIcon={claimState === "claiming" ? <IconLoader2 size={18} /> : undefined}
+                  leadingIcon={
+                    claimState === "claiming" ? (
+                      <IconLoader2 size={18} />
+                    ) : undefined
+                  }
                   onClick={handleClaim}
                 >
                   {claimState === "claiming" ? "Processing" : "Claim all"}
@@ -261,7 +410,9 @@ export default function DistributionDetail() {
         <div className="ddp-participation">
           <h2>Participation</h2>
           <div className="ddp-participation__field">
-            <label htmlFor={`${idPrefix}-amount`}>Total participation amount</label>
+            <label htmlFor={`${idPrefix}-amount`}>
+              Total participation amount
+            </label>
             <div className="ddp-participation__input">
               <input
                 id={`${idPrefix}-amount`}
@@ -271,14 +422,23 @@ export default function DistributionDetail() {
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
               />
-              <span>{QUOTE_SYMBOL}</span>
+              <span>{participationTokenSymbol}</span>
             </div>
           </div>
           <div className="ddp-participation__row">
             <div className="ddp-participation__field">
-              <label htmlFor={`${idPrefix}-epochs`}>Participation epoch counts</label>
-              <div className={`ddp-participation__input${epochCount > 1 ? " is-active" : ""}`}>
-                <input id={`${idPrefix}-epochs`} type="text" readOnly value={epochCount} />
+              <label htmlFor={`${idPrefix}-epochs`}>
+                Participation epoch counts
+              </label>
+              <div
+                className={`ddp-participation__input${epochCount > 1 ? " is-active" : ""}`}
+              >
+                <input
+                  id={`${idPrefix}-epochs`}
+                  type="text"
+                  readOnly
+                  value={epochCount}
+                />
                 <span>Epochs</span>
               </div>
             </div>
@@ -314,6 +474,28 @@ export default function DistributionDetail() {
     );
   }
 
+  if (isLoading) {
+    return (
+      <div className="ddp">
+        <div className="ddp-chrome">
+          <Header onConnectWallet={() => setWalletConnected(true)} />
+          <TestnetRibbon />
+        </div>
+        <div
+          className="ddp-body"
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: 400,
+          }}
+        >
+          <IconLoader2 size={32} className="ddp-loading" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="ddp">
       <div className="ddp-chrome">
@@ -326,37 +508,57 @@ export default function DistributionDetail() {
           <div className="ddp-left">
             <section className="ddp-token-header">
               <div className="ddp-token-header__row1">
-                <TokenAvatar seed="sqrtDAO SQRT" className="ddp-token-header__avatar" />
+                <TokenAvatar
+                  seed={`${tokenName} ${tokenSymbol}`}
+                  className="ddp-token-header__avatar"
+                />
                 <div className="ddp-token-header__info">
                   <div className="ddp-token-header__name-row">
-                    <h1>sqrtDAO</h1>
-                    <span className="ddp-ticker">SQRT</span>
+                    <h1>{tokenName}</h1>
+                    <span className="ddp-ticker">{tokenSymbol}</span>
                   </div>
-                  {/* desktop: grouped under the name, same row as avatar/network */}
                   <div className="ddp-token-header__creator ddp-token-header__creator--desktop">
                     <span>Created by</span>
-                    <AddressTag value="0xfd9...jd87w" />
+                    <AddressTag
+                      value={contractInfo?.creator ?? "0xfd9...jd87w"}
+                    />
                   </div>
                 </div>
-                <NetworkTag network="BASE" />
+                <NetworkTag
+                  network={
+                    chainId === 8453
+                      ? "BASE"
+                      : chainId === 84532
+                        ? "BASE SEPOLIA"
+                        : chainId === 31337
+                          ? "ANVIL"
+                          : "UNKNOWN"
+                  }
+                />
               </div>
               <div className="ddp-token-header__row2">
-                {/* mobile: grouped with Contract address in row 2 instead */}
                 <div className="ddp-token-header__creator ddp-token-header__creator--mobile">
-                  <span className="ddp-token-header__contract-label">Created by</span>
-                  <AddressTag value="0xfd9...jd87w" />
+                  <span className="ddp-token-header__contract-label">
+                    Created by
+                  </span>
+                  <AddressTag
+                    value={contractInfo?.creator ?? "0xfd9...jd87w"}
+                  />
                 </div>
                 <div className="ddp-token-header__contract">
-                  <span className="ddp-token-header__contract-label">Contract address</span>
-                  <AddressTag value="0xfd9...jd87w" />
+                  <span className="ddp-token-header__contract-label">
+                    Contract address
+                  </span>
+                  <AddressTag value={contractAddress ?? "0xfd9...jd87w"} />
                 </div>
                 <Button
                   variant="outline"
                   size="m"
                   leadingIcon={<IconShare size={16} strokeWidth={1.75} />}
                   className="ddp-token-header__share"
+                  onClick={handleShare}
                 >
-                  Share
+                  {shareCopied ? "Copied!" : "Share"}
                 </Button>
                 <IconButton
                   icon={<IconShare size={24} strokeWidth={1.75} />}
@@ -364,6 +566,7 @@ export default function DistributionDetail() {
                   size="m"
                   aria-label="Share"
                   className="ddp-token-header__share-icon"
+                  onClick={handleShare}
                 />
               </div>
             </section>
@@ -374,17 +577,25 @@ export default function DistributionDetail() {
                   <div className="ddp-stat">
                     <span className="ddp-stat__label">Distributed supply</span>
                     <div className="ddp-stat__value-row">
-                      <span className="ddp-stat__value-primary">{fmtInt(stats.distributedSupply)}</span>
+                      <span className="ddp-stat__value-primary">
+                        {fmtInt(stats.distributedSupply)}
+                      </span>
                       <span className="ddp-stat__slash">/</span>
-                      <span className="ddp-stat__value-secondary">{fmtInt(stats.totalSupply)}</span>
-                      <span className="ddp-stat__unit">{TOKEN_SYMBOL}</span>
+                      <span className="ddp-stat__value-secondary">
+                        {fmtInt(stats.totalSupply)}
+                      </span>
+                      <span className="ddp-stat__unit">{tokenSymbol}</span>
                     </div>
                   </div>
                   <div className="ddp-stat">
                     <span className="ddp-stat__label">Total participation</span>
                     <div className="ddp-stat__value-row">
-                      <span className="ddp-stat__value-primary">{fmtInt(stats.totalParticipation)}</span>
-                      <span className="ddp-stat__unit">{QUOTE_SYMBOL}</span>
+                      <span className="ddp-stat__value-primary">
+                        {fmtInt(stats.totalParticipation)}
+                      </span>
+                      <span className="ddp-stat__unit">
+                        {participationTokenSymbol}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -394,7 +605,9 @@ export default function DistributionDetail() {
                     <span>Distribution period</span>
                     <div className="ddp-countdown-sub">
                       <span>Ends</span>
-                      <span className="ddp-countdown-sub__value">—</span>
+                      <span className="ddp-countdown-sub__value">
+                        {fmtEpochDate(endTimestampMs, true)}
+                      </span>
                     </div>
                   </div>
                   <div className="ddp-countdown-clock">
@@ -420,8 +633,6 @@ export default function DistributionDetail() {
                   </div>
                 </div>
 
-                {/* mobile-only: opens the claim/participation dialogue —
-                    desktop's equivalent lives inline in .ddp-right. */}
                 <Button
                   variant="primary"
                   size="m"
@@ -436,72 +647,107 @@ export default function DistributionDetail() {
               <section className="ddp-epochs-data">
                 <div className="ddp-block-card">
                   <div className="ddp-block-card__stats-top">
-                    <InlineStat label="Total epochs" value={fmtInt(stats.totalEpochs)} />
+                    <InlineStat
+                      label="Total epochs"
+                      value={fmtInt(stats.totalEpochs)}
+                    />
                     <InlineStat
                       label="Supply per epoch (Flat release)"
-                      value={`${fmtInt(SUPPLY_PER_EPOCH)} ${TOKEN_SYMBOL}`}
+                      value={`${fmtInt(supplyPerEpoch)} ${tokenSymbol}`}
                     />
                   </div>
-                  <EpochBlockChart epochs={epochs} quoteSymbol={QUOTE_SYMBOL} tokenSymbol={TOKEN_SYMBOL} />
+                  <EpochBlockChart
+                    epochs={epochs}
+                    quoteSymbol={participationTokenSymbol}
+                    tokenSymbol={tokenSymbol}
+                  />
                   <div className="ddp-block-card__legend">
                     {BLOCK_LEGEND.map((item) => (
-                      <span key={item.label} className="ddp-block-card__legend-item">
-                        <span className="ddp-block-card__legend-swatch" style={{ background: item.swatch }} />
+                      <span
+                        key={item.label}
+                        className="ddp-block-card__legend-item"
+                      >
+                        <span
+                          className="ddp-block-card__legend-swatch"
+                          style={{ background: item.swatch }}
+                        />
                         {item.label}
                       </span>
                     ))}
                   </div>
                   <div className="ddp-block-card__stats-bottom">
-                    <InlineStat label="Unique participants" value={fmtInt(stats.uniqueParticipants)} />
+                    <InlineStat
+                      label="Unique participants"
+                      value={fmtInt(stats.uniqueParticipants)}
+                    />
                     <InlineStat
                       label="Supply remaining"
-                      value={`${fmtInt(stats.supplyRemaining)} ${TOKEN_SYMBOL}`}
+                      value={`${fmtInt(stats.supplyRemaining)} ${tokenSymbol}`}
                     />
-                    <InlineStat label="Epochs left" value={fmtInt(stats.epochsLeft)} valueFirst />
+                    <InlineStat
+                      label="Epochs left"
+                      value={fmtInt(stats.epochsLeft)}
+                      valueFirst
+                    />
                   </div>
                 </div>
 
                 <div className="ddp-epoch-card">
                   <div className="ddp-epoch-card__info">
                     <div className="ddp-epoch-card__data">
-                      <span>{isHovering ? "Epoch number" : "Current epoch"}</span>
+                      <span>
+                        {isHovering ? "Epoch number" : "Current epoch"}
+                      </span>
                       <div className="ddp-epoch-card__data-row ddp-epoch-card__data-row--epoch">
                         <strong className={isHovering ? "is-accent" : ""}>
                           #{displayEpoch?.epoch ?? "—"}
                         </strong>
                         <time className={isHovering ? "is-accent" : ""}>
-                          {displayEpoch ? fmtEpochDate(displayEpoch.timestamp, !isHovering) : "—"}
+                          {displayEpoch
+                            ? fmtEpochDate(displayEpoch.timestamp, !isHovering)
+                            : "—"}
                         </time>
                       </div>
                     </div>
                     <div className="ddp-epoch-card__data">
-                      <span>{isHovering ? "Clear price" : "Last clear price"}</span>
+                      <span>
+                        {isHovering ? "Clear price" : "Last clear price"}
+                      </span>
                       <div className="ddp-epoch-card__data-row ddp-epoch-card__data-row--price">
                         <strong className={isHovering ? "is-accent" : ""}>
                           {displayClearPrice?.toFixed(4) ?? "—"}
                         </strong>
-                        <span className="ddp-epoch-card__unit">{QUOTE_SYMBOL}</span>
+                        <span className="ddp-epoch-card__unit">
+                          {participationTokenSymbol}
+                        </span>
                       </div>
                     </div>
                     <div className="ddp-epoch-card__data">
                       <span>Participation this epoch</span>
                       <div className="ddp-epoch-card__data-row ddp-epoch-card__data-row--participation">
-                        <strong className={isHovering ? "is-accent" : ""}>{fmtInt(displayParticipation)}</strong>
-                        <span className="ddp-epoch-card__unit">{QUOTE_SYMBOL}</span>
+                        <strong className={isHovering ? "is-accent" : ""}>
+                          {fmtInt(displayParticipation)}
+                        </strong>
+                        <span className="ddp-epoch-card__unit">
+                          {participationTokenSymbol}
+                        </span>
                         <span className="ddp-epoch-card__by">by</span>
-                        <strong className={isHovering ? "is-accent" : ""}>{displayParticipants}</strong>
+                        <strong className={isHovering ? "is-accent" : ""}>
+                          {displayParticipants}
+                        </strong>
                         <span className="ddp-epoch-card__by">participants</span>
                       </div>
                     </div>
                     <p className="ddp-epoch-card__note">
-                      The clear price is set when the epoch closes, everyone in the epoch gets the same price.
+                      The clear price is set when the epoch closes, everyone in
+                      the epoch gets the same price.
                     </p>
                   </div>
                   <div className="ddp-epoch-card__chart">
                     <EpochComboChart
                       epochs={epochs}
-                      quoteSymbol={QUOTE_SYMBOL}
-                      tokenSymbol={TOKEN_SYMBOL}
+                      quoteSymbol={participationTokenSymbol}
+                      tokenSymbol={tokenSymbol}
                       onHoverEpoch={setHoveredEpoch}
                     />
                   </div>
@@ -509,7 +755,6 @@ export default function DistributionDetail() {
               </section>
 
               <section className="ddp-faq">
-                {/* desktop: header + questions column + single shared answer panel */}
                 <div className="ddp-faq__body--desktop">
                   <div className="ddp-faq__header">
                     <IconMessageCircleQuestion size={32} strokeWidth={1.5} />
@@ -530,7 +775,11 @@ export default function DistributionDetail() {
                     </div>
                     <div
                       className={`ddp-faq__answer ddp-faq__answer--${
-                        activeFaq === 0 ? "first" : activeFaq === FAQ_ITEMS.length - 1 ? "last" : "middle"
+                        activeFaq === 0
+                          ? "first"
+                          : activeFaq === FAQ_ITEMS.length - 1
+                            ? "last"
+                            : "middle"
                       }`}
                     >
                       <p>{FAQ_ITEMS[activeFaq].a}</p>
@@ -538,10 +787,12 @@ export default function DistributionDetail() {
                   </div>
                 </div>
 
-                {/* mobile: dedicated FaqCard component (own header + accordion) —
-                    same FAQ_ITEMS data as desktop, just a different presentation. */}
                 <div className="ddp-faq__body--mobile">
-                  <FaqCard items={FAQ_ITEMS} activeIndex={activeFaq} onChange={setActiveFaq} />
+                  <FaqCard
+                    items={FAQ_ITEMS}
+                    activeIndex={activeFaq}
+                    onChange={setActiveFaq}
+                  />
                 </div>
               </section>
             </div>
@@ -556,25 +807,31 @@ export default function DistributionDetail() {
                     Details
                   </Button>
                 </div>
-                <p>How each epoch&apos;s funds are split. Set by the founder before launch, It can&apos;t change.</p>
+                <p>
+                  How each epoch&apos;s funds are split. Set by the founder
+                  before launch, It can&apos;t change.
+                </p>
               </div>
               <div className="ddp-fund-split__chart">
                 <div className="dw-chart-bar">
                   <div className="dw-chart-bar__liquidity" />
                   <div className="dw-chart-bar__fee" />
-                  {FOUNDER_SHARE_PCT > 0 && (
-                    <div className="dw-chart-bar__founder" style={{ width: `${FOUNDER_SHARE_PCT}%` }} />
+                  {sharesPct.founderSharePct > 0 && (
+                    <div
+                      className="dw-chart-bar__founder"
+                      style={{ width: `${sharesPct.founderSharePct}%` }}
+                    />
                   )}
                 </div>
                 <div className="dw-chart-legend">
                   <span className="dw-chart-legend__item dw-chart-legend__item--anchor">
-                    {PRICE_ANCHOR_PCT}% Price anchor
+                    {sharesPct.priceAnchorPct}% Price anchor
                   </span>
                   <span className="dw-chart-legend__item dw-chart-legend__item--founder">
-                    {FOUNDER_SHARE_PCT}% Founder share
+                    {sharesPct.founderSharePct}% Founder share
                   </span>
                   <span className="dw-chart-legend__item dw-chart-legend__item--fee">
-                    {PROTOCOL_FEE_PCT}% Protocol fee
+                    {sharesPct.protocolFeePct}% Protocol fee
                   </span>
                 </div>
               </div>
@@ -587,11 +844,11 @@ export default function DistributionDetail() {
         </div>
       </div>
 
-      {/* mobile-only: claim/participation dialogue — opened by the
-          "Participate" button in .ddp-summary once the wallet is connected.
-          Desktop never sets dialogueOpen (its form is always inline). */}
       {dialogueOpen && (
-        <div className="ddp-dialogue-backdrop" onClick={() => setDialogueOpen(false)}>
+        <div
+          className="ddp-dialogue-backdrop"
+          onClick={() => setDialogueOpen(false)}
+        >
           <div className="ddp-dialogue" onClick={(e) => e.stopPropagation()}>
             <div className="ddp-claim-participation">
               {renderClaimAndParticipation("ddp-dialogue")}

@@ -12,6 +12,11 @@ export interface AddressTagProps {
 const COPIED_LABEL = "Copied!";
 const COPIED_DURATION_MS = 1500;
 
+function truncateAddress(addr: string): string {
+  if (addr.length <= 10) return addr;
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+}
+
 export default function AddressTag({ value, className }: AddressTagProps) {
   const [copied, setCopied] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -39,7 +44,7 @@ export default function AddressTag({ value, className }: AddressTagProps) {
       onClick={handleClick}
     >
       <IconCopy size={16} strokeWidth={1.75} />
-      {copied ? COPIED_LABEL : value}
+      {copied ? COPIED_LABEL : truncateAddress(value)}
     </button>
   );
 }
