@@ -24,9 +24,13 @@ import Header from "@/components/Header/Header";
 import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
 import "./DistributionWizard.css";
 import { TokenDetails } from "../TokenLaunch/TokenLaunch";
-import { Address, formatEther, isAddress } from "viem";
-import { getFactoryV1ContractReadonly } from "@/contracts/contracts";
+import { Address, formatEther, isAddress, parseUnits } from "viem";
+import {
+  getFactoryV1Contract,
+  getTokenV1Contract,
+} from "@/contracts/contracts";
 import { usePublicClient } from "wagmi";
+import { getAddresses } from "@/contracts/contract-addresses";
 
 export type DistributionDetails = {
   totalDistributionAmount: bigint;
@@ -34,7 +38,6 @@ export type DistributionDetails = {
   initialParticipationLiquidity: bigint;
   initialDistributionLiquidity: bigint;
   startTime: bigint; // in seconds
-  endTime: bigint; // in seconds
   epochDuration: bigint; // in seconds
   numberOfEpochs: bigint;
   releasePerEpoch: bigint;
@@ -127,10 +130,10 @@ export default function DistributionWizard(props: {
 
   useEffect(() => {
     if (!publicClient) return;
-    getFactoryV1ContractReadonly(publicClient)
+    getFactoryV1Contract(publicClient)
       .read.protocolFeeBps()
-      .then((fee) => {
-        setProtocolFeePercent(Number(fee) / 10000);
+      .then((feeBps) => {
+        setProtocolFeePercent(Number(feeBps) / 100);
       });
   }, [publicClient]);
 
@@ -203,9 +206,38 @@ export default function DistributionWizard(props: {
       .catch(() => {});
   }
 
-  const onConfirm = () => {
-    // TODO
-    // props.onFinish()
+  const onConfirm = async () => {
+    const addresses = getAddresses(publicClient!.chain.id);
+    const participationToken = getTokenV1Contract(
+      publicClient!,
+      addresses.usdt,
+    );
+
+    props.onFinish({
+      totalDistributionAmount: parseUnits(supply, props.token.decimals),
+      participationToken: addresses.usdt,
+      initialParticipationLiquidity: parseUnits(
+        initialParticipationLiquidity,
+        await participationToken.read.decimals(),
+      ),
+      initialDistributionLiquidity: parseUnits(
+        initialDistributionLiquidity,
+        props.token.decimals,
+      ),
+      startTime: BigInt(
+        (new Date(startDate).getTime() + parseTime(startTime)) / 1000,
+      ),
+      epochDuration: BigInt(EPOCH_DURATION_MS[epochDuration] / 1000),
+      numberOfEpochs: BigInt(parseInt(numberOfEpochs)),
+      releasePerEpoch: BigInt(parseInt(releasePerEpoch)),
+      minimumParticipation: BigInt(parseInt(minParticipation)),
+      claimDelay: BigInt(parseInt(claimDelay)), // in seconds
+      founderShareBps: founderShareOn
+        ? BigInt(founderPercentNum * 100)
+        : BigInt(0),
+      founderShareReceiver: founderReceiverAddress as Address,
+      protocolFeeBps: BigInt(protocolFeePercent * 100),
+    });
   };
 
   // ── Render ───────────────────────────────────────────────────────────────

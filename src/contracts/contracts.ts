@@ -1,38 +1,24 @@
-import { Address, getContract, PublicClient, WalletClient } from "viem";
+import { Address, Client, getContract } from "viem";
 import { getAddresses } from "./contract-addresses";
-import { factoryV1Abi } from "./abis";
+import { distributorV1Abi, factoryV1Abi, tokenV1Abi } from "./abis";
 
-// --- FactoryV1 ---
-export const getFactoryV1Contract = (client: WalletClient) =>
+export const getFactoryV1Contract = (client: Client) =>
   getContract({
-    address: getAddresses(client.chain!.id).factory,
+    address: getAddresses(client.chain!.id).factoryV1,
     abi: factoryV1Abi,
     client,
   });
 
-export const getFactoryV1ContractReadonly = (client: PublicClient) =>
-  getContract({
-    address: getAddresses(client.chain!.id).factory,
-    abi: factoryV1Abi,
-    client,
-  });
-
-export const getDistributorV1Contract = (
-  client: WalletClient,
-  address: Address,
-) =>
+export const getDistributorV1Contract = (client: Client, address: Address) =>
   getContract({
     address,
-    abi: factoryV1Abi,
+    abi: distributorV1Abi,
     client,
   });
 
-export const getDistributorV1ContractReadonly = (
-  client: PublicClient,
-  address: Address,
-) =>
+export const getTokenV1Contract = (client: Client, address: Address) =>
   getContract({
     address,
-    abi: factoryV1Abi,
+    abi: tokenV1Abi,
     client,
   });
