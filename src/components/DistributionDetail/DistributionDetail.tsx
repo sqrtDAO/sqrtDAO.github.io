@@ -10,8 +10,13 @@ import {
   IconShare,
   IconSquareRoundedCheckFilled,
 } from "@tabler/icons-react";
-import { type Address, formatUnits } from "viem";
-import { useChainId } from "wagmi";
+import { type Address, formatUnits, parseUnits } from "viem";
+import {
+  useAccount,
+  useChainId,
+  useWalletClient,
+  usePublicClient,
+} from "wagmi";
 import Header from "@/components/Header/Header";
 import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
 import TokenAvatar from "@/components/TokenAvatar/TokenAvatar";
@@ -29,6 +34,10 @@ import type {
 import type { EpochData } from "@/lib/charts/types";
 import "@/components/DistributionWizard/DistributionWizard.css";
 import "./DistributionDetail.css";
+import {
+  getDistributorV1Contract,
+  getTokenV1Contract,
+} from "@/contracts/contracts";
 import { getAddresses } from "@/contracts/contract-addresses";
 
 const EpochComboChart = dynamic(
@@ -249,15 +258,20 @@ export default function DistributionDetail({
     isLoading,
   } = useDistributorData(contractAddress as Address);
 
+  const { isConnected: isWalletConnected } = useAccount();
+  const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
   const [epochs, setEpochs] = useState<EpochData[]>([]);
   const [activeFaq, setActiveFaq] = useState(0);
   const [amount, setAmount] = useState("");
   const [epochCount, setEpochCount] = useState(1);
   const [hoveredEpoch, setHoveredEpoch] = useState<EpochData | null>(null);
-  const [walletConnected, setWalletConnected] = useState(false);
   const [claimState, setClaimState] = useState<"idle" | "claiming" | "done">(
     "idle",
   );
+  const [participateState, setParticipateState] = useState<
+    "idle" | "approving" | "participating" | "done" | "error"
+  >("idle");
   const [dialogueOpen, setDialogueOpen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const shareTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -352,26 +366,81 @@ export default function DistributionDetail({
     setTimeout(() => setClaimState("done"), 1600);
   }, []);
 
-  const canParticipate = walletConnected && Number(amount) > 0;
-  const participateLabel = !walletConnected
+  const isEpochActive =
+    currentEpoch !== undefined && Number(currentEpoch) >= 0;
+  const canParticipate =
+    isWalletConnected &&
+    isEpochActive &&
+    Number(amount) > 0 &&
+    participateState !== "approving" &&
+    participateState !== "participating";
+  const isParticipating =
+    participateState === "approving" || participateState === "participating";
+  const participateLabel = !isWalletConnected
     ? "Connect wallet"
-    : canParticipate
-      ? `Participate in ${epochCount} epoch${epochCount > 1 ? "s" : ""}`
-      : "Participate";
-  const handleParticipateClick = !walletConnected
-    ? () => setWalletConnected(true)
-    : canParticipate
-      ? () => setAmount("")
-      : undefined;
+    : !isEpochActive
+      ? "Not started"
+      : isParticipating
+        ? participateState === "approving"
+          ? "Approving..."
+          : "Participating..."
+        : participateState === "done"
+          ? "Participated!"
+          : canParticipate
+            ? `Participate in ${epochCount} epoch${epochCount > 1 ? "s" : ""}`
+            : "Participate";
 
-  const handleMobileParticipateClick = !walletConnected
-    ? () => setWalletConnected(true)
-    : () => setDialogueOpen(true);
+  const handleParticipateClick = async () => {
+    if (!walletClient || !contractInfo || currentEpoch === undefined) return;
+    console.log("currentEpoch", currentEpoch);
+
+    try {
+      setParticipateState("approving");
+
+      const amountPerEpoch = parseUnits(amount, 18);
+      const totalAmount = amountPerEpoch * BigInt(epochCount);
+
+      const pToken = getTokenV1Contract(
+        walletClient,
+        contractInfo.participationToken,
+      );
+      const approveTx = await pToken.write.approve(
+        [contractAddress as Address, totalAmount],
+        { account: walletClient.account, chain: walletClient.chain },
+      );
+      await publicClient!.waitForTransactionReceipt({ hash: approveTx });
+
+      setParticipateState("participating");
+
+      const distributor = getDistributorV1Contract(
+        walletClient,
+        contractAddress as Address,
+      );
+      const participateTx = await distributor.write.participate(
+        [
+          amountPerEpoch,
+          { from: BigInt(currentEpoch), length: BigInt(epochCount) },
+          walletClient.account.address,
+          "0x",
+        ],
+        { account: walletClient.account, chain: walletClient.chain },
+      );
+      await publicClient!.waitForTransactionReceipt({ hash: participateTx });
+
+      setParticipateState("done");
+      setAmount("");
+    } catch (e) {
+      console.error("Participate failed:", e);
+      setParticipateState("error");
+    }
+  };
+
+  const handleMobileParticipateClick = () => setDialogueOpen(true);
 
   function renderClaimAndParticipation(idPrefix: string) {
     return (
       <>
-        {walletConnected && hasClaimableShare && (
+        {isWalletConnected && hasClaimableShare && (
           <div className="ddp-claim-card">
             <h2>Ready to claim</h2>
             {claimState === "done" ? (
@@ -464,7 +533,7 @@ export default function DistributionDetail({
             variant="primary"
             size="m"
             fullWidth
-            disabled={walletConnected && !canParticipate}
+            disabled={isWalletConnected && !canParticipate}
             onClick={handleParticipateClick}
           >
             {participateLabel}
@@ -478,7 +547,7 @@ export default function DistributionDetail({
     return (
       <div className="ddp">
         <div className="ddp-chrome">
-          <Header onConnectWallet={() => setWalletConnected(true)} />
+          <Header />
           <TestnetRibbon />
         </div>
         <div
@@ -499,7 +568,7 @@ export default function DistributionDetail({
   return (
     <div className="ddp">
       <div className="ddp-chrome">
-        <Header onConnectWallet={() => setWalletConnected(true)} />
+        <Header />
         <TestnetRibbon />
       </div>
 
