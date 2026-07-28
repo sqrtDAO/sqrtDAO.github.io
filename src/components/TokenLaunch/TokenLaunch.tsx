@@ -18,19 +18,20 @@ export default function TokenLaunch(props: {
   const [name, setTokenName] = useState("");
   const [symbol, setTokenSymbol] = useState("");
   const [totalSupplyStr, setTotalSupplyStr] = useState("");
+  const [showErrors, setShowErrors] = useState(false);
+
+  const nameEmpty = name === "";
+  const symbolEmpty = symbol === "";
+  const supplyEmpty = totalSupplyStr === "";
+  const supplyInvalid = !supplyEmpty && Number(totalSupplyStr) <= 0;
 
   const onContinueClick = () => {
-    try {
-      if (name === "") throw "Empty name";
-      if (symbol === "") throw "Empty symbol";
-      if (totalSupplyStr === "") throw "Empty total supply";
-      const totalSupply = parseEther(totalSupplyStr);
-      if (totalSupply <= 0) throw "total supply Can't be less than zero";
-      props.onFinish({ name, symbol, decimals: 18, totalSupply });
-    } catch (e) {
-      console.log(`validation error: ${e}`);
-      // TODO show validation error
+    if (nameEmpty || symbolEmpty || supplyEmpty || supplyInvalid) {
+      setShowErrors(true);
+      return;
     }
+    const totalSupply = parseEther(totalSupplyStr);
+    props.onFinish({ name, symbol, decimals: 18, totalSupply });
   };
 
   return (
@@ -62,12 +63,14 @@ export default function TokenLaunch(props: {
 
             <div className="tl-row">
               <TokenAvatar seed={symbol} />
-              <div className="tl-form">
+              <div className="tl-form" onChangeCapture={() => setShowErrors(false)}>
                 <Input
                   label="Token Name"
                   placeholder="The full name, e.g. Dev Protocol."
                   value={name}
                   onChange={setTokenName}
+                  error={showErrors && nameEmpty}
+                  errorMessage="Token name is required"
                   spellCheck={false}
                   autoComplete="off"
                 />
@@ -76,6 +79,8 @@ export default function TokenLaunch(props: {
                   placeholder="The ticker, e.g. DEV."
                   value={symbol}
                   onChange={(v) => setTokenSymbol(v.toUpperCase())}
+                  error={showErrors && symbolEmpty}
+                  errorMessage="Token symbol is required"
                   spellCheck={false}
                   autoComplete="off"
                 />
@@ -84,6 +89,8 @@ export default function TokenLaunch(props: {
                   placeholder="How many tokens to create?"
                   value={totalSupplyStr}
                   onChange={(v) => setTotalSupplyStr(v.replace(/[^0-9]/g, ""))}
+                  error={showErrors && (supplyEmpty || supplyInvalid)}
+                  errorMessage={supplyEmpty ? "Total supply is required" : "Total supply must be greater than 0"}
                   spellCheck={false}
                   autoComplete="off"
                 />
