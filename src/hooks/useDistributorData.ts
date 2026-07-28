@@ -3,10 +3,8 @@ import {
   getDistributorV1Contract,
   getTokenV1Contract,
 } from "@/contracts/contracts";
-import { Client } from "viem/tempo";
 import { useEffect, useState } from "react";
-import { usePublicClient, useWalletClient } from "wagmi";
-import { wallet } from "viem/tempo/actions";
+import { useWalletClient } from "wagmi";
 
 export type DistributorContractInfo = {
   distributionToken: Address;
@@ -71,9 +69,10 @@ export function useDistributorData(contractAddress: Address) {
         );
         const info = await distributor.read.getContractInfo();
         setContractInfo(info);
-        const currentEpoch =
+        const currentEpoch = Math.round(
           (Date.now() / 1000 - Number(info.startingTimestamp)) /
-          Number(info.epochDuration);
+            Number(info.epochDuration),
+        );
         setCurrentEpoch(currentEpoch);
 
         const token = getTokenV1Contract(walletClient, info.distributionToken);

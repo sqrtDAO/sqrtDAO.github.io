@@ -213,8 +213,27 @@ export default function DistributionWizard(props: {
       addresses.usdt,
     );
 
+    const startTimeN = BigInt(
+      (new Date(startDate).getTime() + parseTime(startTime)) / 1000,
+    );
+    const endTimeN = BigInt(new Date(endDate).getTime() / 1000);
+    const epochDurationN = BigInt(EPOCH_DURATION_MS[epochDuration] / 1000);
+    const totalDistributionAmountN = parseUnits(supply, props.token.decimals);
+
+    let numberOfEpochsN: bigint;
+    let releasePerEpochN: bigint;
+    if (releaseTypeIdx === 0) {
+      // Time base
+      numberOfEpochsN = BigInt((endTimeN - startTimeN) / epochDurationN);
+      releasePerEpochN = totalDistributionAmountN / numberOfEpochsN;
+    } else {
+      // Epoch base
+      numberOfEpochsN = BigInt(parseInt(numberOfEpochs));
+      releasePerEpochN = BigInt(parseInt(releasePerEpoch));
+    }
+
     props.onFinish({
-      totalDistributionAmount: parseUnits(supply, props.token.decimals),
+      totalDistributionAmount: totalDistributionAmountN,
       participationToken: addresses.usdt,
       initialParticipationLiquidity: parseUnits(
         initialParticipationLiquidity,
@@ -224,12 +243,10 @@ export default function DistributionWizard(props: {
         initialDistributionLiquidity,
         props.token.decimals,
       ),
-      startTime: BigInt(
-        (new Date(startDate).getTime() + parseTime(startTime)) / 1000,
-      ),
-      epochDuration: BigInt(EPOCH_DURATION_MS[epochDuration] / 1000),
-      numberOfEpochs: BigInt(parseInt(numberOfEpochs)),
-      releasePerEpoch: BigInt(parseInt(releasePerEpoch)),
+      startTime: startTimeN,
+      epochDuration: epochDurationN,
+      numberOfEpochs: numberOfEpochsN,
+      releasePerEpoch: releasePerEpochN,
       minimumParticipation: BigInt(parseInt(minParticipation)),
       claimDelay: BigInt(parseInt(claimDelay)), // in seconds
       founderShareBps: founderShareOn
