@@ -17,6 +17,7 @@ import {
   useWalletClient,
   usePublicClient,
 } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Header from "@/components/Header/Header";
 import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
 import TokenAvatar from "@/components/TokenAvatar/TokenAvatar";
@@ -262,6 +263,7 @@ export default function DistributionDetail({
   const { isConnected: isWalletConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient();
+  const { openConnectModal } = useConnectModal();
   const [epochs, setEpochs] = useState<EpochData[]>([]);
   const [activeFaq, setActiveFaq] = useState(0);
   const [amount, setAmount] = useState("");
@@ -437,6 +439,10 @@ export default function DistributionDetail({
           : "Participate";
 
   const handleParticipateClick = async () => {
+    if (!isWalletConnected) {
+      openConnectModal?.();
+      return;
+    }
     if (!walletClient || !contractInfo || currentEpoch === undefined) return;
 
     try {
@@ -481,7 +487,13 @@ export default function DistributionDetail({
     }
   };
 
-  const handleMobileParticipateClick = () => setDialogueOpen(true);
+  const handleMobileParticipateClick = () => {
+    if (!isWalletConnected) {
+      openConnectModal?.();
+      return;
+    }
+    setDialogueOpen(true);
+  };
 
   function renderClaimAndParticipation(idPrefix: string) {
     return (
