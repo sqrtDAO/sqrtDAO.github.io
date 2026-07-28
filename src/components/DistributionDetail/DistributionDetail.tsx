@@ -271,7 +271,7 @@ export default function DistributionDetail({
     "idle",
   );
   const [participateState, setParticipateState] = useState<
-    "idle" | "approving" | "participating" | "done" | "error"
+    "idle" | "approving" | "participating" | "error"
   >("idle");
   const [dialogueOpen, setDialogueOpen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
@@ -367,8 +367,7 @@ export default function DistributionDetail({
     setTimeout(() => setClaimState("done"), 1600);
   }, []);
 
-  const isEpochActive =
-    currentEpoch !== undefined && Number(currentEpoch) >= 0;
+  const isEpochActive = currentEpoch !== undefined && Number(currentEpoch) >= 0;
   const canParticipate =
     isWalletConnected &&
     isEpochActive &&
@@ -385,15 +384,12 @@ export default function DistributionDetail({
         ? participateState === "approving"
           ? "Approving..."
           : "Participating..."
-        : participateState === "done"
-          ? "Participated!"
-          : canParticipate
-            ? `Participate in ${epochCount} epoch${epochCount > 1 ? "s" : ""}`
-            : "Participate";
+        : canParticipate
+          ? `Participate in ${epochCount} epoch${epochCount > 1 ? "s" : ""}`
+          : "Participate";
 
   const handleParticipateClick = async () => {
     if (!walletClient || !contractInfo || currentEpoch === undefined) return;
-    console.log("currentEpoch", currentEpoch);
 
     try {
       setParticipateState("approving");
@@ -428,7 +424,7 @@ export default function DistributionDetail({
       );
       await publicClient!.waitForTransactionReceipt({ hash: participateTx });
 
-      setParticipateState("done");
+      setParticipateState("idle");
       setAmount("");
       refetch();
     } catch (e) {
@@ -490,6 +486,7 @@ export default function DistributionDetail({
                 type="text"
                 inputMode="decimal"
                 placeholder="e.g. 50"
+                autoComplete="off"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
               />
@@ -590,9 +587,7 @@ export default function DistributionDetail({
                   </div>
                   <div className="ddp-token-header__creator ddp-token-header__creator--desktop">
                     <span>Created by</span>
-                    <AddressTag
-                      value={contractInfo?.creator ?? "0xfd9...jd87w"}
-                    />
+                    <AddressTag value={contractInfo?.creator ?? "?"} />
                   </div>
                 </div>
                 <NetworkTag
@@ -612,9 +607,7 @@ export default function DistributionDetail({
                   <span className="ddp-token-header__contract-label">
                     Created by
                   </span>
-                  <AddressTag
-                    value={contractInfo?.creator ?? "0xfd9...jd87w"}
-                  />
+                  <AddressTag value={contractInfo?.creator ?? "?"} />
                 </div>
                 <div className="ddp-token-header__contract">
                   <span className="ddp-token-header__contract-label">

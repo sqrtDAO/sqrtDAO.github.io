@@ -107,7 +107,6 @@
   display: contents;
 }
 
-.ddp-token-header__creator--mobile,
 .ddp-token-header__contract-label,
 .ddp-token-header__share-icon {
   display: none;
@@ -159,6 +158,10 @@
   font-size: var(--font-size-body);
   color: var(--sqrt-text-tertiary);
   white-space: nowrap;
+}
+
+.ddp-token-header__creator--mobile {
+  display: none;
 }
 
 /* ── summary (stats + countdown) ────────────────────────── */
