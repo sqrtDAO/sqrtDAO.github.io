@@ -267,9 +267,9 @@ export default function DistributionDetail({
   const [amount, setAmount] = useState("");
   const [epochCount, setEpochCount] = useState(1);
   const [hoveredEpoch, setHoveredEpoch] = useState<EpochData | null>(null);
-  const [claimState, setClaimState] = useState<"idle" | "claiming" | "done">(
-    "idle",
-  );
+  const [claimState, setClaimState] = useState<
+    "idle" | "claiming" | "done" | "error"
+  >("idle");
   const [participateState, setParticipateState] = useState<
     "idle" | "approving" | "participating" | "error"
   >("idle");
@@ -362,10 +362,58 @@ export default function DistributionDetail({
   const hasClaimableShare = stats.closedCount > 0;
   const claimableAmount = Math.round(stats.distributedSupply * 0.015);
 
-  const handleClaim = useCallback(() => {
+  const handleClaim = useCallback(async () => {
+    if (!walletClient || !publicClient || !contractInfo) return;
+
     setClaimState("claiming");
-    setTimeout(() => setClaimState("done"), 1600);
-  }, []);
+    try {
+      const distributor = getDistributorV1Contract(
+        walletClient,
+        contractAddress as Address,
+      );
+      const userAddress = walletClient.account.address;
+      const targetEpoch = contractInfo.numberOfEpochs;
+
+      const claimableEpochs: bigint[] = [];
+      let fromEpoch = BigInt(0);
+
+      while (fromEpoch < targetEpoch) {
+        const [nextEpochToSearch, epochs] =
+          await distributor.read.discoverRewards([
+            fromEpoch,
+            BigInt(100),
+            userAddress,
+            BigInt(100),
+          ]);
+
+        claimableEpochs.push(...epochs);
+
+        if (nextEpochToSearch <= fromEpoch) break;
+        fromEpoch = nextEpochToSearch;
+        await new Promise((r) => setTimeout(r, 100));
+      }
+
+      if (claimableEpochs.length === 0) {
+        setClaimState("done");
+        return;
+      }
+
+      const from = claimableEpochs.reduce((min, e) => (e < min ? e : min));
+      const to = claimableEpochs.reduce((max, e) => (e > max ? e : max));
+
+      const claimTx = await distributor.write.claim(
+        [userAddress, { from, length: to - from + BigInt(1) }],
+        { account: walletClient.account, chain: walletClient.chain },
+      );
+      await publicClient.waitForTransactionReceipt({ hash: claimTx });
+
+      setClaimState("done");
+      refetch();
+    } catch (e) {
+      console.error("Claim failed:", e);
+      setClaimState("error");
+    }
+  }, [walletClient, publicClient, contractInfo, contractAddress, refetch]);
 
   const isEpochActive = currentEpoch !== undefined && Number(currentEpoch) >= 0;
   const canParticipate =
@@ -454,6 +502,11 @@ export default function DistributionDetail({
                     {participationTokenSymbol}
                   </span>
                 </div>
+                {claimState === "error" && (
+                  <p className="ddp-claim-card__error">
+                    Claim failed. Please try again.
+                  </p>
+                )}
                 <Button
                   variant="primary"
                   size="m"
