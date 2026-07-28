@@ -216,7 +216,6 @@ export default function DistributionWizard(props: {
     const startTimeN = BigInt(
       (new Date(startDate).getTime() + parseTime(startTime)) / 1000,
     );
-    const endTimeN = BigInt(new Date(endDate).getTime() / 1000);
     const epochDurationN = BigInt(EPOCH_DURATION_MS[epochDuration] / 1000);
     const totalDistributionAmountN = parseUnits(supply, props.token.decimals);
 
@@ -224,6 +223,7 @@ export default function DistributionWizard(props: {
     let releasePerEpochN: bigint;
     if (releaseTypeIdx === 0) {
       // Time base
+      const endTimeN = BigInt(new Date(endDate).getTime() / 1000);
       numberOfEpochsN = BigInt((endTimeN - startTimeN) / epochDurationN);
       releasePerEpochN = totalDistributionAmountN / numberOfEpochsN;
     } else {
