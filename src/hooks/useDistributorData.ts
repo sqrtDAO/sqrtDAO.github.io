@@ -3,7 +3,7 @@ import {
   getDistributorV1Contract,
   getTokenV1Contract,
 } from "@/contracts/contracts";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useWalletClient } from "wagmi";
 
 export type DistributorContractInfo = {
@@ -57,6 +57,9 @@ export function useDistributorData(contractAddress: Address) {
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | undefined>(undefined);
+  const [fetchKey, setFetchKey] = useState(0);
+
+  const refetch = useCallback(() => setFetchKey((k) => k + 1), []);
 
   useEffect(() => {
     (async () => {
@@ -100,7 +103,7 @@ export function useDistributorData(contractAddress: Address) {
       }
       setIsLoading(false);
     })();
-  }, [contractAddress, walletClient]);
+  }, [contractAddress, walletClient, fetchKey]);
 
   return {
     contractInfo: contractInfo as DistributorContractInfo | undefined,
@@ -111,5 +114,6 @@ export function useDistributorData(contractAddress: Address) {
     participationTokenSymbol,
     isLoading,
     error,
+    refetch,
   };
 }

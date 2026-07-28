@@ -256,6 +256,7 @@ export default function DistributionDetail({
     tokenSymbol,
     participationTokenSymbol,
     isLoading,
+    refetch,
   } = useDistributorData(contractAddress as Address);
 
   const { isConnected: isWalletConnected } = useAccount();
@@ -429,6 +430,7 @@ export default function DistributionDetail({
 
       setParticipateState("done");
       setAmount("");
+      refetch();
     } catch (e) {
       console.error("Participate failed:", e);
       setParticipateState("error");
