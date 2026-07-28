@@ -1,10 +1,10 @@
-import { type Address } from "viem";
+import { zeroAddress, type Address } from "viem";
 import {
   getDistributorV1Contract,
   getTokenV1Contract,
 } from "@/contracts/contracts";
 import { useCallback, useEffect, useState } from "react";
-import { useWalletClient } from "wagmi";
+import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 
 export type DistributorContractInfo = {
   distributionToken: Address;
@@ -36,7 +36,8 @@ export type EpochInfo = {
 };
 
 export function useDistributorData(contractAddress: Address) {
-  const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
+  const { address } = useAccount();
 
   const [contractInfo, setContractInfo] = useState<
     DistributorContractInfo | undefined
@@ -63,11 +64,11 @@ export function useDistributorData(contractAddress: Address) {
 
   useEffect(() => {
     (async () => {
-      if (!walletClient) return;
+      if (!publicClient) return;
       setIsLoading(true);
       try {
         const distributor = getDistributorV1Contract(
-          walletClient,
+          publicClient,
           contractAddress,
         );
         const info = await distributor.read.getContractInfo();
@@ -78,19 +79,19 @@ export function useDistributorData(contractAddress: Address) {
         );
         setCurrentEpoch(currentEpoch);
 
-        const token = getTokenV1Contract(walletClient, info.distributionToken);
+        const token = getTokenV1Contract(publicClient, info.distributionToken);
         setTokenName(await token.read.name());
         setTokenSymbol(await token.read.symbol());
 
         const pToken = getTokenV1Contract(
-          walletClient,
+          publicClient,
           info.participationToken,
         );
         setParticipationTokenSymbol(await pToken.read.symbol());
 
         setEpochs(
           await distributor.read.getEpochInfo([
-            walletClient.account.address,
+            address ?? zeroAddress,
             {
               from: BigInt(currentEpoch < 100 ? 0 : currentEpoch - 100),
               length: BigInt(currentEpoch + 100),
@@ -103,7 +104,7 @@ export function useDistributorData(contractAddress: Address) {
       }
       setIsLoading(false);
     })();
-  }, [contractAddress, walletClient, fetchKey]);
+  }, [contractAddress, publicClient, fetchKey, address]);
 
   return {
     contractInfo: contractInfo as DistributorContractInfo | undefined,
