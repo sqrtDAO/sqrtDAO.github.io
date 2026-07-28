@@ -87,6 +87,9 @@ export default function DistributionWizard(props: {
   const [founderSharePercent, setFounderSharePercent] = useState("");
   const [founderReceiverAddress, setFounderReceiverAddress] = useState("");
 
+  const [showErrors, setShowErrors] = useState(false);
+  const [now] = useState(() => Date.now());
+
   // Initial price preview (Initial liquidity ÷ Supply)
   const totalSupplyF = parseFloat(formatEther(props.token.totalSupply));
   const backingLiquidity = parseFloat(initialParticipationLiquidity);
@@ -140,42 +143,45 @@ export default function DistributionWizard(props: {
   // ── Navigation helpers ───────────────────────────────────────────────────
 
   const stepValidation = () => {
-    // TODO show error
+    const supplyVal = supply.replace(/,/g, "");
+    const supplyNumVal = parseFloat(supplyVal);
+    const backingVal = parseFloat(initialParticipationLiquidity);
+    const tokenVal = parseFloat(initialDistributionLiquidity);
+    const priceVal =
+      tokenVal > 0 && backingVal > 0 ? backingVal / tokenVal : null;
+
     switch (step) {
       case "supply":
-        if (supplyExceedsBalance) return false;
-        if (initialPrice === null) return false;
+        if (
+          supply === "" ||
+          (supply !== "" && supplyNumVal + tokenVal > totalSupplyF)
+        )
+          return false;
+        if (priceVal === null) return false;
         return true;
       case "release":
-        // common
-        if (startDate === "") return false;
         if (startDate === "") return false;
         if (startTime === "") return false;
-
-        const _startDate = new Date(startDate).getTime();
-        if (Date.now() > _startDate + parseTime(startTime)) return false;
-
+        if (now > new Date(startDate).getTime() + parseTime(startTime))
+          return false;
         if (releaseTypeIdx === 0) {
-          // Time base
-
           if (endDate === "") return false;
-          if (new Date(endDate).getTime() <= _startDate) return false;
+          if (new Date(endDate).getTime() <= new Date(startDate).getTime())
+            return false;
         } else {
-          // Epoch base
-
-          if (numberOfEpochs === "") return false;
-          if (releasePerEpoch === "") return false;
-          if (parseInt(numberOfEpochs) === 0) return false;
-          if (parseInt(releasePerEpoch) === 0) return false;
+          if (numberOfEpochs === "" || parseInt(numberOfEpochs) === 0)
+            return false;
+          if (releasePerEpoch === "" || parseInt(releasePerEpoch) === 0)
+            return false;
         }
-
         return true;
       case "rules":
         if (minParticipation === "") return false;
         if (claimDelay === "") return false;
         if (founderShareOn) {
+          if (founderSharePercent === "") return false;
           if (!isAddress(founderReceiverAddress)) return false;
-          if (parseInt(founderSharePercent) > FOUNDER_SHARE_CAP) return false;
+          if (parseFloat(founderSharePercent) > FOUNDER_SHARE_CAP) return false;
         }
         return true;
       default:
@@ -184,18 +190,24 @@ export default function DistributionWizard(props: {
   };
 
   function goNext() {
-    if (!stepValidation()) return;
+    if (!stepValidation()) {
+      setShowErrors(true);
+      return;
+    }
+    setShowErrors(false);
     const idx = STEP_ORDER.indexOf(step);
     if (idx < STEP_ORDER.length - 1) setStep(STEP_ORDER[idx + 1]);
   }
 
   function goBack() {
+    setShowErrors(false);
     const idx = STEP_ORDER.indexOf(step);
     if (idx > 0) setStep(STEP_ORDER[idx - 1]);
     else setStep("welcome");
   }
 
   function jumpTo(target: DistStep) {
+    setShowErrors(false);
     setStep(target);
   }
 
@@ -338,7 +350,10 @@ export default function DistributionWizard(props: {
                   </p>
                 </div>
 
-                <div className="dw-form">
+                <div
+                  className="dw-form"
+                  onChangeCapture={() => setShowErrors(false)}
+                >
                   {/* Supply set up */}
                   <div className="dw-rules-section">
                     <p className="dw-section-label">Supply set up</p>
@@ -347,7 +362,7 @@ export default function DistributionWizard(props: {
                         Supply to distribute
                       </label>
                       <div
-                        className={`dw-supply-field${supplyExceedsBalance ? " is-error" : ""}`}
+                        className={`dw-supply-field${showErrors && (supplyExceedsBalance || supply === "") ? " is-error" : ""}`}
                       >
                         <input
                           className="dw-supply-el"
@@ -365,10 +380,16 @@ export default function DistributionWizard(props: {
                           {props.token.symbol}
                         </span>
                       </div>
-                      {supplyExceedsBalance && (
+                      {showErrors && supplyExceedsBalance && (
                         <div className="dw-validation dw-validation--danger">
                           <IconAlertSquare size={16} strokeWidth={1.5} />
                           <span>Insufficient balance</span>
+                        </div>
+                      )}
+                      {showErrors && supply === "" && (
+                        <div className="dw-validation dw-validation--danger">
+                          <IconAlertSquare size={16} strokeWidth={1.5} />
+                          <span>Supply amount is required</span>
                         </div>
                       )}
                     </div>
@@ -492,6 +513,13 @@ export default function DistributionWizard(props: {
                       </div>
                     </div>
 
+                    {showErrors && initialPrice === null && (
+                      <div className="dw-validation dw-validation--danger">
+                        <IconAlertSquare size={16} strokeWidth={1.5} />
+                        <span>Both liquidity fields are required</span>
+                      </div>
+                    )}
+
                     <div className="dw-price-row">
                       <span className="dw-price-label">
                         Your token initial price will be:
@@ -541,7 +569,10 @@ export default function DistributionWizard(props: {
                   </p>
                 </div>
 
-                <div className="dw-form">
+                <div
+                  className="dw-form"
+                  onChangeCapture={() => setShowErrors(false)}
+                >
                   {/* Distribution start */}
                   <div className="dw-release-type-section">
                     <p className="dw-section-label">Distribution start</p>
@@ -565,6 +596,12 @@ export default function DistributionWizard(props: {
                             <IconCalendar size={16} strokeWidth={1.5} />
                           </button>
                         </div>
+                        {showErrors && startDate === "" && (
+                          <div className="dw-validation dw-validation--danger">
+                            <IconAlertSquare size={16} strokeWidth={1.5} />
+                            <span>Start date is required</span>
+                          </div>
+                        )}
                       </div>
                       <div className="dw-date-wrap">
                         <label className="dw-date-label">
@@ -587,8 +624,25 @@ export default function DistributionWizard(props: {
                             <IconClock size={16} strokeWidth={1.5} />
                           </button>
                         </div>
+                        {showErrors && startTime === "" && (
+                          <div className="dw-validation dw-validation--danger">
+                            <IconAlertSquare size={16} strokeWidth={1.5} />
+                            <span>Start time is required</span>
+                          </div>
+                        )}
                       </div>
                     </div>
+                    {showErrors &&
+                      startDate !== "" &&
+                      startTime !== "" &&
+                      now >
+                        new Date(startDate).getTime() +
+                          parseTime(startTime) && (
+                        <div className="dw-validation dw-validation--danger">
+                          <IconAlertSquare size={16} strokeWidth={1.5} />
+                          <span>Start must be in the future</span>
+                        </div>
+                      )}
                   </div>
 
                   <Divider />
@@ -656,6 +710,31 @@ export default function DistributionWizard(props: {
                                 <IconCalendar size={16} strokeWidth={1.5} />
                               </button>
                             </div>
+                            {showErrors &&
+                              releaseTypeIdx === 0 &&
+                              endDate === "" && (
+                                <div className="dw-validation dw-validation--danger">
+                                  <IconAlertSquare
+                                    size={16}
+                                    strokeWidth={1.5}
+                                  />
+                                  <span>End date is required</span>
+                                </div>
+                              )}
+                            {showErrors &&
+                              releaseTypeIdx === 0 &&
+                              endDate !== "" &&
+                              startDate !== "" &&
+                              new Date(endDate).getTime() <=
+                                new Date(startDate).getTime() && (
+                                <div className="dw-validation dw-validation--danger">
+                                  <IconAlertSquare
+                                    size={16}
+                                    strokeWidth={1.5}
+                                  />
+                                  <span>End must be after start</span>
+                                </div>
+                              )}
                           </div>
                           <div className="dw-input-flex">
                             <Input
@@ -699,6 +778,20 @@ export default function DistributionWizard(props: {
                                 />
                                 <span className="dw-supply-suffix">Epochs</span>
                               </div>
+                              {showErrors &&
+                                releaseTypeIdx === 1 &&
+                                (numberOfEpochs === "" ||
+                                  parseInt(numberOfEpochs) === 0) && (
+                                  <div className="dw-validation dw-validation--danger">
+                                    <IconAlertSquare
+                                      size={16}
+                                      strokeWidth={1.5}
+                                    />
+                                    <span>
+                                      Number of epochs must be greater than 0
+                                    </span>
+                                  </div>
+                                )}
                             </div>
                             <div className="dw-date-wrap">
                               <label className="dw-date-label">
@@ -730,9 +823,23 @@ export default function DistributionWizard(props: {
                                   {props.token.symbol}
                                 </span>
                               </div>
+                              {showErrors &&
+                                releaseTypeIdx === 1 &&
+                                (releasePerEpoch === "" ||
+                                  parseInt(releasePerEpoch) === 0) && (
+                                  <div className="dw-validation dw-validation--danger">
+                                    <IconAlertSquare
+                                      size={16}
+                                      strokeWidth={1.5}
+                                    />
+                                    <span>
+                                      Release per epoch must be greater than 0
+                                    </span>
+                                  </div>
+                                )}
                             </div>
                           </div>
-                          <div className="dw-input-flex">
+                          <div className="dw-input-flex mt-4">
                             <Input
                               label="Epoch duration"
                               placeholder="Select an option"
@@ -799,7 +906,10 @@ export default function DistributionWizard(props: {
                   </p>
                 </div>
 
-                <div className="dw-form">
+                <div
+                  className="dw-form"
+                  onChangeCapture={() => setShowErrors(false)}
+                >
                   {/* Epoch setup */}
                   <div className="dw-rules-section">
                     <p className="dw-section-label">Epoch setup</p>
@@ -827,6 +937,12 @@ export default function DistributionWizard(props: {
                             {BACKING_ASSETS[backingAssetIdx]}
                           </span>
                         </div>
+                        {showErrors && minParticipation === "" && (
+                          <div className="dw-validation dw-validation--danger">
+                            <IconAlertSquare size={16} strokeWidth={1.5} />
+                            <span>Minimum participation is required</span>
+                          </div>
+                        )}
                       </div>
                       <div className="dw-supply-group">
                         <label className="dw-supply-label">Claim delay</label>
@@ -847,6 +963,12 @@ export default function DistributionWizard(props: {
                           />
                           <span className="dw-supply-suffix">Days</span>
                         </div>
+                        {showErrors && claimDelay === "" && (
+                          <div className="dw-validation dw-validation--danger">
+                            <IconAlertSquare size={16} strokeWidth={1.5} />
+                            <span>Claim delay is required</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -929,7 +1051,7 @@ export default function DistributionWizard(props: {
                       <div className="dw-backing-inputs">
                         <div className="dw-supply-group dw-share-pct-group">
                           <div
-                            className={`dw-supply-field${founderExceedsCap ? " is-error" : ""}`}
+                            className={`dw-supply-field${showErrors && (founderSharePercent === "" || founderExceedsCap) ? " is-error" : ""}`}
                           >
                             <input
                               className="dw-supply-el"
@@ -947,7 +1069,13 @@ export default function DistributionWizard(props: {
                             />
                             <span className="dw-supply-suffix">%</span>
                           </div>
-                          {founderExceedsCap && (
+                          {showErrors && founderSharePercent === "" && (
+                            <div className="dw-validation dw-validation--danger">
+                              <IconAlertSquare size={16} strokeWidth={1.5} />
+                              <span>Share percentage is required</span>
+                            </div>
+                          )}
+                          {showErrors && founderExceedsCap && (
                             <div className="dw-validation dw-validation--danger">
                               <IconAlertSquare size={16} strokeWidth={1.5} />
                               <span>Capped at 25%</span>
@@ -961,6 +1089,8 @@ export default function DistributionWizard(props: {
                             onChange={setFounderReceiverAddress}
                             showPaste
                             onPaste={handlePasteFounderAddress}
+                            error={showErrors && founderShareOn && !isAddress(founderReceiverAddress)}
+                            errorMessage="Invalid receiver address"
                             spellCheck={false}
                             autoComplete="off"
                           />
