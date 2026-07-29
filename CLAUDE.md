@@ -20,6 +20,7 @@
 - Use Tailwind for responsive UI (`sm:`, `md:`, `lg:`)
 - Centralize constants (like social media links and more) in a typescript file and import and use (Do not repeat urls and configs everywhere)
 - You don't need to read all the project files, read only what you need for the task (keep the context window small)
+- for contract integration use `src/contracts/contracts.ts` and `get<ContractName>Contract` function and then `read` or `write` objects and do NOT use wagmi generated `useWrite<ContractName><FunctionName>` directly.
 
 ## Typescript rules
 
