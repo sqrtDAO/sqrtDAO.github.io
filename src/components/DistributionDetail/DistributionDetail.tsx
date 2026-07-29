@@ -257,6 +257,7 @@ export default function DistributionDetail({
     tokenName,
     tokenSymbol,
     participationTokenSymbol,
+    participationTokenDecimals,
     isLoading,
     refetch,
   } = useDistributorData(contractAddress as Address);
@@ -449,8 +450,8 @@ export default function DistributionDetail({
     try {
       setParticipateState("approving");
 
-      const amountPerEpoch = parseUnits(amount, 18);
-      const totalAmount = amountPerEpoch * BigInt(epochCount);
+      const totalAmount = parseUnits(amount, participationTokenDecimals!);
+      const amountPerEpoch = totalAmount / BigInt(epochCount);
 
       const pToken = getTokenV1Contract(
         walletClient,
