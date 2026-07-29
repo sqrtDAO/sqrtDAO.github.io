@@ -4,7 +4,9 @@ import {
   getTokenV1Contract,
 } from "@/contracts/contracts";
 import { useCallback, useEffect, useState } from "react";
-import { useAccount, usePublicClient, useWalletClient } from "wagmi";
+import { useAccount, usePublicClient } from "wagmi";
+
+export type DistributionState = "waiting" | "running" | "ended";
 
 export type DistributorContractInfo = {
   distributionToken: Address;
@@ -58,6 +60,9 @@ export function useDistributorData(contractAddress: Address) {
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | undefined>(undefined);
+  const [distributionState, setDistributionState] = useState<
+    DistributionState | undefined
+  >(undefined);
   const [fetchKey, setFetchKey] = useState(0);
 
   const refetch = useCallback(() => setFetchKey((k) => k + 1), []);
@@ -78,6 +83,14 @@ export function useDistributorData(contractAddress: Address) {
             Number(info.epochDuration),
         );
         setCurrentEpoch(currentEpoch);
+
+        setDistributionState(
+          currentEpoch < 0
+            ? "waiting"
+            : currentEpoch > info.numberOfEpochs
+              ? "ended"
+              : "running",
+        );
 
         const token = getTokenV1Contract(publicClient, info.distributionToken);
         setTokenName(await token.read.name());
@@ -107,6 +120,7 @@ export function useDistributorData(contractAddress: Address) {
   }, [contractAddress, publicClient, fetchKey, address]);
 
   return {
+    state: distributionState,
     contractInfo: contractInfo as DistributorContractInfo | undefined,
     currentEpoch: currentEpoch as bigint | undefined,
     epochsInfo: epochs,

@@ -250,6 +250,7 @@ export default function DistributionDetail({
   const chainId = useChainId();
 
   const {
+    state,
     contractInfo,
     currentEpoch,
     epochsInfo,
@@ -418,10 +419,9 @@ export default function DistributionDetail({
   }, [walletClient, publicClient, contractInfo, contractAddress, refetch]);
 
   console.log(currentEpoch);
-  const isEpochActive = currentEpoch !== undefined && Number(currentEpoch) >= 0;
   const canParticipate =
     isWalletConnected &&
-    isEpochActive &&
+    state === "running" &&
     Number(amount) > 0 &&
     participateState !== "approving" &&
     participateState !== "participating";
@@ -429,7 +429,7 @@ export default function DistributionDetail({
     participateState === "approving" || participateState === "participating";
   const participateLabel = !isWalletConnected
     ? "Connect wallet"
-    : !isEpochActive
+    : state === "waiting"
       ? "Not started"
       : isParticipating
         ? participateState === "approving"
