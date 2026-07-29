@@ -1,5 +1,6 @@
 import { CLOUD_FRAGMENT_SHADER, COMPOSITE_FRAGMENT_SHADER, VERTEX_SHADER } from "./shaders";
 import { createNoiseTexture } from "./noiseTexture";
+import { isWebKit } from "@/utils/browser";
 
 export interface SmokeMeshOptions {
   colors: [string, string, string];
@@ -97,6 +98,19 @@ export function createSmokeMeshBackground(
   let [colA, colB, colC] = [hex2rgb(o.colors[0]), hex2rgb(o.colors[1] ?? o.colors[0]), hex2rgb(o.colors[2] ?? o.colors[1] ?? o.colors[0])];
 
   const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  const webkit = isWebKit();
+  // Grain's per-pixel hash() math (see shaders.ts) diverges on WebKit -- blows out/clumps
+  // instead of the fine dither seen on Chrome/Firefox. Killed via u_grainOn rather than the
+  // `grain` prop because a hardcoded 0.45 baseline in the shader applies even at grain=0.
+  const grainOn = webkit ? 0 : 1;
+  // The real bug: WebKit dithers a translucent WebGL canvas when compositing it over page
+  // content, visible as dense noise at the cloud's soft edge -- independent of grain and
+  // unaffected by premultipliedAlpha. Forcing the canvas opaque on WebKit and baking the
+  // blend against the page's dark background (--color-void, #0b0d12) into the shader avoids
+  // that compositing path entirely. Approximate: the container's radial-gradient overlay
+  // (see SmokeMeshBackground.tsx) isn't reproduced, just its dark base tone.
+  const forceOpaque = webkit ? 1 : 0;
+  const bgColor = hex2rgb("#0b0d12");
 
   const ctxAttribs: WebGLContextAttributes = { alpha: true, premultipliedAlpha: false, antialias: false, depth: false };
   let gl = (canvas.getContext("webgl", ctxAttribs) as WebGLRenderingContext | null) ?? undefined;
@@ -146,6 +160,9 @@ export function createSmokeMeshBackground(
       u_mouse: g.getUniformLocation(compositeProgram, "u_mouse"),
       u_intensity: g.getUniformLocation(compositeProgram, "u_intensity"),
       u_grain: g.getUniformLocation(compositeProgram, "u_grain"),
+      u_grainOn: g.getUniformLocation(compositeProgram, "u_grainOn"),
+      u_forceOpaque: g.getUniformLocation(compositeProgram, "u_forceOpaque"),
+      u_bgColor: g.getUniformLocation(compositeProgram, "u_bgColor"),
       u_mesh: g.getUniformLocation(compositeProgram, "u_mesh"),
       u_speed: g.getUniformLocation(compositeProgram, "u_speed"),
       u_hover: g.getUniformLocation(compositeProgram, "u_hover"),
@@ -291,12 +308,15 @@ export function createSmokeMeshBackground(
     g.uniform2f(uComposite.u_mouse, mouseSmoothed[0], mouseSmoothed[1]);
     g.uniform1f(uComposite.u_intensity, o.intensity);
     g.uniform1f(uComposite.u_grain, o.grain);
+    g.uniform1f(uComposite.u_grainOn, grainOn);
+    g.uniform1f(uComposite.u_forceOpaque, forceOpaque);
     g.uniform1f(uComposite.u_mesh, o.mesh);
     g.uniform1f(uComposite.u_speed, o.speed);
     g.uniform1f(uComposite.u_hover, hover);
     g.uniform3f(uComposite.u_colA, colA[0], colA[1], colA[2]);
     g.uniform3f(uComposite.u_colB, colB[0], colB[1], colB[2]);
     g.uniform3f(uComposite.u_colC, colC[0], colC[1], colC[2]);
+    g.uniform3f(uComposite.u_bgColor, bgColor[0], bgColor[1], bgColor[2]);
     g.activeTexture(g.TEXTURE0);
     g.bindTexture(g.TEXTURE_2D, cloudTexture);
     g.uniform1i(uComposite.u_cloudTex, 0);

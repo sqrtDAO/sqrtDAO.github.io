@@ -71,8 +71,8 @@ ${POINTER_WARP_GLSL}
 export const COMPOSITE_FRAGMENT_SHADER = `#extension GL_OES_standard_derivatives : enable
 precision highp float;
 uniform vec2 u_res;uniform float u_time;uniform vec2 u_mouse;
-uniform float u_intensity,u_grain,u_mesh,u_speed,u_hover;
-uniform vec3 u_colA,u_colB,u_colC;
+uniform float u_intensity,u_grain,u_mesh,u_speed,u_hover,u_grainOn,u_forceOpaque;
+uniform vec3 u_colA,u_colB,u_colC,u_bgColor;
 uniform sampler2D u_cloudTex;
 ${NOISE_GLSL}
 float hash(vec2 q){ q=mod(q,256.0); return fract(sin(dot(q,vec2(127.1,311.7)))*43758.5453); }
@@ -104,17 +104,23 @@ ${POINTER_WARP_GLSL}
   float rr=length(psApprox/ext);
   float atm=smoothstep(1.85,0.55,rr);
   float g2=hash(uv*u_res*1.25+floor(u_time*6.0)*97.0);
-  float atmDust=atm*smoothstep(0.82,1.0,g2)*(0.10+u_grain*0.12);
+  float atmDust=atm*smoothstep(0.82,1.0,g2)*(0.10+u_grain*0.12)*u_grainOn;
 
   vec3 netCol=vec3(0.50,0.46,0.36);
-  vec3 col=base + (grain-0.5)*0.05*(0.45+u_grain);
+  vec3 col=base + (grain-0.5)*0.05*(0.45+u_grain)*u_grainOn;
   col=mix(col, netCol, mesh*0.5);
   col=mix(col, base*0.7, atmDust*0.6);
   col*=u_intensity*0.6;
 
   float edgeBand=smoothstep(0.0,0.4,cloud)*(1.0-smoothstep(0.5,0.95,cloud));
-  float a=cloud - edgeBand*(grain-0.5)*(0.45+u_grain*1.1);
+  float a=cloud - edgeBand*(grain-0.5)*(0.45+u_grain*1.1)*u_grainOn;
   a=clamp(a,0.0,1.0);
   float alpha=clamp(a + mesh*0.5 + atmDust*(1.0-a), 0.0, 1.0);
-  gl_FragColor=vec4(col,alpha);
+  // WebKit dithers a translucent WebGL canvas where it composites over page content --
+  // visible as dense noise at the cloud's soft edge. u_forceOpaque bakes that blend into the
+  // shader instead (mix against the approximated page backdrop) and outputs alpha=1, so WebKit
+  // never has to composite a fractional-alpha canvas. No-op on other engines (u_forceOpaque=0).
+  vec3 finalCol=mix(col, mix(u_bgColor, col, alpha), u_forceOpaque);
+  float finalAlpha=mix(alpha, 1.0, u_forceOpaque);
+  gl_FragColor=vec4(finalCol,finalAlpha);
 }`;
