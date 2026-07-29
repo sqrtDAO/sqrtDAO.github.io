@@ -243,13 +243,13 @@ export default function DistributionWizard(props: {
       numberOfEpochsN = BigInt(parseInt(numberOfEpochs));
       releasePerEpochN = BigInt(parseInt(releasePerEpoch));
     }
-
+    const pTokenDecimals = await participationToken.read.decimals();
     props.onFinish({
       totalDistributionAmount: totalDistributionAmountN,
-      participationToken: addresses.usdt,
+      participationToken: participationToken.address,
       initialParticipationLiquidity: parseUnits(
         initialParticipationLiquidity,
-        await participationToken.read.decimals(),
+        pTokenDecimals,
       ),
       initialDistributionLiquidity: parseUnits(
         initialDistributionLiquidity,
@@ -259,10 +259,10 @@ export default function DistributionWizard(props: {
       epochDuration: epochDurationN,
       numberOfEpochs: numberOfEpochsN,
       releasePerEpoch: releasePerEpochN,
-      minimumParticipation: BigInt(parseInt(minParticipation)),
-      claimDelay: BigInt(parseInt(claimDelay)), // in seconds
+      minimumParticipation: parseUnits(minParticipation, pTokenDecimals),
+      claimDelay: BigInt(parseInt(claimDelay) * 86400), // convert days to seconds
       founderShareBps: founderShareOn
-        ? BigInt(founderPercentNum * 100)
+        ? BigInt(founderPercentNum * 100) // *100 percent to bps
         : BigInt(0),
       founderShareReceiver: founderReceiverAddress as Address,
       protocolFeeBps: BigInt(protocolFeePercent * 100),
@@ -1089,7 +1089,11 @@ export default function DistributionWizard(props: {
                             onChange={setFounderReceiverAddress}
                             showPaste
                             onPaste={handlePasteFounderAddress}
-                            error={showErrors && founderShareOn && !isAddress(founderReceiverAddress)}
+                            error={
+                              showErrors &&
+                              founderShareOn &&
+                              !isAddress(founderReceiverAddress)
+                            }
                             errorMessage="Invalid receiver address"
                             spellCheck={false}
                             autoComplete="off"
