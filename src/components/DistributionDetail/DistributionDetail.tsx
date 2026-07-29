@@ -417,6 +417,7 @@ export default function DistributionDetail({
     }
   }, [walletClient, publicClient, contractInfo, contractAddress, refetch]);
 
+  console.log(currentEpoch);
   const isEpochActive = currentEpoch !== undefined && Number(currentEpoch) >= 0;
   const canParticipate =
     isWalletConnected &&

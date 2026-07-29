@@ -89,7 +89,6 @@ export default function DistributionWizard(props: {
 
   const [showErrors, setShowErrors] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [now] = useState(() => Date.now());
 
   // Initial price preview (Initial liquidity ÷ Supply)
   const totalSupplyF = parseFloat(formatEther(props.token.totalSupply));
@@ -107,8 +106,14 @@ export default function DistributionWizard(props: {
 
   // Time-based: epoch count from date range ÷ epoch duration
   const epochsFromDates = useMemo(
-    () => calcEpochs(startDate, endDate, EPOCH_DURATION_MS[epochDuration]),
-    [startDate, endDate, epochDuration],
+    () =>
+      calcEpochs(
+        startDate,
+        startTime,
+        endDate,
+        EPOCH_DURATION_MS[epochDuration],
+      ),
+    [startDate, startTime, endDate, epochDuration],
   );
   // Time-based: release amount per epoch, derived from total supply ÷ epoch count
   const releasePerEpochFromDates = useMemo(() => {
@@ -119,8 +124,14 @@ export default function DistributionWizard(props: {
 
   // Epoch-based: computed end date from start + count
   const endDateFromEpochs = useMemo(
-    () => calcEndDateFromEpochs(startDate, parseInt(numberOfEpochs)),
-    [startDate, numberOfEpochs],
+    () =>
+      calcEndDateFromEpochs(
+        startDate,
+        startTime,
+        parseInt(numberOfEpochs),
+        EPOCH_DURATION_MS[epochDuration] / 1000,
+      ),
+    [startDate, startTime, numberOfEpochs, epochDuration],
   );
 
   // Rules: founder share % + resulting split
@@ -163,11 +174,19 @@ export default function DistributionWizard(props: {
       case "release":
         if (startDate === "") return false;
         if (startTime === "") return false;
-        if (now > new Date(startDate).getTime() + parseTime(startTime))
+
+        console.log(nowSec());
+        console.log(parseUTCToTimestampSec(startDate, startTime));
+        console.log(parseUTCToTimestampSec(startDate, startTime) - nowSec());
+
+        if (nowSec() > parseUTCToTimestampSec(startDate, startTime))
           return false;
         if (releaseTypeIdx === 0) {
           if (endDate === "") return false;
-          if (new Date(endDate).getTime() <= new Date(startDate).getTime())
+          if (
+            parseUTCToTimestampSec(endDate) <=
+            parseUTCToTimestampSec(startDate, startTime)
+          )
             return false;
         } else {
           if (numberOfEpochs === "" || parseInt(numberOfEpochs) === 0)
@@ -229,9 +248,7 @@ export default function DistributionWizard(props: {
         addresses.usdt,
       );
 
-      const startTimeN = BigInt(
-        (new Date(startDate).getTime() + parseTime(startTime)) / 1000,
-      );
+      const startTimeN = parseUTCToTimestampSec(startDate, startTime);
       const epochDurationN = BigInt(EPOCH_DURATION_MS[epochDuration] / 1000);
       const totalDistributionAmountN = parseUnits(supply, props.token.decimals);
 
@@ -239,7 +256,7 @@ export default function DistributionWizard(props: {
       let releasePerEpochN: bigint;
       if (releaseTypeIdx === 0) {
         // Time base
-        const endTimeN = BigInt(new Date(endDate).getTime() / 1000);
+        const endTimeN = parseUTCToTimestampSec(endDate);
         numberOfEpochsN = BigInt((endTimeN - startTimeN) / epochDurationN);
         releasePerEpochN = totalDistributionAmountN / numberOfEpochsN;
       } else {
@@ -272,8 +289,8 @@ export default function DistributionWizard(props: {
         protocolFeeBps: BigInt(protocolFeePercent * 100),
       });
     } catch (e) {
-      setConfirming(false);
       console.error(e);
+      setConfirming(false);
     }
   };
 
@@ -643,9 +660,8 @@ export default function DistributionWizard(props: {
                     {showErrors &&
                       startDate !== "" &&
                       startTime !== "" &&
-                      now >
-                        new Date(startDate).getTime() +
-                          parseTime(startTime) && (
+                      nowSec() >
+                        parseUTCToTimestampSec(startDate, startTime) && (
                         <div className="dw-validation dw-validation--danger">
                           <IconAlertSquare size={16} strokeWidth={1.5} />
                           <span>Start must be in the future</span>
@@ -733,8 +749,11 @@ export default function DistributionWizard(props: {
                               releaseTypeIdx === 0 &&
                               endDate !== "" &&
                               startDate !== "" &&
-                              new Date(endDate).getTime() <=
-                                new Date(startDate).getTime() && (
+                              parseUTCToTimestampSec(endDate) <=
+                                parseUTCToTimestampSec(
+                                  startDate,
+                                  startTime,
+                                ) && (
                                 <div className="dw-validation dw-validation--danger">
                                   <IconAlertSquare
                                     size={16}
@@ -896,7 +915,12 @@ export default function DistributionWizard(props: {
                           Ends{" "}
                           <strong>
                             {formatDateLong(endDateFromEpochs)} (
-                            {parseInt(numberOfEpochs)} days later)
+                            {(
+                              (parseInt(numberOfEpochs) *
+                                EPOCH_DURATION_MS[epochDuration]) /
+                              (24 * 60 * 60 * 1000)
+                            ).toFixed(1)}{" "}
+                            days later)
                           </strong>
                         </p>
                       )}
@@ -1360,24 +1384,35 @@ type ReleaseCurve = "flat" | "linear" | "exponential";
 const stepperIndex = (step: DistStep) => STEP_ORDER.indexOf(step); // -1 for "welcome"
 
 const calcEpochs = (
-  start: string,
+  startDate: string,
+  startTime: string,
   end: string,
   durationMs: number,
 ): number | null => {
-  if (!start || !end) return null;
-  const diff = new Date(end).getTime() - new Date(start).getTime();
-  if (diff <= 0) return null;
-  return Math.round(diff / durationMs);
+  if (!startDate || !startTime || !end) return null;
+  const diffMs =
+    Number(
+      parseUTCToTimestampSec(end) -
+        parseUTCToTimestampSec(startDate, startTime),
+    ) * 1000;
+  if (diffMs <= 0) return null;
+  return Math.round(diffMs / durationMs);
 };
 
 const formatAmount = (n: number) =>
   n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 
-const calcEndDateFromEpochs = (start: string, epochs: number): Date | null => {
-  if (!start || isNaN(epochs) || epochs <= 0) return null;
-  const d = new Date(start);
-  d.setDate(d.getDate() + epochs);
-  return d;
+const calcEndDateFromEpochs = (
+  startDate: string,
+  startTime: string,
+  numberOfEpochs: number,
+  epochDurationSec: number,
+): Date | null => {
+  if (!startDate || !startTime || isNaN(numberOfEpochs) || numberOfEpochs <= 0)
+    return null;
+  const startSec = Number(parseUTCToTimestampSec(startDate, startTime));
+  const endSec = startSec + numberOfEpochs * epochDurationSec;
+  return new Date(endSec * 1000);
 };
 
 const formatDate = (iso: string) => {
@@ -1397,14 +1432,16 @@ const formatDateLong = (d: Date) => {
   });
 };
 
-/// returns milliseconds
-const parseTime = (timeStr: string) => {
-  const [hours, minutes] = timeStr.split(":").map(Number);
-  return (hours * 3600 + minutes * 60) * 1000;
-};
-
 const formatAddress = (address: string) =>
   `${address.slice(0, 6)}...${address.slice(-4)}`;
+
+const parseUTCToTimestampSec = (date: string, time?: string) => {
+  const [year, month, day] = date.split("-").map(Number);
+  const [hours, minutes] = time ? time.split(":").map(Number) : [0, 0];
+  const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
+  return BigInt(Math.floor(utcDate.getTime() / 1000));
+};
+const nowSec = () => BigInt(Math.round(Date.now() / 1000));
 
 const BACKING_ASSETS = ["USDT", "BASE", "USDC", "ETH"];
 const BACKING_ASSETS_DISABLED = [1, 2, 3];
