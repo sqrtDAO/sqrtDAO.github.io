@@ -1,3 +1,5 @@
+import { forwardRef } from "react";
+
 export interface AccentBand {
   /** Length in px (along the bar's main axis). */
   width: number;
@@ -24,10 +26,15 @@ export interface LandingAccentBarProps {
 
 // Recurring decoration across the design: a solid base band with a few small
 // tinted chips floating on top at fixed offsets (never a sequential row).
-export default function LandingAccentBar({ band, chips, orientation = "horizontal", className = "" }: LandingAccentBarProps) {
+// forwardRef so it can be wrapped in <GlitchReveal> like any native element.
+const LandingAccentBar = forwardRef<HTMLDivElement, LandingAccentBarProps>(function LandingAccentBar(
+  { band, chips, orientation = "horizontal", className = "" },
+  ref
+) {
   const vertical = orientation === "vertical";
   return (
     <div
+      ref={ref}
       aria-hidden="true"
       className={`absolute ${className}`}
       style={{ width: vertical ? band.height : band.width, height: vertical ? band.width : band.height }}
@@ -49,4 +56,6 @@ export default function LandingAccentBar({ band, chips, orientation = "horizonta
       ))}
     </div>
   );
-}
+});
+
+export default LandingAccentBar;
