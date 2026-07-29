@@ -1306,7 +1306,11 @@ export default function DistributionWizard(props: {
                     </div>
                     <DataRow
                       label="Tokenomics:"
-                      value="100% public distribution"
+                      value={
+                        supply
+                          ? `${((supplyNum / totalSupplyF) * 100).toFixed(2)}% public distribution`
+                          : "—"
+                      }
                     />
                     <DataRow label="Allowlist:" value="No one" />
                   </div>
