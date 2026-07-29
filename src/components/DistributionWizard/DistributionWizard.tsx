@@ -271,8 +271,9 @@ export default function DistributionWizard(props: {
         founderShareReceiver: founderReceiverAddress as Address,
         protocolFeeBps: BigInt(protocolFeePercent * 100),
       });
-    } catch {
+    } catch (e) {
       setConfirming(false);
+      console.error(e);
     }
   };
 
