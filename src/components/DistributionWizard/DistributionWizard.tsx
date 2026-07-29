@@ -774,11 +774,17 @@ export default function DistributionWizard(props: {
                                       "",
                                     );
                                     setNumberOfEpochs(value);
-                                    setReleasePerEpoch(
-                                      (
-                                        parseInt(supply) / parseInt(value)
-                                      ).toString(),
-                                    );
+                                    if (!value) {
+                                      setReleasePerEpoch("");
+                                    } else {
+                                      const supplyNum = parseInt(supply);
+                                      const epochsNum = parseInt(value);
+                                      setReleasePerEpoch(
+                                        supplyNum && epochsNum
+                                          ? (supplyNum / epochsNum).toString()
+                                          : "",
+                                      );
+                                    }
                                   }}
                                   spellCheck={false}
                                   autoComplete="off"
@@ -817,11 +823,17 @@ export default function DistributionWizard(props: {
                                       "",
                                     );
                                     setReleasePerEpoch(value);
-                                    setNumberOfEpochs(
-                                      (
-                                        parseInt(supply) / parseInt(value)
-                                      ).toString(),
-                                    );
+                                    if (!value) {
+                                      setNumberOfEpochs("");
+                                    } else {
+                                      const supplyNum = parseInt(supply);
+                                      const perEpochNum = parseInt(value);
+                                      setNumberOfEpochs(
+                                        supplyNum && perEpochNum
+                                          ? (supplyNum / perEpochNum).toString()
+                                          : "",
+                                      );
+                                    }
                                   }}
                                   spellCheck={false}
                                   autoComplete="off"
