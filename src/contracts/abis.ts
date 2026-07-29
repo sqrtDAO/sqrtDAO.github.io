@@ -728,11 +728,6 @@ export const factoryV1Abi = [
       { name: '_initialOwner', internalType: 'address', type: 'address' },
       { name: '_protocolFeeBps', internalType: 'uint256', type: 'uint256' },
       {
-        name: '_protocolFeeReceiver',
-        internalType: 'address',
-        type: 'address',
-      },
-      {
         name: '_transferToHook',
         internalType: 'contract TransferToHook',
         type: 'address',
@@ -1134,6 +1129,16 @@ export const factoryV1Abi = [
   },
   {
     type: 'function',
+    inputs: [
+      { name: '_token', internalType: 'address', type: 'address' },
+      { name: '_to', internalType: 'address', type: 'address' },
+    ],
+    name: 'drain',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
     inputs: [],
     name: 'owner',
     outputs: [{ name: '', internalType: 'address', type: 'address' }],
@@ -1149,13 +1154,6 @@ export const factoryV1Abi = [
   {
     type: 'function',
     inputs: [],
-    name: 'protocolFeeReceiver',
-    outputs: [{ name: '', internalType: 'address', type: 'address' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
     name: 'renounceOwnership',
     outputs: [],
     stateMutability: 'nonpayable',
@@ -1166,19 +1164,6 @@ export const factoryV1Abi = [
       { name: '_protocolFeeBps', internalType: 'uint256', type: 'uint256' },
     ],
     name: 'setProtocolFeeBps',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [
-      {
-        name: '_protocolFeeReceiver',
-        internalType: 'address',
-        type: 'address',
-      },
-    ],
-    name: 'setProtocolFeeReceiver',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -2054,15 +2039,6 @@ export const useReadFactoryV1ProtocolFeeBps =
   })
 
 /**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"protocolFeeReceiver"`
- */
-export const useReadFactoryV1ProtocolFeeReceiver =
-  /*#__PURE__*/ createUseReadContract({
-    abi: factoryV1Abi,
-    functionName: 'protocolFeeReceiver',
-  })
-
-/**
  * Wraps __{@link useWriteContract}__ with `abi` set to __{@link factoryV1Abi}__
  */
 export const useWriteFactoryV1 = /*#__PURE__*/ createUseWriteContract({
@@ -2106,6 +2082,14 @@ export const useWriteFactoryV1CreateTokenAndLiquidityAndDistribution =
   })
 
 /**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"drain"`
+ */
+export const useWriteFactoryV1Drain = /*#__PURE__*/ createUseWriteContract({
+  abi: factoryV1Abi,
+  functionName: 'drain',
+})
+
+/**
  * Wraps __{@link useWriteContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"renounceOwnership"`
  */
 export const useWriteFactoryV1RenounceOwnership =
@@ -2121,15 +2105,6 @@ export const useWriteFactoryV1SetProtocolFeeBps =
   /*#__PURE__*/ createUseWriteContract({
     abi: factoryV1Abi,
     functionName: 'setProtocolFeeBps',
-  })
-
-/**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"setProtocolFeeReceiver"`
- */
-export const useWriteFactoryV1SetProtocolFeeReceiver =
-  /*#__PURE__*/ createUseWriteContract({
-    abi: factoryV1Abi,
-    functionName: 'setProtocolFeeReceiver',
   })
 
 /**
@@ -2185,6 +2160,15 @@ export const useSimulateFactoryV1CreateTokenAndLiquidityAndDistribution =
   })
 
 /**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"drain"`
+ */
+export const useSimulateFactoryV1Drain =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: factoryV1Abi,
+    functionName: 'drain',
+  })
+
+/**
  * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"renounceOwnership"`
  */
 export const useSimulateFactoryV1RenounceOwnership =
@@ -2200,15 +2184,6 @@ export const useSimulateFactoryV1SetProtocolFeeBps =
   /*#__PURE__*/ createUseSimulateContract({
     abi: factoryV1Abi,
     functionName: 'setProtocolFeeBps',
-  })
-
-/**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"setProtocolFeeReceiver"`
- */
-export const useSimulateFactoryV1SetProtocolFeeReceiver =
-  /*#__PURE__*/ createUseSimulateContract({
-    abi: factoryV1Abi,
-    functionName: 'setProtocolFeeReceiver',
   })
 
 /**
