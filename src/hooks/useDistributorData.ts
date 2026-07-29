@@ -73,7 +73,7 @@ export function useDistributorData(contractAddress: Address) {
         );
         const info = await distributor.read.getContractInfo();
         setContractInfo(info);
-        const currentEpoch = Math.round(
+        const currentEpoch = Math.floor(
           (Date.now() / 1000 - Number(info.startingTimestamp)) /
             Number(info.epochDuration),
         );
