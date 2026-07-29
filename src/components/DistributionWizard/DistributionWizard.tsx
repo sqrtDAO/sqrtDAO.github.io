@@ -88,6 +88,7 @@ export default function DistributionWizard(props: {
   const [founderReceiverAddress, setFounderReceiverAddress] = useState("");
 
   const [showErrors, setShowErrors] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [now] = useState(() => Date.now());
 
   // Initial price preview (Initial liquidity ÷ Supply)
@@ -219,54 +220,60 @@ export default function DistributionWizard(props: {
   }
 
   const onConfirm = async () => {
-    const addresses = getAddresses(publicClient!.chain.id);
-    const participationToken = getTokenV1Contract(
-      publicClient!,
-      addresses.usdt,
-    );
+    if (confirming) return;
+    setConfirming(true);
+    try {
+      const addresses = getAddresses(publicClient!.chain.id);
+      const participationToken = getTokenV1Contract(
+        publicClient!,
+        addresses.usdt,
+      );
 
-    const startTimeN = BigInt(
-      (new Date(startDate).getTime() + parseTime(startTime)) / 1000,
-    );
-    const epochDurationN = BigInt(EPOCH_DURATION_MS[epochDuration] / 1000);
-    const totalDistributionAmountN = parseUnits(supply, props.token.decimals);
+      const startTimeN = BigInt(
+        (new Date(startDate).getTime() + parseTime(startTime)) / 1000,
+      );
+      const epochDurationN = BigInt(EPOCH_DURATION_MS[epochDuration] / 1000);
+      const totalDistributionAmountN = parseUnits(supply, props.token.decimals);
 
-    let numberOfEpochsN: bigint;
-    let releasePerEpochN: bigint;
-    if (releaseTypeIdx === 0) {
-      // Time base
-      const endTimeN = BigInt(new Date(endDate).getTime() / 1000);
-      numberOfEpochsN = BigInt((endTimeN - startTimeN) / epochDurationN);
-      releasePerEpochN = totalDistributionAmountN / numberOfEpochsN;
-    } else {
-      // Epoch base
-      numberOfEpochsN = BigInt(parseInt(numberOfEpochs));
-      releasePerEpochN = BigInt(parseInt(releasePerEpoch));
+      let numberOfEpochsN: bigint;
+      let releasePerEpochN: bigint;
+      if (releaseTypeIdx === 0) {
+        // Time base
+        const endTimeN = BigInt(new Date(endDate).getTime() / 1000);
+        numberOfEpochsN = BigInt((endTimeN - startTimeN) / epochDurationN);
+        releasePerEpochN = totalDistributionAmountN / numberOfEpochsN;
+      } else {
+        // Epoch base
+        numberOfEpochsN = BigInt(parseInt(numberOfEpochs));
+        releasePerEpochN = BigInt(parseInt(releasePerEpoch));
+      }
+      const pTokenDecimals = await participationToken.read.decimals();
+      props.onFinish({
+        totalDistributionAmount: totalDistributionAmountN,
+        participationToken: participationToken.address,
+        initialParticipationLiquidity: parseUnits(
+          initialParticipationLiquidity,
+          pTokenDecimals,
+        ),
+        initialDistributionLiquidity: parseUnits(
+          initialDistributionLiquidity,
+          props.token.decimals,
+        ),
+        startTime: startTimeN,
+        epochDuration: epochDurationN,
+        numberOfEpochs: numberOfEpochsN,
+        releasePerEpoch: releasePerEpochN,
+        minimumParticipation: parseUnits(minParticipation, pTokenDecimals),
+        claimDelay: BigInt(parseInt(claimDelay) * 86400), // convert days to seconds
+        founderShareBps: founderShareOn
+          ? BigInt(founderPercentNum * 100) // *100 percent to bps
+          : BigInt(0),
+        founderShareReceiver: founderReceiverAddress as Address,
+        protocolFeeBps: BigInt(protocolFeePercent * 100),
+      });
+    } catch {
+      setConfirming(false);
     }
-    const pTokenDecimals = await participationToken.read.decimals();
-    props.onFinish({
-      totalDistributionAmount: totalDistributionAmountN,
-      participationToken: participationToken.address,
-      initialParticipationLiquidity: parseUnits(
-        initialParticipationLiquidity,
-        pTokenDecimals,
-      ),
-      initialDistributionLiquidity: parseUnits(
-        initialDistributionLiquidity,
-        props.token.decimals,
-      ),
-      startTime: startTimeN,
-      epochDuration: epochDurationN,
-      numberOfEpochs: numberOfEpochsN,
-      releasePerEpoch: releasePerEpochN,
-      minimumParticipation: parseUnits(minParticipation, pTokenDecimals),
-      claimDelay: BigInt(parseInt(claimDelay) * 86400), // convert days to seconds
-      founderShareBps: founderShareOn
-        ? BigInt(founderPercentNum * 100) // *100 percent to bps
-        : BigInt(0),
-      founderShareReceiver: founderReceiverAddress as Address,
-      protocolFeeBps: BigInt(protocolFeePercent * 100),
-    });
   };
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -1299,8 +1306,13 @@ export default function DistributionWizard(props: {
                   <Button variant="ghost" size="m" onClick={goBack}>
                     Back
                   </Button>
-                  <Button variant="primary" size="m" onClick={onConfirm}>
-                    Confirm
+                  <Button
+                    variant="primary"
+                    size="m"
+                    onClick={onConfirm}
+                    disabled={confirming}
+                  >
+                    {confirming ? "Confirming..." : "Confirm"}
                   </Button>
                 </div>
               </>

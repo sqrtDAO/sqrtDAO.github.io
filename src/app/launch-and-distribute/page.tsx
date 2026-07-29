@@ -35,6 +35,8 @@ export default function Page() {
 
   const onCancel = () => document.location.replace("/");
   const onDistributionConfirm = async (dd: DistributionDetails) => {
+    // WARNING: Do NOT use try catch here, caller is doing it
+
     console.log(`distributionDetails ${dd}`);
 
     const factory = getFactoryV1Contract(walletClient!);
@@ -91,7 +93,7 @@ export default function Page() {
     const approveReceipt = await publicClient!.waitForTransactionReceipt({
       hash: txHash,
     });
-    if (approveReceipt.status === "reverted") return; //TODO error
+    if (approveReceipt.status === "reverted") throw "approve failed";
 
     const hash = await factory.write.createTokenAndLiquidityAndDistribution(
       [
@@ -124,22 +126,21 @@ export default function Page() {
 
     const receipt = await publicClient!.waitForTransactionReceipt({ hash });
 
-    if (receipt.status === "reverted") return; //TODO error
+    if (receipt.status === "reverted")
+      throw 'transaction "createTokenAndLiquidityAndDistribution" failed ';
 
     for (const log of receipt.logs) {
-      try {
-        const event = decodeEventLog({
-          abi: factoryV1Abi,
-          data: log.data,
-          topics: log.topics,
-        });
-        if (event.eventName === "NewDistributor") {
-          const distributor = (event.args as { distributor: `0x${string}` })
-            .distributor;
-          document.location.href = `/distribution/?address=${distributor}`;
-          return;
-        }
-      } catch {}
+      const event = decodeEventLog({
+        abi: factoryV1Abi,
+        data: log.data,
+        topics: log.topics,
+      });
+      if (event.eventName === "NewDistributor") {
+        const distributor = (event.args as { distributor: `0x${string}` })
+          .distributor;
+        document.location.href = `/distribution/?address=${distributor}`;
+        return;
+      }
     }
   };
 
