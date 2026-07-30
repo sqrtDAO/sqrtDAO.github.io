@@ -178,10 +178,6 @@ export default function DistributionWizard(props: {
         if (startDate === "") return false;
         if (startTime === "") return false;
 
-        console.log(nowSec());
-        console.log(parseUTCToTimestampSec(startDate, startTime));
-        console.log(parseUTCToTimestampSec(startDate, startTime) - nowSec());
-
         if (nowSec() > parseUTCToTimestampSec(startDate, startTime))
           return false;
         if (releaseTypeIdx === 0) {
@@ -265,7 +261,9 @@ export default function DistributionWizard(props: {
       } else {
         // Epoch base
         numberOfEpochsN = BigInt(parseInt(numberOfEpochs));
-        releasePerEpochN = BigInt(parseInt(releasePerEpoch));
+        releasePerEpochN = BigInt(
+          parseUnits(releasePerEpoch, props.token.decimals),
+        );
       }
       const pTokenDecimals = await participationToken.read.decimals();
       props.onFinish({
