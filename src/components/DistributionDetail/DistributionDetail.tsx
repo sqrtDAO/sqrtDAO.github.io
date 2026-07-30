@@ -256,6 +256,7 @@ export default function DistributionDetail({
     epochsInfo,
     tokenName,
     tokenSymbol,
+    claimData,
     participationTokenSymbol,
     participationTokenDecimals,
     isLoading,
@@ -364,51 +365,30 @@ export default function DistributionDetail({
   const displayParticipants = estimateParticipants(displayParticipation);
 
   const hasClaimableShare = stats.closedCount > 0;
-  const claimableAmount = Math.round(stats.distributedSupply * 0.015);
 
   const handleClaim = useCallback(async () => {
-    if (!walletClient || !publicClient || !contractInfo) return;
+    if (!walletClient || !publicClient || !contractInfo || !claimData) return;
+
+    if (claimData.claimableAmount === BigInt(0)) return;
+
+    const distributor = getDistributorV1Contract(
+      walletClient,
+      contractAddress as Address,
+    );
 
     setClaimState("claiming");
     try {
-      const distributor = getDistributorV1Contract(
-        walletClient,
-        contractAddress as Address,
-      );
-      const userAddress = walletClient.account.address;
-      const targetEpoch = contractInfo.numberOfEpochs;
-
-      const claimableEpochs: bigint[] = [];
-      let fromEpoch = BigInt(0);
-
-      while (fromEpoch < targetEpoch) {
-        const [nextEpochToSearch, epochs] =
-          await distributor.read.discoverRewards([
-            fromEpoch,
-            BigInt(100),
-            userAddress,
-            BigInt(100),
-          ]);
-
-        claimableEpochs.push(...epochs);
-
-        if (nextEpochToSearch <= fromEpoch) break;
-        fromEpoch = nextEpochToSearch;
-        await new Promise((r) => setTimeout(r, 100));
-      }
-
-      if (claimableEpochs.length === 0) {
-        setClaimState("done");
-        return;
-      }
-
-      const from = claimableEpochs.reduce((min, e) => (e < min ? e : min));
-      const to = claimableEpochs.reduce((max, e) => (e > max ? e : max));
-
-      const claimTx = await distributor.write.claim(
-        [userAddress, { from, length: to - from + BigInt(1) }],
-        { account: walletClient.account, chain: walletClient.chain },
-      );
+      const claimParams = claimData!.ranges.map((r) => {
+        return {
+          user: walletClient.account.address!,
+          range: { from: r.from, length: r.to - r.from + BigInt(1) },
+        };
+      });
+      console.log("claim params:", claimParams);
+      const claimTx = await distributor.write.claimMany([claimParams], {
+        account: walletClient.account,
+        chain: walletClient.chain,
+      });
       await publicClient.waitForTransactionReceipt({ hash: claimTx });
 
       setClaimState("done");
@@ -417,9 +397,15 @@ export default function DistributionDetail({
       console.error("Claim failed:", e);
       setClaimState("error");
     }
-  }, [walletClient, publicClient, contractInfo, contractAddress, refetch]);
+  }, [
+    walletClient,
+    publicClient,
+    contractInfo,
+    contractAddress,
+    refetch,
+    claimData,
+  ]);
 
-  console.log(currentEpoch);
   const canParticipate =
     isWalletConnected &&
     state === "running" &&
@@ -511,10 +497,10 @@ export default function DistributionDetail({
             ) : (
               <>
                 <div className="ddp-claim-card__amount">
-                  <span>{fmtInt(claimableAmount)}</span>
-                  <span className="ddp-claim-card__unit">
-                    {participationTokenSymbol}
+                  <span>
+                    {formatUnits(claimData?.claimableAmount ?? BigInt(0), 18)}
                   </span>
+                  <span className="ddp-claim-card__unit">{tokenSymbol}</span>
                 </div>
                 {claimState === "error" && (
                   <p className="ddp-claim-card__error">
@@ -526,7 +512,10 @@ export default function DistributionDetail({
                   size="m"
                   fullWidth
                   className="ddp-claim-card__button"
-                  disabled={claimState === "claiming"}
+                  disabled={
+                    claimState === "claiming" ||
+                    (claimData?.claimableAmount ?? 0) === BigInt(0)
+                  }
                   leadingIcon={
                     claimState === "claiming" ? (
                       <IconLoader2 size={18} />

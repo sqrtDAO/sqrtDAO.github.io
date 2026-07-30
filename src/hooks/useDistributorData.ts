@@ -61,6 +61,8 @@ export function useDistributorData(contractAddress: Address) {
     undefined,
   );
 
+  const [claimData, setClaimData] = useState<ClaimData | undefined>(undefined);
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | undefined>(undefined);
   const [distributionState, setDistributionState] = useState<
@@ -106,15 +108,59 @@ export function useDistributorData(contractAddress: Address) {
         setParticipationTokenSymbol(await pToken.read.symbol());
         setParticipationTokenDecimals(await pToken.read.decimals());
 
-        setEpochs(
-          await distributor.read.getEpochInfo([
-            address ?? zeroAddress,
-            {
-              from: BigInt(currentEpoch < 100 ? 0 : currentEpoch - 100),
-              length: BigInt(currentEpoch + 100),
-            },
-          ]),
-        );
+        const fromEpoch = currentEpoch < 100 ? 0 : currentEpoch - 100;
+        const epochInfos = await distributor.read.getEpochInfo([
+          address ?? zeroAddress,
+          {
+            from: BigInt(fromEpoch),
+            length: BigInt(currentEpoch + 100),
+          },
+        ]);
+        console.log("epochInfos", epochInfos);
+        setEpochs(epochInfos);
+
+        const ranges: Range[] = [];
+        let currentRange: Range | null = null;
+        let userRewardSum = BigInt(0);
+
+        for (let i = 0; i < epochInfos.length; i++) {
+          const epoch = epochInfos[i];
+          const epochIndex = fromEpoch + i;
+
+          const isClaimable =
+            !epoch.claimed &&
+            epoch.rewardAmount > ZERO_N &&
+            epoch.userParticipationAmount > ZERO_N &&
+            epochIndex < currentEpoch;
+
+          if (isClaimable) {
+            if (currentRange === null) {
+              currentRange = {
+                from: BigInt(epochIndex),
+                to: BigInt(epochIndex),
+              };
+            } else {
+              currentRange = {
+                from: currentRange.from,
+                to: BigInt(epochIndex),
+              };
+            }
+            userRewardSum +=
+              (epoch.userParticipationAmount * epoch.rewardAmount) /
+              epoch.totalParticipationAmount;
+          } else if (currentRange !== null) {
+            ranges.push(currentRange);
+            currentRange = null;
+          }
+        }
+
+        if (currentRange !== null) ranges.push(currentRange);
+
+        console.log("claim data:", { ranges, userRewardSum });
+        setClaimData({
+          ranges,
+          claimableAmount: userRewardSum,
+        });
       } catch (e) {
         setError("Error while loading on-chain data");
         console.error(e);
@@ -130,6 +176,7 @@ export function useDistributorData(contractAddress: Address) {
     epochsInfo: epochs,
     tokenName,
     tokenSymbol,
+    claimData,
     participationTokenSymbol,
     participationTokenDecimals,
     isLoading,
@@ -137,3 +184,25 @@ export function useDistributorData(contractAddress: Address) {
     refetch,
   };
 }
+
+export type ClaimData = {
+  ranges: Range[];
+  claimableAmount: bigint;
+};
+
+export type Range = {
+  from: bigint;
+  to: bigint;
+};
+
+const ZERO_N = BigInt(0);
+
+declare global {
+  interface BigInt {
+    toJSON(): string;
+  }
+}
+
+BigInt.prototype.toJSON = function () {
+  return this.toString();
+};

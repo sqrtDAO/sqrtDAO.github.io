@@ -278,7 +278,7 @@ export default function DistributionWizard(props: {
           props.token.decimals,
         ),
         startTime: startTimeN,
-        epochDuration: epochDurationN,
+        epochDuration: epochDurationN, // BigInt(60) | epochDurationN
         numberOfEpochs: numberOfEpochsN,
         releasePerEpoch: releasePerEpochN,
         minimumParticipation: parseUnits(minParticipation, pTokenDecimals),
