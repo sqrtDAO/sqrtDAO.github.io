@@ -29,7 +29,8 @@ import {
   getFactoryV1Contract,
   getTokenV1Contract,
 } from "@/contracts/contracts";
-import { usePublicClient } from "wagmi";
+import { useAccount, usePublicClient } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { getAddresses } from "@/contracts/contract-addresses";
 
 export type DistributionDetails = {
@@ -87,6 +88,8 @@ export default function DistributionWizard(props: {
   const [founderSharePercent, setFounderSharePercent] = useState("");
   const [founderReceiverAddress, setFounderReceiverAddress] = useState("");
 
+  const { isConnected: isWalletConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const [showErrors, setShowErrors] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
@@ -1350,10 +1353,20 @@ export default function DistributionWizard(props: {
                   <Button
                     variant="primary"
                     size="m"
-                    onClick={onConfirm}
+                    onClick={() => {
+                      if (!isWalletConnected) {
+                        openConnectModal?.();
+                        return;
+                      }
+                      onConfirm();
+                    }}
                     disabled={confirming}
                   >
-                    {confirming ? "Confirming..." : "Confirm"}
+                    {!isWalletConnected
+                      ? "Connect wallet"
+                      : confirming
+                        ? "Confirming..."
+                        : "Confirm"}
                   </Button>
                 </div>
               </>
