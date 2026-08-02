@@ -117,7 +117,13 @@ export default function Page() {
         buyBackAndBurnShareBps,
         EMPTY_PERMIT2,
       ],
-      { account: walletClient!.account, chain: walletClient!.chain },
+      {
+        account: walletClient!.account,
+        chain: walletClient!.chain,
+        // for example  in this tx: 0x09783847d8c387114aa8a82f369fe97cd664daaa39e9772fb7426f2c6e9ec6c1
+        // 8,354,157 gas used I set this to 10M
+        gas: BigInt(10_000_000),
+      },
     );
 
     const receipt = await publicClient!.waitForTransactionReceipt({ hash });
