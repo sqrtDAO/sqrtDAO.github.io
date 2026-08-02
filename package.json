@@ -10,18 +10,25 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@rainbow-me/rainbowkit": "^2.2.11",
     "@tabler/icons-react": "^3.44.0",
+    "lightweight-charts": "^5.2.0",
     "next": "16.2.6",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "viem": "~2.54.3",
+    "wagmi": "^2.19.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@tanstack/react-query": "^5.101.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@wagmi/cli": "^2.10.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "fancy-canvas": "2.1.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

@@ -1,0 +1,71 @@
+.hero-bg-dev {
+  position: relative;
+  min-height: 100vh;
+  background: var(--sqrt-bg-canvas);
+  color: var(--sqrt-text-primary);
+  font-family: var(--font-family-body), system-ui, sans-serif;
+  overflow: hidden;
+}
+
+.hero-bg-dev__header {
+  position: relative;
+  z-index: 10;
+  padding: 48px;
+  max-width: 60ch;
+  pointer-events: none;
+}
+
+.hero-bg-dev__header h1 {
+  font-family: var(--font-family-display), system-ui, sans-serif;
+  font-size: 28px;
+  margin: 0 0 8px;
+}
+
+.hero-bg-dev__header p {
+  color: var(--sqrt-text-secondary);
+  margin: 0;
+}
+
+.hero-bg-dev__panel {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  width: 220px;
+  background: var(--sqrt-bg-raised);
+  border: 1px solid var(--sqrt-border-default);
+  border-radius: var(--radius-l);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hero-bg-dev__panel h2 {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sqrt-text-secondary);
+  margin: 0 0 4px;
+}
+
+.hero-bg-dev__panel label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--sqrt-text-secondary);
+}
+
+.hero-bg-dev__panel input[type="range"] {
+  width: 110px;
+}
+
+.hero-bg-dev__panel input[type="color"] {
+  width: 32px;
+  height: 20px;
+  border: none;
+  background: none;
+  cursor: pointer;
+}

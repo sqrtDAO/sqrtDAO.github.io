@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Oxanium, IBM_Plex_Sans_Condensed } from "next/font/google";
+import RainbowKitRoot from "@/components/RainbowKitRoot/RainbowKitRoot";
 import "./theme.css";
 import "./globals.css";
 
@@ -66,7 +67,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <meta name="theme-color" content="#0B0D12" />
       </head>
-      <body>{children}</body>
+      <body><RainbowKitRoot>{children}</RainbowKitRoot></body>
     </html>
   );
 }

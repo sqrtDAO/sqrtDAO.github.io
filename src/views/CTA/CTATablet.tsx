@@ -1,14 +1,15 @@
 "use client";
 
 import { Button } from "@/components/Button/Button";
+import Logo from "@/components/Logo/Logo";
 import { IconBrandX, IconBrandDiscord } from "@tabler/icons-react";
 
-export default function CTATablet() {
+export default function CTATablet({ onGetStarted }: { onGetStarted?: () => void }) {
   return (
     <div style={{ width: 720, margin: "0 auto" }}>
       <div style={{ background: "var(--sqrt-bg-space)", padding: "32px 24px", display: "flex", flexDirection: "column", gap: 0 }}>
         <p style={{ fontFamily: "var(--font-sans)", fontSize: "var(--font-size-body-s)", lineHeight: "var(--font-line-height-body-s)", color: "var(--sqrt-text-secondary)", margin: 0 }}>sqrtDAO launches Q2.</p>
-        <img src="/logo.svg" alt="sqrtDAO" width="100" style={{ marginTop: 24 }} />
+        <Logo width={100} style={{ marginTop: 24 }} />
         {/* teal strip */}
         <div style={{ width: 200, height: 8, display: "flex", marginTop: 24 }}>
           <div style={{ flex: 1, background: "var(--color-support-teal-900)" }} />
@@ -22,6 +23,9 @@ export default function CTATablet() {
         <div style={{ display: "flex", gap: 16, marginTop: 32 }}>
           <Button variant="primary" leadingIcon={<IconBrandX />} onClick={() => window.open("https://x.com/sqrtDAO", "_blank", "noopener,noreferrer")}>Follow on X</Button>
           <Button variant="secondary" leadingIcon={<IconBrandDiscord />} onClick={() => window.open("https://discord.gg/hsW64egPRJ", "_blank", "noopener,noreferrer")}>Join Discord</Button>
+          {onGetStarted && (
+            <Button variant="outline" onClick={onGetStarted}>Launch your token</Button>
+          )}
         </div>
         <p style={{ fontFamily: "var(--font-sans)", fontSize: "var(--font-size-body-l)", lineHeight: "var(--font-line-height-body-l)", color: "var(--sqrt-text-primary)", marginTop: 16 }}>Owned by no one. Controlled by the protocol.</p>
       </div>

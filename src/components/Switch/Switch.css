@@ -1,0 +1,86 @@
+/* Switch — circuit-breaker toggle
+   Figma source: "switch" (node 3417:1738)
+   4 states: on+active, on+inactive, off+active, off+inactive
+   Circuit icons recreated as inline SVG (Figma assets expire in 7 days) */
+
+.sw-root {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.sw-root--inactive { cursor: default; }
+.sw-root:focus { outline: none; }
+.sw-root:focus-visible .sw-track { outline: 2px solid var(--sqrt-border-focus); outline-offset: 2px; }
+
+/* Label */
+.sw-label {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.01em;
+  color: var(--sqrt-text-secondary);
+  white-space: nowrap;
+  transition: color var(--motion-duration-fast) var(--motion-easing-standard);
+}
+.sw-label--on      { color: var(--sqrt-text-accent); }
+.sw-label--off     { color: var(--sqrt-text-primary); }
+.sw-label--disabled { color: var(--sqrt-text-disabled); }
+
+/* Track (the outer container box) */
+.sw-track {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background-color: var(--sqrt-bg-space);
+  border: 1px solid var(--sqrt-border-default);
+  border-radius: 2px;
+}
+
+/* Individual slots */
+.sw-slot {
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 2px;
+  color: var(--sqrt-text-disabled);
+  transition:
+    background-color var(--motion-duration-base) var(--motion-easing-standard),
+    color var(--motion-duration-base) var(--motion-easing-standard);
+}
+
+/* ON active — right slot (closed circuit) glows amber */
+.sw-slot--on-active {
+  background-color: var(--sqrt-action-primary-rest);
+  color: var(--sqrt-bg-canvas);
+}
+
+/* ON inactive — right slot surface dim */
+.sw-slot--on-inactive {
+  background-color: var(--sqrt-bg-surface);
+  color: var(--sqrt-text-tertiary);
+}
+
+/* OFF active — left slot (open circuit) glows indigo */
+.sw-slot--off-active {
+  background-color: var(--sqrt-action-secondary-rest);
+  color: var(--sqrt-text-primary);
+}
+
+/* OFF inactive — left slot surface dim */
+.sw-slot--off-inactive {
+  background-color: var(--sqrt-bg-surface);
+  color: var(--sqrt-text-tertiary);
+}
+
+.sw-icon { display: block; flex-shrink: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sw-slot, .sw-label { transition: none; }
+}

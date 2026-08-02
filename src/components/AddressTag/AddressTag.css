@@ -1,0 +1,25 @@
+/* AddressTag — Figma source: "address" component (node 4358:15355),
+   rest (4358:15354) / hovered (4358:15356) / pressed (5342:26592) variants */
+
+.address-tag {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+  padding: 0;
+  background: var(--sqrt-bg-raised);
+  border: none;
+  color: var(--sqrt-text-secondary);
+  font-family: var(--font-family-body), system-ui, sans-serif;
+  font-size: var(--font-size-body-s);
+  line-height: 20px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.address-tag:hover,
+.address-tag.is-copied {
+  color: var(--sqrt-text-accent);
+}
