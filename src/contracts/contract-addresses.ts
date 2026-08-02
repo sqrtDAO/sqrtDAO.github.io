@@ -1,7 +1,11 @@
 import { zeroAddress, type Address } from "viem";
-import { base, baseSepolia, anvil } from "wagmi/chains";
+import { base, baseSepolia, anvil, sepolia } from "wagmi/chains";
 
-export type ChainId = typeof anvil.id | typeof base.id | typeof baseSepolia.id;
+export type ChainId =
+  | typeof anvil.id
+  | typeof base.id
+  | typeof baseSepolia.id
+  | typeof sepolia.id;
 
 export interface ContractAddresses {
   factoryV1: Address;
@@ -31,6 +35,15 @@ const addresses: Record<ChainId, ContractAddresses> = {
     exponentialEmission: "0xbA5A285806c343AaD955a40FE4b6e5e607B752b6",
     transferToHook: "0xDFc2752691b3F93fEEe55356E1bbB856505e9BD3",
     buyAndBurnHook: "0xF22031bdF281a7F71Ad214801BE847A0BF174Ca8",
+  },
+  [sepolia.id]: {
+    factoryV1: "0xf33e6214867Ee20fbB3E9E01C1195243280036fB",
+    usdt: "0x40ce0bf2924a5f8870b9d3949972737b4494fabf", // root token
+    fixedEmission: "0xa01a4FAfE3833F34b105Ae5129DC89F479c8367B",
+    linearEmission: "0xcdB592D529782D20f63e45420d169bb137A3DCF9",
+    exponentialEmission: "0x89169F68f62026dC0451838dAD8F28951E572266",
+    transferToHook: "0xC676049B0ec9C45af8346276a62d6dE22f8A1378",
+    buyAndBurnHook: "0xC5C818297De826f9AfEe72f2544646E2dB1a3021",
   },
   [base.id]: {
     factoryV1: zeroAddress,

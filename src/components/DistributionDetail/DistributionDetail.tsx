@@ -650,8 +650,8 @@ export default function DistributionDetail({
                   network={
                     chainId === 8453
                       ? "BASE"
-                      : chainId === 84532
-                        ? "BASE SEPOLIA"
+                      : chainId === 11155111
+                        ? "SEPOLIA"
                         : chainId === 31337
                           ? "ANVIL"
                           : "UNKNOWN"

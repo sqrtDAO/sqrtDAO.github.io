@@ -11,7 +11,7 @@ export interface TestnetRibbonProps {
 const REPEAT_COUNT = 8;
 
 export default function TestnetRibbon({
-  network = "Base Sepolia",
+  network = "Sepolia",
   message = "everything here runs on test funds. Nothing is real.",
   className,
 }: TestnetRibbonProps) {
@@ -22,7 +22,10 @@ export default function TestnetRibbon({
   );
 
   return (
-    <div className={`testnet-ribbon${className ? ` ${className}` : ""}`} role="status">
+    <div
+      className={`testnet-ribbon${className ? ` ${className}` : ""}`}
+      role="status"
+    >
       <div className="testnet-ribbon__track">
         <div className="testnet-ribbon__group" aria-hidden="false">
           {Array.from({ length: REPEAT_COUNT }, (_, i) => (
