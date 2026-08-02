@@ -19,9 +19,9 @@ import {
   zeroAddress,
 } from "viem";
 import { EMPTY_PERMIT2 } from "@/lib/utils/permit2";
-import { quickSqrtPriceX96 } from "@/lib/utils/sqrtPricex96";
 import { getAddresses } from "@/contracts/contract-addresses";
 import { factoryV1Abi, transferToHookAbi } from "@/contracts/abis";
+import { quickSqrtPriceX96 } from "@/lib/utils/sqrtPricex96";
 
 // Flow steps for the token wizard overlay
 type FlowStep = "launch" | "distribute";
@@ -45,10 +45,8 @@ export default function Page() {
     const addresses = getAddresses(walletClient!.chain.id);
 
     const _sqrtPriceX96 = quickSqrtPriceX96(
-      Number(dd.initialParticipationLiquidity),
-      Number(dd.initialDistributionLiquidity),
-      await participationToken.read.decimals(),
-      18,
+      dd.initialParticipationLiquidity,
+      dd.initialDistributionLiquidity,
     );
 
     const emissionFunction = {
