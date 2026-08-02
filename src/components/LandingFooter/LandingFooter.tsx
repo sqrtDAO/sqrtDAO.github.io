@@ -24,20 +24,58 @@ function LandingFooterMobile({ onTryItClick }: { onTryItClick?: () => void }) {
         </p>
 
         <div className="flex w-full flex-col items-center gap-4">
-          <Button variant="primary" size="m" fullWidth onClick={onTryItClick}>Try it on testnet</Button>
+          <Button variant="primary" size="m" fullWidth onClick={onTryItClick}>
+            Try it on testnet
+          </Button>
           <div className="flex w-full gap-4">
-            <Button variant="outline" size="m" className="flex-1">Join Discord</Button>
-            <Button variant="outline" size="m" className="flex-1">Follow on X</Button>
+            <Button
+              variant="outline"
+              size="m"
+              className="flex-1"
+              onClick={() =>
+                window.open(
+                  "https://discord.gg/hsW64egPRJ",
+                  "_blank",
+                  "noopener,noreferrer",
+                )
+              }
+            >
+              Join Discord
+            </Button>
+            <Button
+              variant="outline"
+              size="m"
+              className="flex-1"
+              onClick={() =>
+                window.open(
+                  "https://x.com/sqrtDAO",
+                  "_blank",
+                  "noopener,noreferrer",
+                )
+              }
+            >
+              Follow on X
+            </Button>
           </div>
         </div>
       </div>
 
-      <img src="/landing/footer-headline-mobile.svg" alt="Give your token a beginning it can survive" width={358} height={65} className="w-full" />
+      <img
+        src="/landing/footer-headline-mobile.svg"
+        alt="Give your token a beginning it can survive"
+        width={358}
+        height={65}
+        className="w-full"
+      />
     </div>
   );
 }
 
-export default function LandingFooter({ onTryItClick }: { onTryItClick?: () => void }) {
+export default function LandingFooter({
+  onTryItClick,
+}: {
+  onTryItClick?: () => void;
+}) {
   return (
     <>
       {/* px-[60px]: absorbed from the LandingHelpUsBuildIt call site so
@@ -55,12 +93,42 @@ export default function LandingFooter({ onTryItClick }: { onTryItClick?: () => v
             <br />
             Then tell us how it was.
           </p>
-          <Button variant="primary" size="m" onClick={onTryItClick}>Try it on testnet</Button>
-          <Button variant="outline" size="m">Join Discord</Button>
-          <Button variant="outline" size="m">Follow on X</Button>
+          <Button variant="primary" size="m" onClick={onTryItClick}>
+            Try it on testnet
+          </Button>
+          <Button
+            variant="outline"
+            size="m"
+            onClick={() =>
+              window.open(
+                "https://discord.gg/hsW64egPRJ",
+                "_blank",
+                "noopener,noreferrer",
+              )
+            }
+          >
+            Join Discord
+          </Button>
+          <Button
+            variant="outline"
+            size="m"
+            onClick={() =>
+              window.open(
+                "https://x.com/sqrtDAO",
+                "_blank",
+                "noopener,noreferrer",
+              )
+            }
+          >
+            Follow on X
+          </Button>
         </div>
 
-        <img src="/landing/footer-headline.svg" alt="Give your token a beginning it can survive" className="h-[66px] w-[1300px]" />
+        <img
+          src="/landing/footer-headline.svg"
+          alt="Give your token a beginning it can survive"
+          className="h-[66px] w-[1300px]"
+        />
       </div>
 
       <LandingFooterMobile onTryItClick={onTryItClick} />
