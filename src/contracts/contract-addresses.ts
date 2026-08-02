@@ -23,16 +23,16 @@ const addresses: Record<ChainId, ContractAddresses> = {
     transferToHook: "0x0165878A594ca255338adfa4d48449f69242Eb8F",
     buyAndBurnHook: "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
   },
-  [base.id]: {
-    factoryV1: zeroAddress,
-    usdt: zeroAddress,
-    fixedEmission: zeroAddress,
-    linearEmission: zeroAddress,
-    exponentialEmission: zeroAddress,
-    transferToHook: zeroAddress,
-    buyAndBurnHook: zeroAddress,
-  },
   [baseSepolia.id]: {
+    factoryV1: "0x4d20cC2F43fE5D97d983Db4Ce941dce295B78b6c",
+    usdt: "0x0112525bB0bFeccFa3650bE04427e5C99cb94268", // root token
+    fixedEmission: "0xECE320d5d55FcB77d76a0eE30006D65354595d36",
+    linearEmission: "0xBF68b456c91A40260c534ce98912FD01aa3FCAC6",
+    exponentialEmission: "0xbA5A285806c343AaD955a40FE4b6e5e607B752b6",
+    transferToHook: "0xDFc2752691b3F93fEEe55356E1bbB856505e9BD3",
+    buyAndBurnHook: "0xF22031bdF281a7F71Ad214801BE847A0BF174Ca8",
+  },
+  [base.id]: {
     factoryV1: zeroAddress,
     usdt: zeroAddress,
     fixedEmission: zeroAddress,
