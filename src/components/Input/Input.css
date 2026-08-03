@@ -57,6 +57,15 @@
 }
 .sqrt-input__el::placeholder { color: var(--sqrt-text-tertiary); }
 
+.sqrt-input__suffix {
+  flex-shrink: 0;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--sqrt-text-tertiary);
+  white-space: nowrap;
+}
+
 .sqrt-input__field-wrap {
   position: relative;
   width: 100%;

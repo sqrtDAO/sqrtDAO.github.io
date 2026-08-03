@@ -10,6 +10,8 @@ export interface InputProps {
   placeholder?: string;
   error?: boolean;
   errorMessage?: string;
+  suffix?: string;
+  onChange?: (value: string) => void;
   onPaste?: () => void;
   showPaste?: boolean;
   disabled?: boolean;
@@ -26,6 +28,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     placeholder,
     error: errorOverride,
     errorMessage: errorMessageOverride,
+    suffix,
+    onChange: onChangeOverride,
     onPaste,
     showPaste = false,
     disabled,
@@ -66,7 +70,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             type="text"
             placeholder={placeholder}
             value={value}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => (onChangeOverride ?? onChange)(e.target.value)}
             disabled={disabled}
             onKeyDown={onKeyDown}
             aria-invalid={hasError}
@@ -74,6 +78,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             spellCheck={spellCheck}
             autoComplete={autoComplete}
           />
+          {suffix && <span className="sqrt-input__suffix">{suffix}</span>}
           {showPaste && onPaste && (
             <button
               className="sqrt-input__paste"
