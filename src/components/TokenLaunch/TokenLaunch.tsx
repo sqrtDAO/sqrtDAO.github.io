@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { IconChevronLeft } from "@tabler/icons-react";
 import Input from "@/components/Input/Input";
+import { useInput } from "@/hooks/useInput";
 import TokenAvatar from "@/components/TokenAvatar/TokenAvatar";
 import Header from "@/components/Header/Header";
 import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
@@ -10,28 +10,33 @@ import { IconButton } from "@/components/IconButton/IconButton";
 import { Button } from "@/components/Button/Button";
 import "./TokenLaunch.css";
 import { parseEther } from "viem";
+import {
+  noModifier,
+  numberOnlyModifier,
+  uppercaseModifier,
+} from "@/utils/modifier";
+import {
+  nonZeroAmountValidator,
+  requiredValidator,
+  validateAll,
+} from "@/utils/validator";
 
 export default function TokenLaunch(props: {
   onCancel: () => void;
   onFinish: (tokenDetails: TokenDetails) => void;
 }) {
-  const [name, setTokenName] = useState("");
-  const [symbol, setTokenSymbol] = useState("");
-  const [totalSupplyStr, setTotalSupplyStr] = useState("");
-  const [showErrors, setShowErrors] = useState(false);
-
-  const nameEmpty = name === "";
-  const symbolEmpty = symbol === "";
-  const supplyEmpty = totalSupplyStr === "";
-  const supplyInvalid = !supplyEmpty && Number(totalSupplyStr) <= 0;
+  const name = useInput("", noModifier, requiredValidator("Name"));
+  const symbol = useInput("", uppercaseModifier, requiredValidator("Symbol"));
+  const totalSupply = useInput("", numberOnlyModifier, nonZeroAmountValidator);
 
   const onContinueClick = () => {
-    if (nameEmpty || symbolEmpty || supplyEmpty || supplyInvalid) {
-      setShowErrors(true);
-      return;
-    }
-    const totalSupply = parseEther(totalSupplyStr);
-    props.onFinish({ name, symbol, decimals: 18, totalSupply });
+    if (!validateAll(name, symbol, totalSupply)) return;
+    props.onFinish({
+      name: name.value,
+      symbol: symbol.value,
+      decimals: 18,
+      totalSupply: parseEther(totalSupply.value),
+    });
   };
 
   return (
@@ -62,37 +67,22 @@ export default function TokenLaunch(props: {
             </div>
 
             <div className="tl-row">
-              <TokenAvatar seed={symbol} />
-              <div className="tl-form" onChangeCapture={() => setShowErrors(false)}>
+              <TokenAvatar seed={symbol.value} />
+              <div className="tl-form">
                 <Input
+                  state={name}
                   label="Token Name"
                   placeholder="The full name, e.g. Dev Protocol."
-                  value={name}
-                  onChange={setTokenName}
-                  error={showErrors && nameEmpty}
-                  errorMessage="Token name is required"
-                  spellCheck={false}
-                  autoComplete="off"
                 />
                 <Input
+                  state={symbol}
                   label="Token symbol"
                   placeholder="The ticker, e.g. DEV."
-                  value={symbol}
-                  onChange={(v) => setTokenSymbol(v.toUpperCase())}
-                  error={showErrors && symbolEmpty}
-                  errorMessage="Token symbol is required"
-                  spellCheck={false}
-                  autoComplete="off"
                 />
                 <Input
+                  state={totalSupply}
                   label="Total supply"
                   placeholder="How many tokens to create?"
-                  value={totalSupplyStr}
-                  onChange={(v) => setTotalSupplyStr(v.replace(/[^0-9]/g, ""))}
-                  error={showErrors && (supplyEmpty || supplyInvalid)}
-                  errorMessage={supplyEmpty ? "Total supply is required" : "Total supply must be greater than 0"}
-                  spellCheck={false}
-                  autoComplete="off"
                 />
               </div>
             </div>
