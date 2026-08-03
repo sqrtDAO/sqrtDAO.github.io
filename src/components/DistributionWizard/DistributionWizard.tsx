@@ -12,6 +12,19 @@ import {
   IconAlertSquare,
 } from "@tabler/icons-react";
 import Input from "@/components/Input/Input";
+import DropDownInput from "@/components/DropDownInput/DropDownInput";
+import { useInput } from "@/hooks/useInput";
+import {
+  allowCharsModifier,
+  noModifier,
+  numberOnlyModifier,
+} from "@/utils/modifier";
+import {
+  addressValidator,
+  positiveNumberValidator,
+  validateAll,
+} from "@/utils/validator";
+import type { InputValidator } from "@/utils/validator";
 import Stepper from "@/components/Stepper/Stepper";
 import Segmented from "@/components/Segmented/Segmented";
 import ReleaseCard from "@/components/ReleaseCard/ReleaseCard";
@@ -24,7 +37,7 @@ import Header from "@/components/Header/Header";
 import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
 import "./DistributionWizard.css";
 import { TokenDetails } from "../TokenLaunch/TokenLaunch";
-import { Address, formatEther, isAddress, parseUnits } from "viem";
+import { Address, formatEther, parseUnits } from "viem";
 import {
   getFactoryV1Contract,
   getTokenV1Contract,
@@ -60,63 +73,154 @@ export default function DistributionWizard(props: {
   const publicClient = usePublicClient();
   const [protocolFeePercent, setProtocolFeePercent] = useState<number>(0); // not bps
 
+  // ── Validators ────────────────────────────────────────────────────────────
+
+  const totalSupplyF = parseFloat(formatEther(props.token.totalSupply));
+
+  const startTimeValidator: InputValidator = (v) =>
+    v === "" ? "Start time is required" : null;
+  const founderShareValidator: InputValidator = (v) => {
+    if (v === "") return "Share percentage is required";
+    if (parseFloat(v) > FOUNDER_SHARE_CAP)
+      return `Capped at ${FOUNDER_SHARE_CAP}%`;
+    return null;
+  };
+
   // Step 2 — Supply and backing
-  const [supply, setSupply] = useState("");
+  const initialParticipationLiquidity = useInput(
+    "",
+    allowCharsModifier(/[^0-9,]/g),
+    positiveNumberValidator("Initial liquidity"),
+  );
+  const initialDistributionLiquidity = useInput(
+    "",
+    allowCharsModifier(/[^0-9,]/g),
+    positiveNumberValidator("Initial token supply"),
+  );
+  const supplyValidator: InputValidator = (v) => {
+    if (v === "") return "Supply amount is required";
+    const tokenLiquidityF = parseFloat(
+      initialDistributionLiquidity.value.replace(/,/g, ""),
+    );
+    if (parseFloat(v.replace(/,/g, "")) + tokenLiquidityF > totalSupplyF)
+      return "Insufficient balance";
+    return null;
+  };
+  const supply = useInput("", allowCharsModifier(/[^0-9.,]/g), supplyValidator);
   const [backingAssetIdx, setBackingAssetIdx] = useState(0);
-  const [initialParticipationLiquidity, setInitialParticipationLiquidity] =
-    useState("");
-  const [initialDistributionLiquidity, setInitialDistributionLiquidity] =
-    useState("");
 
   // Step 3 — Release strategy
   const [releaseCurve, setReleaseCurve] = useState<ReleaseCurve>("flat");
   const [releaseTypeIdx, setReleaseTypeIdx] = useState(0);
-  const [startDate, setStartDate] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [epochDuration, setEpochDuration] = useState(EPOCH_DURATION_OPTIONS[3]);
-  const [numberOfEpochs, setNumberOfEpochs] = useState("");
-  const [releasePerEpoch, setReleasePerEpoch] = useState("");
+  const startTime = useInput("", noModifier, startTimeValidator);
+  const startDateValidator: InputValidator = (v) => {
+    if (v === "") return "Start date is required";
+    if (
+      startTime.value !== "" &&
+      nowSec() > parseUTCToTimestampSec(v, startTime.value)
+    )
+      return "Start must be in the future";
+    return null;
+  };
+  const startDate = useInput("", noModifier, startDateValidator);
+  const endDateValidator: InputValidator = (v) => {
+    if (v === "") return "End date is required";
+    if (
+      startDate.value !== "" &&
+      startTime.value !== "" &&
+      parseUTCToTimestampSec(v) <=
+        parseUTCToTimestampSec(startDate.value, startTime.value)
+    )
+      return "End must be after start";
+    return null;
+  };
+  const endDate = useInput("", noModifier, endDateValidator);
+  const epochDurationInput = useInput(EPOCH_DURATION_OPTIONS[3]);
+  const numberOfEpochs = useInput(
+    "",
+    numberOnlyModifier,
+    positiveNumberValidator("Number of epochs"),
+  );
+  const releasePerEpoch = useInput(
+    "",
+    allowCharsModifier(/[^0-9.,]/g),
+    positiveNumberValidator("Release per epoch"),
+  );
   const startRef = useRef<HTMLInputElement>(null);
   const startTimeRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
 
   // Step 4 — Rules
-  const [minParticipation, setMinParticipation] = useState("0");
-  const [claimDelay, setClaimDelay] = useState("0");
+  const minParticipation = useInput("0", allowCharsModifier(/[^0-9.]/g), (v) =>
+    v === "" ? "Minimum participation is required" : null,
+  );
+  const claimDelay = useInput("0", numberOnlyModifier, (v) =>
+    v === "" ? "Claim delay is required" : null,
+  );
   const [founderShareOn, setFounderShareOn] = useState(false);
-  const [founderSharePercent, setFounderSharePercent] = useState("");
-  const [founderReceiverAddress, setFounderReceiverAddress] = useState("");
+  const founderSharePercent = useInput(
+    "",
+    allowCharsModifier(/[^0-9.]/g),
+    founderShareValidator,
+  );
+  const founderReceiverInput = useInput("", noModifier, addressValidator);
 
   const { isConnected: isWalletConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
-  const [showErrors, setShowErrors] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
   // Initial price preview (Initial liquidity ÷ Supply)
-  const totalSupplyF = parseFloat(formatEther(props.token.totalSupply));
-  const backingLiquidity = parseFloat(initialParticipationLiquidity);
-  const tokenLiquidity = parseFloat(initialDistributionLiquidity);
+  const backingLiquidity = parseFloat(
+    initialParticipationLiquidity.value.replace(/,/g, ""),
+  );
+  const tokenLiquidity = parseFloat(
+    initialDistributionLiquidity.value.replace(/,/g, ""),
+  );
   const initialPrice =
     tokenLiquidity > 0 && backingLiquidity > 0
       ? backingLiquidity / tokenLiquidity
       : null;
 
   // Supply validation
-  const supplyNum = parseFloat(supply.replace(/,/g, ""));
-  const supplyExceedsBalance =
-    supply !== "" && supplyNum + tokenLiquidity > totalSupplyF;
+  const supplyNum = parseFloat(supply.value.replace(/,/g, ""));
+
+  // Epoch-based: typing one field recomputes the other
+  const epochsOnChange = (v: string) => {
+    const clean = v.replace(/[^0-9]/g, "");
+    numberOfEpochs.onChange(clean);
+    if (!clean) {
+      releasePerEpoch.onChange("");
+    } else {
+      const epochsNum = parseInt(clean);
+      releasePerEpoch.onChange(
+        supplyNum && epochsNum ? (supplyNum / epochsNum).toString() : "",
+      );
+    }
+  };
+
+  const releaseOnChange = (v: string) => {
+    const clean = v.replace(/[^0-9.,]/g, "");
+    releasePerEpoch.onChange(clean);
+    if (!clean) {
+      numberOfEpochs.onChange("");
+    } else {
+      const perEpochNum = parseInt(clean);
+      numberOfEpochs.onChange(
+        supplyNum && perEpochNum ? (supplyNum / perEpochNum).toString() : "",
+      );
+    }
+  };
 
   // Time-based: epoch count from date range ÷ epoch duration
   const epochsFromDates = useMemo(
     () =>
       calcEpochs(
-        startDate,
-        startTime,
-        endDate,
-        EPOCH_DURATION_MS[epochDuration],
+        startDate.value,
+        startTime.value,
+        endDate.value,
+        EPOCH_DURATION_MS[epochDurationInput.value],
       ),
-    [startDate, startTime, endDate, epochDuration],
+    [startDate.value, startTime.value, endDate.value, epochDurationInput.value],
   );
   // Time-based: release amount per epoch, derived from total supply ÷ epoch count
   const releasePerEpochFromDates = useMemo(() => {
@@ -129,18 +233,21 @@ export default function DistributionWizard(props: {
   const endDateFromEpochs = useMemo(
     () =>
       calcEndDateFromEpochs(
-        startDate,
-        startTime,
-        parseInt(numberOfEpochs),
-        EPOCH_DURATION_MS[epochDuration] / 1000,
+        startDate.value,
+        startTime.value,
+        parseInt(numberOfEpochs.value),
+        EPOCH_DURATION_MS[epochDurationInput.value] / 1000,
       ),
-    [startDate, startTime, numberOfEpochs, epochDuration],
+    [
+      startDate.value,
+      startTime.value,
+      numberOfEpochs.value,
+      epochDurationInput.value,
+    ],
   );
 
   // Rules: founder share % + resulting split
-  const founderPercentNum = parseFloat(founderSharePercent) || 0;
-  const founderExceedsCap =
-    founderShareOn && founderPercentNum > FOUNDER_SHARE_CAP;
+  const founderPercentNum = parseFloat(founderSharePercent.value) || 0;
   const founderSharePctClamped = founderShareOn
     ? Math.min(founderPercentNum, FOUNDER_SHARE_CAP)
     : 0;
@@ -158,82 +265,51 @@ export default function DistributionWizard(props: {
   // ── Navigation helpers ───────────────────────────────────────────────────
 
   const stepValidation = () => {
-    const supplyVal = supply.replace(/,/g, "");
-    const supplyNumVal = parseFloat(supplyVal);
-    const backingVal = parseFloat(initialParticipationLiquidity);
-    const tokenVal = parseFloat(initialDistributionLiquidity);
-    const priceVal =
-      tokenVal > 0 && backingVal > 0 ? backingVal / tokenVal : null;
-
     switch (step) {
       case "supply":
-        if (
-          supply === "" ||
-          (supply !== "" && supplyNumVal + tokenVal > totalSupplyF)
-        )
-          return false;
-        if (priceVal === null) return false;
-        return true;
+        return validateAll(
+          supply,
+          initialParticipationLiquidity,
+          initialDistributionLiquidity,
+        );
       case "release":
-        if (startDate === "") return false;
-        if (startTime === "") return false;
-
-        if (nowSec() > parseUTCToTimestampSec(startDate, startTime))
-          return false;
-        if (releaseTypeIdx === 0) {
-          if (endDate === "") return false;
-          if (
-            parseUTCToTimestampSec(endDate) <=
-            parseUTCToTimestampSec(startDate, startTime)
-          )
-            return false;
-        } else {
-          if (numberOfEpochs === "" || parseInt(numberOfEpochs) === 0)
-            return false;
-          if (releasePerEpoch === "" || parseInt(releasePerEpoch) === 0)
-            return false;
-        }
-        return true;
+        return releaseTypeIdx === 0
+          ? validateAll(startDate, startTime, endDate)
+          : validateAll(startDate, startTime, numberOfEpochs, releasePerEpoch);
       case "rules":
-        if (minParticipation === "") return false;
-        if (claimDelay === "") return false;
-        if (founderShareOn) {
-          if (founderSharePercent === "") return false;
-          if (!isAddress(founderReceiverAddress)) return false;
-          if (parseFloat(founderSharePercent) > FOUNDER_SHARE_CAP) return false;
-        }
-        return true;
+        return founderShareOn
+          ? validateAll(
+              minParticipation,
+              claimDelay,
+              founderSharePercent,
+              founderReceiverInput,
+            )
+          : validateAll(minParticipation, claimDelay);
       default:
         return true;
     }
   };
 
   function goNext() {
-    if (!stepValidation()) {
-      setShowErrors(true);
-      return;
-    }
-    setShowErrors(false);
+    if (!stepValidation()) return;
     const idx = STEP_ORDER.indexOf(step);
     if (idx < STEP_ORDER.length - 1) setStep(STEP_ORDER[idx + 1]);
   }
 
   function goBack() {
-    setShowErrors(false);
     const idx = STEP_ORDER.indexOf(step);
     if (idx > 0) setStep(STEP_ORDER[idx - 1]);
     else setStep("welcome");
   }
 
   function jumpTo(target: DistStep) {
-    setShowErrors(false);
     setStep(target);
   }
 
   function handlePasteFounderAddress() {
     navigator.clipboard
       .readText()
-      .then((t) => setFounderReceiverAddress(t))
+      .then((t) => founderReceiverInput.onChange(t))
       .catch(() => {});
   }
 
@@ -247,22 +323,33 @@ export default function DistributionWizard(props: {
         addresses.usdt,
       );
 
-      const startTimeN = parseUTCToTimestampSec(startDate, startTime);
-      const epochDurationN = BigInt(EPOCH_DURATION_MS[epochDuration] / 1000);
-      const totalDistributionAmountN = parseUnits(supply, props.token.decimals);
+      const startTimeN = parseUTCToTimestampSec(
+        startDate.value,
+        startTime.value,
+      );
+      const epochDurationN = BigInt(
+        EPOCH_DURATION_MS[epochDurationInput.value] / 1000,
+      );
+      const totalDistributionAmountN = parseUnits(
+        supply.value.replace(/,/g, ""),
+        props.token.decimals,
+      );
 
       let numberOfEpochsN: bigint;
       let releasePerEpochN: bigint;
       if (releaseTypeIdx === 0) {
         // Time base
-        const endTimeN = parseUTCToTimestampSec(endDate);
+        const endTimeN = parseUTCToTimestampSec(endDate.value);
         numberOfEpochsN = BigInt((endTimeN - startTimeN) / epochDurationN);
         releasePerEpochN = totalDistributionAmountN / numberOfEpochsN;
       } else {
         // Epoch base
-        numberOfEpochsN = BigInt(parseInt(numberOfEpochs));
+        numberOfEpochsN = BigInt(parseInt(numberOfEpochs.value));
         releasePerEpochN = BigInt(
-          parseUnits(releasePerEpoch, props.token.decimals),
+          parseUnits(
+            releasePerEpoch.value.replace(/,/g, ""),
+            props.token.decimals,
+          ),
         );
       }
       const pTokenDecimals = await participationToken.read.decimals();
@@ -270,23 +357,26 @@ export default function DistributionWizard(props: {
         totalDistributionAmount: totalDistributionAmountN,
         participationToken: participationToken.address,
         initialParticipationLiquidity: parseUnits(
-          initialParticipationLiquidity,
+          initialParticipationLiquidity.value.replace(/,/g, ""),
           pTokenDecimals,
         ),
         initialDistributionLiquidity: parseUnits(
-          initialDistributionLiquidity,
+          initialDistributionLiquidity.value.replace(/,/g, ""),
           props.token.decimals,
         ),
         startTime: startTimeN,
         epochDuration: epochDurationN, // BigInt(60) | epochDurationN
         numberOfEpochs: numberOfEpochsN,
         releasePerEpoch: releasePerEpochN,
-        minimumParticipation: parseUnits(minParticipation, pTokenDecimals),
-        claimDelay: BigInt(parseInt(claimDelay) * 86400), // convert days to seconds
+        minimumParticipation: parseUnits(
+          minParticipation.value,
+          pTokenDecimals,
+        ),
+        claimDelay: BigInt(parseInt(claimDelay.value) * 86400), // convert days to seconds
         founderShareBps: founderShareOn
           ? BigInt(founderPercentNum * 100) // *100 percent to bps
           : BigInt(0),
-        founderShareReceiver: founderReceiverAddress as Address,
+        founderShareReceiver: founderReceiverInput.value as Address,
         protocolFeeBps: BigInt(protocolFeePercent * 100),
       });
     } catch (e) {
@@ -376,49 +466,16 @@ export default function DistributionWizard(props: {
                   </p>
                 </div>
 
-                <div
-                  className="dw-form"
-                  onChangeCapture={() => setShowErrors(false)}
-                >
+                <div className="dw-form">
                   {/* Supply set up */}
                   <div className="dw-rules-section">
                     <p className="dw-section-label">Supply set up</p>
-                    <div className="dw-supply-group">
-                      <label className="dw-supply-label">
-                        Supply to distribute
-                      </label>
-                      <div
-                        className={`dw-supply-field${showErrors && (supplyExceedsBalance || supply === "") ? " is-error" : ""}`}
-                      >
-                        <input
-                          className="dw-supply-el"
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="e.g. 10,000,000"
-                          value={supply}
-                          onChange={(e) =>
-                            setSupply(e.target.value.replace(/[^0-9,]/g, ""))
-                          }
-                          spellCheck={false}
-                          autoComplete="off"
-                        />
-                        <span className="dw-supply-suffix">
-                          {props.token.symbol}
-                        </span>
-                      </div>
-                      {showErrors && supplyExceedsBalance && (
-                        <div className="dw-validation dw-validation--danger">
-                          <IconAlertSquare size={16} strokeWidth={1.5} />
-                          <span>Insufficient balance</span>
-                        </div>
-                      )}
-                      {showErrors && supply === "" && (
-                        <div className="dw-validation dw-validation--danger">
-                          <IconAlertSquare size={16} strokeWidth={1.5} />
-                          <span>Supply amount is required</span>
-                        </div>
-                      )}
-                    </div>
+                    <Input
+                      state={supply}
+                      label="Supply to distribute"
+                      placeholder="e.g. 10,000,000"
+                      suffix={props.token.symbol}
+                    />
 
                     <div className="dw-wallet-row">
                       <div className="dw-balance">
@@ -439,7 +496,7 @@ export default function DistributionWizard(props: {
                           variant="outline"
                           size="m"
                           onClick={() =>
-                            setSupply(
+                            supply.onChange(
                               formatEther(props.token.totalSupply / BigInt(2)),
                             )
                           }
@@ -450,7 +507,9 @@ export default function DistributionWizard(props: {
                           variant="outline"
                           size="m"
                           onClick={() =>
-                            setSupply(formatEther(props.token.totalSupply))
+                            supply.onChange(
+                              formatEther(props.token.totalSupply),
+                            )
                           }
                         >
                           MAX
@@ -490,61 +549,23 @@ export default function DistributionWizard(props: {
                     </div>
 
                     <div className="dw-backing-inputs">
-                      <div className="dw-supply-group">
-                        <label className="dw-supply-label">
-                          Initial token supply
-                        </label>
-                        <div className="dw-supply-field">
-                          <input
-                            className="dw-supply-el"
-                            type="text"
-                            placeholder="first epoch release amount"
-                            value={initialDistributionLiquidity}
-                            onChange={(e) =>
-                              setInitialDistributionLiquidity(
-                                e.target.value.replace(/[^0-9,]/g, ""),
-                              )
-                            }
-                            spellCheck={false}
-                            autoComplete="off"
-                          />
-                          <span className="dw-supply-suffix">
-                            {props.token.symbol}
-                          </span>
-                        </div>
+                      <div className="dw-input-flex">
+                        <Input
+                          state={initialDistributionLiquidity}
+                          label="Initial token supply"
+                          placeholder="first epoch release amount"
+                          suffix={props.token.symbol}
+                        />
                       </div>
-                      <div className="dw-supply-group">
-                        <label className="dw-supply-label">
-                          Initial liquidity
-                        </label>
-                        <div className="dw-supply-field">
-                          <input
-                            className="dw-supply-el"
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="e.g. 10,000,000"
-                            value={initialParticipationLiquidity}
-                            onChange={(e) =>
-                              setInitialParticipationLiquidity(
-                                e.target.value.replace(/[^0-9,]/g, ""),
-                              )
-                            }
-                            spellCheck={false}
-                            autoComplete="off"
-                          />
-                          <span className="dw-supply-suffix">
-                            {BACKING_ASSETS[backingAssetIdx]}
-                          </span>
-                        </div>
+                      <div className="dw-input-flex">
+                        <Input
+                          state={initialParticipationLiquidity}
+                          label="Initial liquidity"
+                          placeholder="e.g. 10,000,000"
+                          suffix={BACKING_ASSETS[backingAssetIdx]}
+                        />
                       </div>
                     </div>
-
-                    {showErrors && initialPrice === null && (
-                      <div className="dw-validation dw-validation--danger">
-                        <IconAlertSquare size={16} strokeWidth={1.5} />
-                        <span>Both liquidity fields are required</span>
-                      </div>
-                    )}
 
                     <div className="dw-price-row">
                       <span className="dw-price-label">
@@ -595,10 +616,7 @@ export default function DistributionWizard(props: {
                   </p>
                 </div>
 
-                <div
-                  className="dw-form"
-                  onChangeCapture={() => setShowErrors(false)}
-                >
+                <div className="dw-form">
                   {/* Distribution start */}
                   <div className="dw-release-type-section">
                     <p className="dw-section-label">Distribution start</p>
@@ -610,8 +628,8 @@ export default function DistributionWizard(props: {
                             ref={startRef}
                             type="date"
                             className="dw-date-el"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
+                            value={startDate.value}
+                            onChange={(e) => startDate.onChange(e.target.value)}
                           />
                           <button
                             type="button"
@@ -622,10 +640,10 @@ export default function DistributionWizard(props: {
                             <IconCalendar size={16} strokeWidth={1.5} />
                           </button>
                         </div>
-                        {showErrors && startDate === "" && (
+                        {startDate.error && (
                           <div className="dw-validation dw-validation--danger">
                             <IconAlertSquare size={16} strokeWidth={1.5} />
-                            <span>Start date is required</span>
+                            <span>{startDate.error}</span>
                           </div>
                         )}
                       </div>
@@ -638,8 +656,8 @@ export default function DistributionWizard(props: {
                             ref={startTimeRef}
                             type="time"
                             className="dw-date-el"
-                            value={startTime}
-                            onChange={(e) => setStartTime(e.target.value)}
+                            value={startTime.value}
+                            onChange={(e) => startTime.onChange(e.target.value)}
                           />
                           <button
                             type="button"
@@ -650,24 +668,14 @@ export default function DistributionWizard(props: {
                             <IconClock size={16} strokeWidth={1.5} />
                           </button>
                         </div>
-                        {showErrors && startTime === "" && (
+                        {startTime.error && (
                           <div className="dw-validation dw-validation--danger">
                             <IconAlertSquare size={16} strokeWidth={1.5} />
-                            <span>Start time is required</span>
+                            <span>{startTime.error}</span>
                           </div>
                         )}
                       </div>
                     </div>
-                    {showErrors &&
-                      startDate !== "" &&
-                      startTime !== "" &&
-                      nowSec() >
-                        parseUTCToTimestampSec(startDate, startTime) && (
-                        <div className="dw-validation dw-validation--danger">
-                          <IconAlertSquare size={16} strokeWidth={1.5} />
-                          <span>Start must be in the future</span>
-                        </div>
-                      )}
                   </div>
 
                   <Divider />
@@ -723,8 +731,10 @@ export default function DistributionWizard(props: {
                                 ref={endRef}
                                 type="date"
                                 className="dw-date-el"
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
+                                value={endDate.value}
+                                onChange={(e) =>
+                                  endDate.onChange(e.target.value)
+                                }
                               />
                               <button
                                 type="button"
@@ -735,42 +745,18 @@ export default function DistributionWizard(props: {
                                 <IconCalendar size={16} strokeWidth={1.5} />
                               </button>
                             </div>
-                            {showErrors &&
-                              releaseTypeIdx === 0 &&
-                              endDate === "" && (
-                                <div className="dw-validation dw-validation--danger">
-                                  <IconAlertSquare
-                                    size={16}
-                                    strokeWidth={1.5}
-                                  />
-                                  <span>End date is required</span>
-                                </div>
-                              )}
-                            {showErrors &&
-                              releaseTypeIdx === 0 &&
-                              endDate !== "" &&
-                              startDate !== "" &&
-                              parseUTCToTimestampSec(endDate) <=
-                                parseUTCToTimestampSec(
-                                  startDate,
-                                  startTime,
-                                ) && (
-                                <div className="dw-validation dw-validation--danger">
-                                  <IconAlertSquare
-                                    size={16}
-                                    strokeWidth={1.5}
-                                  />
-                                  <span>End must be after start</span>
-                                </div>
-                              )}
+                            {endDate.error && (
+                              <div className="dw-validation dw-validation--danger">
+                                <IconAlertSquare size={16} strokeWidth={1.5} />
+                                <span>{endDate.error}</span>
+                              </div>
+                            )}
                           </div>
                           <div className="dw-input-flex">
-                            <Input
+                            <DropDownInput
+                              state={epochDurationInput}
                               label="Epoch duration"
                               placeholder="Select an option"
-                              value={epochDuration}
-                              onChange={setEpochDuration}
-                              dropdown
                               options={EPOCH_DURATION_OPTIONS}
                             />
                           </div>
@@ -779,113 +765,29 @@ export default function DistributionWizard(props: {
                         <div>
                           <div className="dw-date-row">
                             <div className="dw-date-wrap">
-                              <label className="dw-date-label">
-                                Number of epochs
-                              </label>
-                              <div className="dw-supply-field">
-                                <input
-                                  className="dw-supply-el"
-                                  type="text"
-                                  inputMode="numeric"
-                                  placeholder="e.g. 54"
-                                  value={numberOfEpochs}
-                                  onChange={(e) => {
-                                    const value = e.target.value.replace(
-                                      /[^0-9]/g,
-                                      "",
-                                    );
-                                    setNumberOfEpochs(value);
-                                    if (!value) {
-                                      setReleasePerEpoch("");
-                                    } else {
-                                      const supplyNum = parseInt(supply);
-                                      const epochsNum = parseInt(value);
-                                      setReleasePerEpoch(
-                                        supplyNum && epochsNum
-                                          ? (supplyNum / epochsNum).toString()
-                                          : "",
-                                      );
-                                    }
-                                  }}
-                                  spellCheck={false}
-                                  autoComplete="off"
-                                />
-                                <span className="dw-supply-suffix">Epochs</span>
-                              </div>
-                              {showErrors &&
-                                releaseTypeIdx === 1 &&
-                                (numberOfEpochs === "" ||
-                                  parseInt(numberOfEpochs) === 0) && (
-                                  <div className="dw-validation dw-validation--danger">
-                                    <IconAlertSquare
-                                      size={16}
-                                      strokeWidth={1.5}
-                                    />
-                                    <span>
-                                      Number of epochs must be greater than 0
-                                    </span>
-                                  </div>
-                                )}
+                              <Input
+                                state={numberOfEpochs}
+                                label="Number of epochs"
+                                placeholder="e.g. 54"
+                                suffix="Epochs"
+                                onChange={epochsOnChange}
+                              />
                             </div>
                             <div className="dw-date-wrap">
-                              <label className="dw-date-label">
-                                Release per epoch
-                              </label>
-                              <div className="dw-supply-field">
-                                <input
-                                  className="dw-supply-el"
-                                  type="text"
-                                  inputMode="numeric"
-                                  placeholder="e.g. 100"
-                                  value={releasePerEpoch}
-                                  onChange={(e) => {
-                                    const value = e.target.value.replace(
-                                      /[^0-9.,]/g,
-                                      "",
-                                    );
-                                    setReleasePerEpoch(value);
-                                    if (!value) {
-                                      setNumberOfEpochs("");
-                                    } else {
-                                      const supplyNum = parseInt(supply);
-                                      const perEpochNum = parseInt(value);
-                                      setNumberOfEpochs(
-                                        supplyNum && perEpochNum
-                                          ? (supplyNum / perEpochNum).toString()
-                                          : "",
-                                      );
-                                    }
-                                  }}
-                                  spellCheck={false}
-                                  autoComplete="off"
-                                />
-                                <span className="dw-supply-suffix">
-                                  {props.token.symbol}
-                                </span>
-                              </div>
-                              {showErrors &&
-                                releaseTypeIdx === 1 &&
-                                (releasePerEpoch === "" ||
-                                  parseInt(releasePerEpoch) === 0) && (
-                                  <div className="dw-validation dw-validation--danger">
-                                    <IconAlertSquare
-                                      size={16}
-                                      strokeWidth={1.5}
-                                    />
-                                    <span>
-                                      Release per epoch must be greater than 0
-                                    </span>
-                                  </div>
-                                )}
+                              <Input
+                                state={releasePerEpoch}
+                                label="Release per epoch"
+                                placeholder="e.g. 100"
+                                suffix={props.token.symbol}
+                                onChange={releaseOnChange}
+                              />
                             </div>
                           </div>
                           <div className="dw-input-flex mt-4">
-                            <Input
+                            <DropDownInput
+                              state={epochDurationInput}
                               label="Epoch duration"
                               placeholder="Select an option"
-                              value={epochDuration}
-                              onChange={setEpochDuration}
-                              dropdown
                               options={EPOCH_DURATION_OPTIONS}
                             />
                           </div>
@@ -910,15 +812,15 @@ export default function DistributionWizard(props: {
                         <p className="dw-release-summary">
                           This creates{" "}
                           <strong>
-                            {parseInt(numberOfEpochs)} total epochs (
-                            {epochDuration} each).
+                            {parseInt(numberOfEpochs.value)} total epochs (
+                            {epochDurationInput.value} each).
                           </strong>{" "}
                           Ends{" "}
                           <strong>
                             {formatDateLong(endDateFromEpochs)} (
                             {(
-                              (parseInt(numberOfEpochs) *
-                                EPOCH_DURATION_MS[epochDuration]) /
+                              (parseInt(numberOfEpochs.value) *
+                                EPOCH_DURATION_MS[epochDurationInput.value]) /
                               (24 * 60 * 60 * 1000)
                             ).toFixed(1)}{" "}
                             days later)
@@ -951,69 +853,26 @@ export default function DistributionWizard(props: {
                   </p>
                 </div>
 
-                <div
-                  className="dw-form"
-                  onChangeCapture={() => setShowErrors(false)}
-                >
+                <div className="dw-form">
                   {/* Epoch setup */}
                   <div className="dw-rules-section">
                     <p className="dw-section-label">Epoch setup</p>
                     <div className="dw-backing-inputs">
-                      <div className="dw-supply-group">
-                        <label className="dw-supply-label">
-                          Minimum participation (Optional)
-                        </label>
-                        <div className="dw-supply-field">
-                          <input
-                            className="dw-supply-el"
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="e.g. 0.5"
-                            value={minParticipation}
-                            onChange={(e) =>
-                              setMinParticipation(
-                                e.target.value.replace(/[^0-9.]/g, ""),
-                              )
-                            }
-                            spellCheck={false}
-                            autoComplete="off"
-                          />
-                          <span className="dw-supply-suffix">
-                            {BACKING_ASSETS[backingAssetIdx]}
-                          </span>
-                        </div>
-                        {showErrors && minParticipation === "" && (
-                          <div className="dw-validation dw-validation--danger">
-                            <IconAlertSquare size={16} strokeWidth={1.5} />
-                            <span>Minimum participation is required</span>
-                          </div>
-                        )}
+                      <div className="dw-input-flex">
+                        <Input
+                          state={minParticipation}
+                          label="Minimum participation (Optional)"
+                          placeholder="e.g. 0.5"
+                          suffix={BACKING_ASSETS[backingAssetIdx]}
+                        />
                       </div>
-                      <div className="dw-supply-group">
-                        <label className="dw-supply-label">Claim delay</label>
-                        <div className="dw-supply-field">
-                          <input
-                            className="dw-supply-el"
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="e.g. 5"
-                            value={claimDelay}
-                            onChange={(e) =>
-                              setClaimDelay(
-                                e.target.value.replace(/[^0-9]/g, ""),
-                              )
-                            }
-                            spellCheck={false}
-                            autoComplete="off"
-                          />
-                          <span className="dw-supply-suffix">Days</span>
-                        </div>
-                        {showErrors && claimDelay === "" && (
-                          <div className="dw-validation dw-validation--danger">
-                            <IconAlertSquare size={16} strokeWidth={1.5} />
-                            <span>Claim delay is required</span>
-                          </div>
-                        )}
+                      <div className="dw-input-flex">
+                        <Input
+                          state={claimDelay}
+                          label="Claim delay"
+                          placeholder="e.g. 5"
+                          suffix="Days"
+                        />
                       </div>
                     </div>
                   </div>
@@ -1094,52 +953,19 @@ export default function DistributionWizard(props: {
 
                     {founderShareOn && (
                       <div className="dw-backing-inputs">
-                        <div className="dw-supply-group dw-share-pct-group">
-                          <div
-                            className={`dw-supply-field${showErrors && (founderSharePercent === "" || founderExceedsCap) ? " is-error" : ""}`}
-                          >
-                            <input
-                              className="dw-supply-el"
-                              type="text"
-                              inputMode="numeric"
-                              placeholder="Share percentage"
-                              value={founderSharePercent}
-                              onChange={(e) =>
-                                setFounderSharePercent(
-                                  e.target.value.replace(/[^0-9.]/g, ""),
-                                )
-                              }
-                              spellCheck={false}
-                              autoComplete="off"
-                            />
-                            <span className="dw-supply-suffix">%</span>
-                          </div>
-                          {showErrors && founderSharePercent === "" && (
-                            <div className="dw-validation dw-validation--danger">
-                              <IconAlertSquare size={16} strokeWidth={1.5} />
-                              <span>Share percentage is required</span>
-                            </div>
-                          )}
-                          {showErrors && founderExceedsCap && (
-                            <div className="dw-validation dw-validation--danger">
-                              <IconAlertSquare size={16} strokeWidth={1.5} />
-                              <span>Capped at 25%</span>
-                            </div>
-                          )}
+                        <div className="dw-share-pct-group">
+                          <Input
+                            state={founderSharePercent}
+                            placeholder="Share percentage"
+                            suffix="%"
+                          />
                         </div>
                         <div className="dw-input-flex">
                           <Input
+                            state={founderReceiverInput}
                             placeholder="Receiver address"
-                            value={founderReceiverAddress}
-                            onChange={setFounderReceiverAddress}
                             showPaste
                             onPaste={handlePasteFounderAddress}
-                            error={
-                              showErrors &&
-                              founderShareOn &&
-                              !isAddress(founderReceiverAddress)
-                            }
-                            errorMessage="Invalid receiver address"
                             spellCheck={false}
                             autoComplete="off"
                           />
@@ -1184,8 +1010,8 @@ export default function DistributionWizard(props: {
                     <DataRow
                       label="Total supply:"
                       value={
-                        supply
-                          ? `${supply} ${props.token.symbol}`
+                        supply.value
+                          ? `${supply.value} ${props.token.symbol}`
                           : `— ${formatEther(props.token.totalSupply)}`
                       }
                     />
@@ -1218,13 +1044,13 @@ export default function DistributionWizard(props: {
                     />
                     <DataRow
                       label="Release starts at:"
-                      value={formatDate(startDate)}
+                      value={formatDate(startDate.value)}
                     />
                     <DataRow
                       label="Release ends at:"
                       value={
                         releaseTypeIdx === 0
-                          ? formatDate(endDate)
+                          ? formatDate(endDate.value)
                           : endDateFromEpochs
                             ? formatDate(endDateFromEpochs.toISOString())
                             : "—"
@@ -1253,8 +1079,8 @@ export default function DistributionWizard(props: {
                     <DataRow
                       label="Initial liquidity:"
                       value={
-                        initialParticipationLiquidity
-                          ? `${initialParticipationLiquidity} ${BACKING_ASSETS[backingAssetIdx]}`
+                        initialParticipationLiquidity.value
+                          ? `${initialParticipationLiquidity.value} ${BACKING_ASSETS[backingAssetIdx]}`
                           : "—"
                       }
                     />
@@ -1285,14 +1111,16 @@ export default function DistributionWizard(props: {
                     <DataRow
                       label="Minimum participation:"
                       value={
-                        minParticipation
-                          ? `${minParticipation} ${props.token.symbol}`
+                        minParticipation.value
+                          ? `${minParticipation.value} ${props.token.symbol}`
                           : "None"
                       }
                     />
                     <DataRow
                       label="Claim delay:"
-                      value={claimDelay ? `${claimDelay} DAYS` : "None"}
+                      value={
+                        claimDelay.value ? `${claimDelay.value} DAYS` : "None"
+                      }
                     />
                     <DataRow
                       label="Price anchor:"
@@ -1310,7 +1138,9 @@ export default function DistributionWizard(props: {
                         />
                         <DataRow
                           label="Founder receiver address:"
-                          value={formatAddress(founderReceiverAddress) || "—"}
+                          value={
+                            formatAddress(founderReceiverInput.value) || "—"
+                          }
                         />
                       </>
                     )}
@@ -1333,7 +1163,7 @@ export default function DistributionWizard(props: {
                     <DataRow
                       label="Tokenomics:"
                       value={
-                        supply
+                        supply.value
                           ? `${((supplyNum / totalSupplyF) * 100).toFixed(2)}% public distribution`
                           : "—"
                       }

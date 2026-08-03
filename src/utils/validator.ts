@@ -64,3 +64,12 @@ export const positiveIntegerValidator: InputValidator = (
     return "Invalid amount";
   }
 };
+
+export const positiveNumberValidator = (label: string): InputValidator => {
+  return (v: string): string | null => {
+    if (v.trim() === "") return `${label} is required`;
+    const n = parseFloat(v.replace(/,/g, ""));
+    if (isNaN(n) || n <= 0) return `${label} must be greater than 0`;
+    return null; // OK
+  };
+};
