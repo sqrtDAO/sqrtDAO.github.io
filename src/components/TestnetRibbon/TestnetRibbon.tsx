@@ -1,6 +1,8 @@
 "use client";
 
+import { useChainId } from "wagmi";
 import "./TestnetRibbon.css";
+import { chainToName, isTestnet } from "@/utils/chain-utils";
 
 export interface TestnetRibbonProps {
   network?: string;
@@ -11,15 +13,19 @@ export interface TestnetRibbonProps {
 const REPEAT_COUNT = 8;
 
 export default function TestnetRibbon({
-  network = "Sepolia",
   message = "everything here runs on test funds. Nothing is real.",
   className,
 }: TestnetRibbonProps) {
+  const chainId = useChainId();
+  const chainName = chainToName(chainId);
+
   const item = (
     <span className="testnet-ribbon__item">
-      <strong>Testnet</strong> · {network} · {message}
+      <strong>Testnet</strong> · {chainName} · {message}
     </span>
   );
+
+  if (!isTestnet(chainId)) return <></>;
 
   return (
     <div

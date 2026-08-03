@@ -646,17 +646,7 @@ export default function DistributionDetail({
                     <AddressTag value={contractInfo?.creator ?? "?"} />
                   </div>
                 </div>
-                <NetworkTag
-                  network={
-                    chainId === 8453
-                      ? "BASE"
-                      : chainId === 11155111
-                        ? "SEPOLIA"
-                        : chainId === 31337
-                          ? "ANVIL"
-                          : "UNKNOWN"
-                  }
-                />
+                <NetworkTag />
               </div>
               <div className="ddp-token-header__row2">
                 <div className="ddp-token-header__creator ddp-token-header__creator--mobile">
