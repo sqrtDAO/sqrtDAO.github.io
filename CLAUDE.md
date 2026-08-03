@@ -27,6 +27,7 @@
 - Create small, focused functions/components that do one thing well.
 - We don't like classes, just simply use functions.
 - don't use `interface`, use `type`
+- for function syntax don't `function sum(){}` do `const sum=()=>{}`.
 - Use composition over inheritance.
 - Extract reusable logic into custom hooks `src/hooks/use*.ts`
 - Extract reusable UI into components `src/components/*.tsx`
