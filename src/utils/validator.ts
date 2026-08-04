@@ -10,6 +10,11 @@ export const validateAll = (...inputs: UseInputReturn[]): boolean => {
   return isValid;
 };
 
+export const composeValidators =
+  (...validators: InputValidator[]): InputValidator =>
+  (v) =>
+    validators.reduce<string | null>((err, validate) => err ?? validate(v), null);
+
 export const requiredValidator = (name: string): InputValidator => {
   return (v: string): string | null => {
     if (v.trim() === "") return `${name} is Required`;
@@ -23,7 +28,7 @@ export const amountValidator: InputValidator = (
   value = value.trim();
   if (value == "") return "Required";
   try {
-    parseEther(value);
+    parseEther(value.replace(/,/g, ""));
     return null; // OK
   } catch {
     return "Invalid amount";
@@ -35,7 +40,8 @@ export const nonZeroAmountValidator: InputValidator = (
 ): string | null => {
   if (value.trim() === "") return "Required";
   try {
-    if (parseEther(value) === 0n) return "Must be greater than 0";
+    if (parseEther(value.replace(/,/g, "")) === 0n)
+      return "Must be greater than 0";
     return null; // OK
   } catch {
     return "Invalid amount";
