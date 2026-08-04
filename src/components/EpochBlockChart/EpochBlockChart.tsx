@@ -1,9 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { getParticipationVolumeRange, getVolumeBucketVar, type VolumeRange } from "@/lib/charts/bucketColor";
-import { BLOCK_DIMS, blockPosition, computeBlockDisplayWindow, gridPixelSize, type ChartDevice } from "@/lib/charts/blockLayout";
-import { createTooltipController, type TooltipController } from "@/lib/charts/tooltipController";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+import {
+  getParticipationVolumeRange,
+  getVolumeBucketVar,
+  type VolumeRange,
+} from "@/lib/charts/bucketColor";
+import {
+  BLOCK_DIMS,
+  blockPosition,
+  computeBlockDisplayWindow,
+  gridPixelSize,
+  type ChartDevice,
+} from "@/lib/charts/blockLayout";
+import {
+  createTooltipController,
+  type TooltipController,
+} from "@/lib/charts/tooltipController";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 import type { EpochData } from "@/lib/charts/types";
 import "@/components/ChartTooltip/ChartTooltip.css";
@@ -35,8 +55,8 @@ function findCurrentIndex(epochs: EpochData[]): number {
 
 export default function EpochBlockChart({
   epochs,
-  quoteSymbol = "USDT",
-  tokenSymbol = "TOKEN",
+  quoteSymbol,
+  tokenSymbol,
   className,
 }: EpochBlockChartProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -71,19 +91,31 @@ export default function EpochBlockChart({
   }, []);
 
   const currentIndex = useMemo(() => findCurrentIndex(epochs), [epochs]);
-  const volumeRange = useMemo(() => getParticipationVolumeRange(epochs), [epochs]);
+  const volumeRange = useMemo(
+    () => getParticipationVolumeRange(epochs),
+    [epochs],
+  );
   // Never scrolls — this is the exact slice of `epochs` that fits the
   // container at this device's fixed block size, within 5 rows, windowed
   // around the current epoch when the full history doesn't fit.
   const displayWindow = useMemo(
-    () => computeBlockDisplayWindow(containerWidth, epochs.length, currentIndex, device),
-    [containerWidth, epochs.length, currentIndex, device]
+    () =>
+      computeBlockDisplayWindow(
+        containerWidth,
+        epochs.length,
+        currentIndex,
+        device,
+      ),
+    [containerWidth, epochs.length, currentIndex, device],
   );
   const visibleEpochs = useMemo(
     () => epochs.slice(displayWindow.startIndex, displayWindow.endIndex),
-    [epochs, displayWindow.startIndex, displayWindow.endIndex]
+    [epochs, displayWindow.startIndex, displayWindow.endIndex],
   );
-  const gridSize = useMemo(() => gridPixelSize(displayWindow.columns, displayWindow.rows, device), [displayWindow, device]);
+  const gridSize = useMemo(
+    () => gridPixelSize(displayWindow.columns, displayWindow.rows, device),
+    [displayWindow, device],
+  );
 
   function restoreFill(el: SVGRectElement, index: number) {
     el.setAttribute("fill", fillFor(visibleEpochs[index], volumeRange));
@@ -91,7 +123,10 @@ export default function EpochBlockChart({
 
   const handlePointerLeave = useCallback(() => {
     if (hoveredRef.current) {
-      hoveredRef.current.el.setAttribute("fill", fillFor(visibleEpochs[hoveredRef.current.index], volumeRange));
+      hoveredRef.current.el.setAttribute(
+        "fill",
+        fillFor(visibleEpochs[hoveredRef.current.index], volumeRange),
+      );
       hoveredRef.current = null;
     }
     tooltipRef.current?.hide();
@@ -103,11 +138,13 @@ export default function EpochBlockChart({
   useEffect(() => {
     function handleDocumentPointerDown(e: PointerEvent) {
       const tooltipEl = wrapRef.current?.querySelector(".chart-tooltip");
-      if (tooltipEl && e.target instanceof Node && tooltipEl.contains(e.target)) return;
+      if (tooltipEl && e.target instanceof Node && tooltipEl.contains(e.target))
+        return;
       handlePointerLeave();
     }
     document.addEventListener("pointerdown", handleDocumentPointerDown);
-    return () => document.removeEventListener("pointerdown", handleDocumentPointerDown);
+    return () =>
+      document.removeEventListener("pointerdown", handleDocumentPointerDown);
   }, [handlePointerLeave]);
 
   function handlePointerMove(e: ReactPointerEvent<SVGSVGElement>) {
@@ -120,7 +157,8 @@ export default function EpochBlockChart({
     const rect = target as unknown as SVGRectElement;
 
     if (hoveredRef.current?.index !== index) {
-      if (hoveredRef.current) restoreFill(hoveredRef.current.el, hoveredRef.current.index);
+      if (hoveredRef.current)
+        restoreFill(hoveredRef.current.el, hoveredRef.current.index);
       rect.setAttribute("fill", "var(--sqrt-action-primary-rest)");
       hoveredRef.current = { el: rect, index };
     }
@@ -132,10 +170,16 @@ export default function EpochBlockChart({
     tooltipRef.current?.show(
       [
         { label: "Epoch num", value: `#${epoch.epoch}` },
-        { label: "Epoch supply", value: `${epoch.supply.toLocaleString("en-US")} ${tokenSymbol}` },
+        {
+          label: "Epoch supply",
+          value: `${epoch.supply.toLocaleString("en-US")} ${tokenSymbol}`,
+        },
         {
           label: "Clear price",
-          value: epoch.clearPrice == null ? "—" : `${parseFloat(epoch.clearPrice.toFixed(4))} ${quoteSymbol}`,
+          value:
+            epoch.clearPrice == null
+              ? "—"
+              : `${parseFloat(epoch.clearPrice.toFixed(4))} ${quoteSymbol}`,
         },
         {
           label: "Participation vol",
@@ -147,12 +191,15 @@ export default function EpochBlockChart({
       e.clientX - hostRect.left + host.scrollLeft,
       e.clientY - hostRect.top,
       host.scrollWidth,
-      host.clientHeight
+      host.clientHeight,
     );
   }
 
   return (
-    <div ref={wrapRef} className={`epoch-block-chart${className ? ` ${className}` : ""}`}>
+    <div
+      ref={wrapRef}
+      className={`epoch-block-chart${className ? ` ${className}` : ""}`}
+    >
       <div ref={scrollRef} className="epoch-block-chart__scroll">
         <svg
           ref={svgRef}
@@ -162,14 +209,28 @@ export default function EpochBlockChart({
           viewBox={`0 0 ${Math.max(1, gridSize.width)} ${Math.max(1, gridSize.height)}`}
           onPointerMove={handlePointerMove}
           onPointerLeave={handlePointerLeave}
-          onClick={(e) => handlePointerMove(e as unknown as ReactPointerEvent<SVGSVGElement>)}
+          onClick={(e) =>
+            handlePointerMove(e as unknown as ReactPointerEvent<SVGSVGElement>)
+          }
         >
           <defs>
             {/* objectBoundingBox % is relative to the 4x12 rect itself — a
                 stdDeviation:9 blur needs ~3x that (~27px) of margin to avoid
                 clipping, especially on the 4px-wide axis. */}
-            <filter id={GLOW_FILTER_ID} x="-700%" y="-250%" width="1500%" height="600%">
-              <feDropShadow dx="0" dy="0" stdDeviation="9" floodColor="var(--sqrt-action-primary-rest)" floodOpacity="0.4" />
+            <filter
+              id={GLOW_FILTER_ID}
+              x="-700%"
+              y="-250%"
+              width="1500%"
+              height="600%"
+            >
+              <feDropShadow
+                dx="0"
+                dy="0"
+                stdDeviation="9"
+                floodColor="var(--sqrt-action-primary-rest)"
+                floodOpacity="0.4"
+              />
             </filter>
           </defs>
           {containerWidth > 0 &&
@@ -185,7 +246,11 @@ export default function EpochBlockChart({
                   height={BLOCK_H}
                   rx={CAPSULE_RX}
                   fill={fillFor(epoch, volumeRange)}
-                  filter={epoch.state === "current" ? `url(#${GLOW_FILTER_ID})` : undefined}
+                  filter={
+                    epoch.state === "current"
+                      ? `url(#${GLOW_FILTER_ID})`
+                      : undefined
+                  }
                 />
               );
             })}

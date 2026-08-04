@@ -14,9 +14,18 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import { createHoverPrimitive } from "@/lib/charts/hoverPrimitive";
-import { createIntroController, type IntroController } from "@/lib/charts/introController";
-import { RoundedBarsSeries, type RoundedBarsData } from "@/lib/charts/roundedBars";
-import { createTooltipController, type TooltipController } from "@/lib/charts/tooltipController";
+import {
+  createIntroController,
+  type IntroController,
+} from "@/lib/charts/introController";
+import {
+  RoundedBarsSeries,
+  type RoundedBarsData,
+} from "@/lib/charts/roundedBars";
+import {
+  createTooltipController,
+  type TooltipController,
+} from "@/lib/charts/tooltipController";
 import type { EpochData } from "@/lib/charts/types";
 import "@/components/ChartTooltip/ChartTooltip.css";
 import "./EpochComboChart.css";
@@ -50,8 +59,8 @@ function timeOf(e: EpochData): UTCTimestamp {
 
 export default function EpochComboChart({
   epochs,
-  quoteSymbol = "USDT",
-  tokenSymbol = "TOKEN",
+  quoteSymbol,
+  tokenSymbol,
   className,
   onHoverEpoch,
 }: EpochComboChartProps) {
@@ -81,7 +90,10 @@ export default function EpochComboChart({
     state: e.state,
     mine: e.participated,
   });
-  const toLinePoint = (e: EpochData) => ({ time: timeOf(e), value: e.clearPrice ?? 0 });
+  const toLinePoint = (e: EpochData) => ({
+    time: timeOf(e),
+    value: e.clearPrice ?? 0,
+  });
 
   // ---- mount: create chart, series, primitives, tooltip, intro ----------
   useEffect(() => {
@@ -116,7 +128,10 @@ export default function EpochComboChart({
         attributionLogo: false,
       },
       grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-      rightPriceScale: { visible: false, scaleMargins: { top: 0.1, bottom: 0.16 } },
+      rightPriceScale: {
+        visible: false,
+        scaleMargins: { top: 0.1, bottom: 0.16 },
+      },
       timeScale: {
         borderColor: colors.timeAxisBorder,
         rightOffset: 5,
@@ -134,8 +149,17 @@ export default function EpochComboChart({
         },
         horzLine: { visible: false, labelVisible: false },
       },
-      handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: { time: true, price: false } },
-      handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
+      handleScale: {
+        mouseWheel: true,
+        pinch: true,
+        axisPressedMouseMove: { time: true, price: false },
+      },
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: false,
+      },
       kineticScroll: { mouse: true, touch: true },
       localization: { dateFormat: "dd MMM" },
     });
@@ -167,13 +191,16 @@ export default function EpochComboChart({
     });
     lineRef.current = line;
 
-    chart.priceScale("vol").applyOptions({ scaleMargins: { top: 1 - LOCKED.barHeight, bottom: 0 } });
+    chart
+      .priceScale("vol")
+      .applyOptions({ scaleMargins: { top: 1 - LOCKED.barHeight, bottom: 0 } });
 
     // ---- hover highlight primitive (paints below the line, always) -----
     const hoverPrim = createHoverPrimitive({
       chart,
       barsSeries: bars,
-      getValue: (t) => byTimeRef.current.get(t as unknown as number)?.participationVolume,
+      getValue: (t) =>
+        byTimeRef.current.get(t as unknown as number)?.participationVolume,
       getBarWidthFactor: () => LOCKED.barWidthFactor,
       getBarRadius: () => LOCKED.barRadius,
       getHoverColor: () => colors.hover,
@@ -196,13 +223,20 @@ export default function EpochComboChart({
     const tooltip = createTooltipController(wrap);
     tooltipRef.current = tooltip;
 
-    const fmtVol = (v: number) => `${v.toLocaleString("en-US")} ${fmtRef.current.quoteSymbol}`;
+    const fmtVol = (v: number) =>
+      `${v.toLocaleString("en-US")} ${fmtRef.current.quoteSymbol}`;
     const fmtPrice = (p: number | null) =>
-      p == null ? "—" : `${parseFloat(p.toFixed(4)).toString()} ${fmtRef.current.quoteSymbol}`;
-    const fmtSupply = (s: number) => `${s.toLocaleString("en-US")} ${fmtRef.current.tokenSymbol}`;
+      p == null
+        ? "—"
+        : `${parseFloat(p.toFixed(4)).toString()} ${fmtRef.current.quoteSymbol}`;
+    const fmtSupply = (s: number) =>
+      `${s.toLocaleString("en-US")} ${fmtRef.current.tokenSymbol}`;
 
     const onCrosshairMove = (param: MouseEventParams<Time>) => {
-      const rec = param.time != null ? byTimeRef.current.get(param.time as unknown as number) : null;
+      const rec =
+        param.time != null
+          ? byTimeRef.current.get(param.time as unknown as number)
+          : null;
       if (!rec || !param.point) {
         if (hoverTimeRef.current != null) {
           hoverTimeRef.current = null;
@@ -223,12 +257,15 @@ export default function EpochComboChart({
           { label: "Epoch num", value: `#${rec.epoch}` },
           { label: "Epoch supply", value: fmtSupply(rec.supply) },
           { label: "Clear price", value: fmtPrice(rec.clearPrice) },
-          { label: "Participation vol", value: fmtVol(rec.participationVolume) },
+          {
+            label: "Participation vol",
+            value: fmtVol(rec.participationVolume),
+          },
         ],
         param.point.x,
         param.point.y,
         chartEl.clientWidth,
-        chartEl.clientHeight
+        chartEl.clientHeight,
       );
     };
     chart.subscribeCrosshairMove(onCrosshairMove);
@@ -252,7 +289,8 @@ export default function EpochComboChart({
     // returns the chart to rest, mirroring desktop's mouseleave.
     const onDocumentPointerDown = (e: PointerEvent) => {
       const tooltipEl = wrap.querySelector(".chart-tooltip");
-      if (tooltipEl && e.target instanceof Node && tooltipEl.contains(e.target)) return;
+      if (tooltipEl && e.target instanceof Node && tooltipEl.contains(e.target))
+        return;
       onMouseLeave();
     };
     document.addEventListener("pointerdown", onDocumentPointerDown);
@@ -274,7 +312,9 @@ export default function EpochComboChart({
     chartEl.addEventListener("wheel", cancelIntro, { passive: true });
 
     intro.setEpochs(epochs);
-    byTimeRef.current = new Map(epochs.map((e) => [timeOf(e) as unknown as number, e]));
+    byTimeRef.current = new Map(
+      epochs.map((e) => [timeOf(e) as unknown as number, e]),
+    );
     intro.run();
     skipFirstSyncRef.current = true;
 
@@ -301,16 +341,23 @@ export default function EpochComboChart({
       skipFirstSyncRef.current = false;
       return;
     }
-    byTimeRef.current = new Map(epochs.map((e) => [timeOf(e) as unknown as number, e]));
+    byTimeRef.current = new Map(
+      epochs.map((e) => [timeOf(e) as unknown as number, e]),
+    );
     introRef.current?.setEpochs(epochs);
     if (!introRef.current?.isRunning() && barsRef.current && lineRef.current) {
       barsRef.current.setData(epochs.map(toBarItem));
-      lineRef.current.setData(epochs.filter((e) => e.state === "passed").map(toLinePoint));
+      lineRef.current.setData(
+        epochs.filter((e) => e.state === "passed").map(toLinePoint),
+      );
     }
   }, [epochs]);
 
   return (
-    <div ref={wrapRef} className={`epoch-combo-chart${className ? ` ${className}` : ""}`}>
+    <div
+      ref={wrapRef}
+      className={`epoch-combo-chart${className ? ` ${className}` : ""}`}
+    >
       <div ref={chartElRef} className="epoch-combo-chart__canvas" />
     </div>
   );

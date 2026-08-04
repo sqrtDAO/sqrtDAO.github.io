@@ -22,15 +22,19 @@
 - You don't need to read all the project files, read only what you need for the task (keep the context window small)
 - for contract integration use `src/contracts/contracts.ts` and `get<ContractName>Contract` function and then `read` or `write` objects and do NOT use wagmi generated `useWrite<ContractName><FunctionName>` directly.
 
-## Typescript rules
+## Coding rules
 
 - Create small, focused functions/components that do one thing well.
 - We don't like classes, just simply use functions.
 - don't use `interface`, use `type`
+- for function syntax don't `function sum(){}` do `const sum=()=>{}`.
 - Use composition over inheritance.
 - Extract reusable logic into custom hooks `src/hooks/use*.ts`
 - Extract reusable UI into components `src/components/*.tsx`
 - Extract utility functions into `src/utils/*.ts`
+- for user inputs use `src/hooks/useInput.ts` and `src/components/Input/Input.tsx`
+- for validation use this `src/utils/validator.ts`
+- for modifiers use this `src/utils/modifiers.ts`
 
 ## Workflow
 

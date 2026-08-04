@@ -1,73 +1,55 @@
 "use client";
 
-import { useRef, useState, useEffect, forwardRef, useId } from "react";
-import { IconChevronDown } from "@tabler/icons-react";
+import { forwardRef, useId } from "react";
+import type { UseInputReturn } from "@/hooks/useInput";
 import "./Input.css";
 
 export interface InputProps {
+  state: UseInputReturn;
   label?: string;
   placeholder?: string;
-  value: string;
-  onChange: (value: string) => void;
-  onPaste?: () => void;
-  showPaste?: boolean;
   error?: boolean;
   errorMessage?: string;
-  valid?: boolean;
-  id?: string;
+  suffix?: string;
+  onChange?: (value: string) => void;
+  onPaste?: () => void;
+  showPaste?: boolean;
   disabled?: boolean;
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   spellCheck?: boolean;
   autoComplete?: string;
   "aria-describedby"?: string;
-  dropdown?: boolean;
-  options?: string[];
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   {
+    state,
     label,
     placeholder,
-    value,
-    onChange,
+    error: errorOverride,
+    errorMessage: errorMessageOverride,
+    suffix,
+    onChange: onChangeOverride,
     onPaste,
     showPaste = false,
-    error = false,
-    errorMessage,
-    valid = false,
-    id,
     disabled,
     onKeyDown,
-    spellCheck,
-    autoComplete,
+    spellCheck = false,
+    autoComplete="off",
     "aria-describedby": ariaDescribedBy,
-    dropdown = false,
-    options = [],
   },
-  ref
+  ref,
 ) {
+  const { value, onChange, error, isGreenFlag: valid } = state;
+  const hasError = errorOverride ?? error !== null;
+  const errorMessage = errorMessageOverride ?? error;
   const generatedId = useId();
-  const inputId = id ?? generatedId;
-  const errorId = `${inputId}-error`;
-
-  const [menuOpen, setMenuOpen] = useState(false);
-  const fieldWrapRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (fieldWrapRef.current && !fieldWrapRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [menuOpen]);
+  const errorId = `${generatedId}-error`;
 
   const fieldClass = [
     "sqrt-input__field",
-    valid && !error ? "is-valid" : "",
-    error ? "is-error" : "",
+    valid && !hasError ? "is-valid" : "",
+    hasError ? "is-error" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -75,79 +57,42 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   return (
     <div className="sqrt-input">
       {label && (
-        <label className="sqrt-input__label" htmlFor={inputId}>
+        <label className="sqrt-input__label" htmlFor={generatedId}>
           {label}
         </label>
       )}
-      <div className="sqrt-input__field-wrap" ref={fieldWrapRef}>
+      <div className="sqrt-input__field-wrap">
         <div className={fieldClass}>
           <input
             ref={ref}
-            id={inputId}
+            id={generatedId}
             className="sqrt-input__el"
             type="text"
             placeholder={placeholder}
             value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onClick={dropdown ? () => setMenuOpen((o) => !o) : undefined}
-            readOnly={dropdown}
+            onChange={(e) => (onChangeOverride ?? onChange)(e.target.value)}
             disabled={disabled}
             onKeyDown={onKeyDown}
-            aria-invalid={error}
-            aria-describedby={
-              error && errorMessage
-                ? errorId
-                : ariaDescribedBy
-            }
+            aria-invalid={hasError}
+            aria-describedby={hasError ? errorId : ariaDescribedBy}
             spellCheck={spellCheck}
             autoComplete={autoComplete}
           />
-          {dropdown ? (
+          {suffix && <span className="sqrt-input__suffix">{suffix}</span>}
+          {showPaste && onPaste && (
             <button
+              className="sqrt-input__paste"
               type="button"
-              className="sqrt-input__dropdown-btn"
-              onClick={() => setMenuOpen((o) => !o)}
+              onClick={onPaste}
               tabIndex={-1}
-              aria-label="Toggle options"
-              disabled={disabled}
+              aria-label="Paste from clipboard"
             >
-              <IconChevronDown size={16} strokeWidth={1.5} />
+              Paste
             </button>
-          ) : (
-            showPaste && onPaste && (
-              <button
-                className="sqrt-input__paste"
-                type="button"
-                onClick={onPaste}
-                tabIndex={-1}
-                aria-label="Paste from clipboard"
-              >
-                Paste
-              </button>
-            )
           )}
         </div>
-        {dropdown && menuOpen && (
-          <div className="sqrt-input__menu" role="listbox">
-            {options.map((opt) => (
-              <button
-                key={opt}
-                type="button"
-                className="sqrt-input__menu-item"
-                role="option"
-                aria-selected={opt === value}
-                onClick={() => {
-                  onChange(opt);
-                  setMenuOpen(false);
-                }}
-              >
-                {opt}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
-      {error && errorMessage && (
+      {hasError && errorMessage && (
         <p id={errorId} className="sqrt-input__error" role="alert">
           {errorMessage}
         </p>

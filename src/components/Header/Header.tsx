@@ -40,7 +40,7 @@ export default function Header({
           className="sqrt-header__logo sqrt-header__logo--desktop"
         />
         <nav className="sqrt-header__nav" aria-label="Primary">
-          <Button variant="ghost" size="m" onClick={onLaunchClick}>
+          {/* <Button variant="ghost" size="m" onClick={onLaunchClick}>
             Launch token
           </Button>
           <Button variant="ghost" size="m" onClick={onDistributeClick}>
@@ -48,7 +48,7 @@ export default function Header({
           </Button>
           <Button variant="ghost" size="m" onClick={onAboutClick}>
             About us
-          </Button>
+          </Button> */}
         </nav>
         <ConnectButton.Custom>
           {({
@@ -115,7 +115,7 @@ export default function Header({
           }}
         </ConnectButton.Custom>
 
-        <IconButton
+        {/* <IconButton
           icon={
             mobileMenuOpen ? (
               <IconX size={24} strokeWidth={1.75} />
@@ -129,7 +129,7 @@ export default function Header({
           aria-expanded={mobileMenuOpen}
           className="sqrt-header__menu-btn"
           onClick={() => setMobileMenuOpen((open) => !open)}
-        />
+        /> */}
         <Logo
           variant="sign"
           mono
