@@ -63,7 +63,7 @@ export function useDistributorData(contractAddress: Address) {
 
   const [claimData, setClaimData] = useState<ClaimData | undefined>(undefined);
 
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | undefined>(undefined);
   const [distributionState, setDistributionState] = useState<
     DistributionState | undefined
