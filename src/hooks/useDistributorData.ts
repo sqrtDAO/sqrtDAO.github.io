@@ -172,7 +172,7 @@ export function useDistributorData(contractAddress: Address) {
   return {
     state: distributionState,
     contractInfo: contractInfo as DistributorContractInfo | undefined,
-    currentEpoch: currentEpoch as bigint | undefined,
+    currentEpoch: currentEpoch as number | undefined,
     epochsInfo: epochs,
     tokenName,
     tokenSymbol,

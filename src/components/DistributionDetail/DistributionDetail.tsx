@@ -320,6 +320,27 @@ export default function DistributionDetail({
 
   const countdown = useCountdown(endTimestampMs);
 
+  const currentEpochEndMs = useMemo(() => {
+    if (!contractInfo || currentEpoch === undefined) return 0;
+    return (
+      Number(
+        contractInfo.startingTimestamp +
+          BigInt(Number(currentEpoch) + 1) * contractInfo.epochDuration,
+      ) * 1000
+    );
+  }, [contractInfo, currentEpoch]);
+
+  useEffect(() => {
+    if (currentEpochEndMs <= 0 || state !== "running") return;
+    const delay = currentEpochEndMs - Date.now();
+    if (delay <= 0) {
+      refetch();
+      return;
+    }
+    const id = setTimeout(() => refetch(), delay);
+    return () => clearTimeout(id);
+  }, [currentEpochEndMs, state, refetch]);
+
   const supplyPerEpoch = useMemo(() => {
     if (!contractInfo) return 0;
     const num = Number(contractInfo.numberOfEpochs);
