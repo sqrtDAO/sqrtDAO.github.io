@@ -768,6 +768,12 @@
   color: var(--sqrt-text-tertiary);
 }
 
+.ddp-participation__error {
+  font-size: var(--font-size-body-s);
+  color: var(--sqrt-action-danger-rest);
+  margin-top: 4px;
+}
+
 .ddp-participation__steppers {
   display: flex;
   gap: 8px;

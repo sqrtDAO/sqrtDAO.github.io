@@ -364,6 +364,20 @@ export default function DistributionDetail({
   const displayParticipation = displayEpoch?.participationVolume ?? 0;
   const displayParticipants = estimateParticipants(displayParticipation);
 
+  const minParticipationFormatted = useMemo(() => {
+    if (!contractInfo || !participationTokenDecimals) return 0;
+    return Number(
+      formatUnits(contractInfo.minParticipation, participationTokenDecimals),
+    );
+  }, [contractInfo, participationTokenDecimals]);
+
+  const amountNum = Number(amount);
+  const belowMin =
+    amount !== "" &&
+    amountNum > 0 &&
+    minParticipationFormatted > 0 &&
+    amountNum < minParticipationFormatted;
+
   const hasClaimableShare = stats.closedCount > 0;
 
   const handleClaim = useCallback(async () => {
@@ -410,6 +424,7 @@ export default function DistributionDetail({
     isWalletConnected &&
     state === "running" &&
     Number(amount) > 0 &&
+    !belowMin &&
     participateState !== "approving" &&
     participateState !== "participating";
   const isParticipating =
@@ -548,6 +563,12 @@ export default function DistributionDetail({
               />
               <span>{participationTokenSymbol}</span>
             </div>
+            {belowMin && (
+              <p className="ddp-participation__error">
+                Minimum participation is {fmtInt(minParticipationFormatted)}{" "}
+                {participationTokenSymbol}
+              </p>
+            )}
           </div>
           <div className="ddp-participation__row">
             <div className="ddp-participation__field">
