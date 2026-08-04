@@ -53,7 +53,7 @@ const EpochComboChart = dynamic(
 const FAQ_ITEMS = [
   {
     q: "What am I actually getting when I participate?",
-    a: "You're putting in USDT to take part in an epoch — a timed window. When the epoch closes, that epoch's token supply is split among everyone who took part, proportional to how much each person put in. You're not buying at a listed price; your share is calculated at the close.",
+    a: "You're putting in fund to take part in an epoch — a timed window. When the epoch closes, that epoch's token supply is split among everyone who took part, proportional to how much each person put in. You're not buying at a listed price; your share is calculated at the close.",
   },
   {
     q: "Why don't I see a price before I participate?",
@@ -321,7 +321,12 @@ export default function DistributionDetail({
     if (isLoading) return;
 
     if (contractInfo && currentEpoch !== undefined) {
-      const built = buildEpochs(contractInfo, currentEpoch, epochsInfo, 18);
+      const built = buildEpochs(
+        contractInfo,
+        BigInt(currentEpoch),
+        epochsInfo,
+        18,
+      );
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setEpochs(built);
     }

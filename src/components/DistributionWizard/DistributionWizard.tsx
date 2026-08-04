@@ -329,7 +329,7 @@ export default function DistributionWizard(props: {
       const addresses = getAddresses(publicClient!.chain.id);
       const participationToken = getTokenV1Contract(
         publicClient!,
-        addresses.usdt,
+        addresses.rootToken,
       );
 
       const startTimeN = parseUTCToTimestampSec(
@@ -1293,7 +1293,7 @@ const parseUTCToTimestampSec = (date: string, time?: string) => {
 };
 const nowSec = () => BigInt(Math.round(Date.now() / 1000));
 
-const BACKING_ASSETS = ["USDT", "BASE", "USDC", "ETH"];
+const BACKING_ASSETS = ["ROOT", "BASE", "USDC", "ETH"];
 const BACKING_ASSETS_DISABLED = [1, 2, 3];
 const RELEASE_TYPES = ["Time-based", "Epoch-based"];
 const EPOCH_DURATION_OPTIONS = ["20 mins", "2 hrs", "8 hrs", "1 day"];
