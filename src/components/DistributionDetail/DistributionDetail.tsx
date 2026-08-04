@@ -40,6 +40,8 @@ import {
   getTokenV1Contract,
 } from "@/contracts/contracts";
 import { getAddresses } from "@/contracts/contract-addresses";
+import { useInput } from "@/hooks/useInput";
+import { numberOnlyModifier } from "@/utils/modifier";
 
 const EpochComboChart = dynamic(
   () => import("@/components/EpochComboChart/EpochComboChart"),
@@ -270,7 +272,25 @@ export default function DistributionDetail({
   const [epochs, setEpochs] = useState<EpochData[]>([]);
   const [activeFaq, setActiveFaq] = useState(0);
   const [amount, setAmount] = useState("");
-  const [epochCount, setEpochCount] = useState(1);
+
+  const maxEpochs = useMemo(() => {
+    if (!contractInfo || currentEpoch === undefined) return 1;
+    return Math.max(1, Number(contractInfo.numberOfEpochs) - currentEpoch);
+  }, [contractInfo, currentEpoch]);
+
+  const epochCount = useInput("1", numberOnlyModifier, (v) => {
+    if (v.trim() === "") return "Required";
+    const n = parseInt(v, 10);
+    if (isNaN(n) || n < 1) return "Must be at least 1";
+    if (n > maxEpochs)
+      return `Max ${maxEpochs} epoch${maxEpochs > 1 ? "s" : ""} remaining`;
+    return null;
+  });
+
+  const epochCountNum = useMemo(() => {
+    const n = parseInt(epochCount.value, 10);
+    return isNaN(n) || n < 1 ? 1 : n;
+  }, [epochCount.value]);
   const [hoveredEpoch, setHoveredEpoch] = useState<EpochData | null>(null);
   const [claimState, setClaimState] = useState<
     "idle" | "claiming" | "done" | "error"
@@ -459,7 +479,7 @@ export default function DistributionDetail({
           ? "Approving..."
           : "Participating..."
         : canParticipate
-          ? `Participate in ${epochCount} epoch${epochCount > 1 ? "s" : ""}`
+          ? `Participate in ${epochCountNum} epoch${epochCountNum > 1 ? "s" : ""}`
           : "Participate";
 
   const handleParticipateClick = async () => {
@@ -467,13 +487,14 @@ export default function DistributionDetail({
       openConnectModal?.();
       return;
     }
+    if (!epochCount.validate()) return;
     if (!walletClient || !contractInfo || currentEpoch === undefined) return;
 
     try {
       setParticipateState("approving");
 
       const totalAmount = parseUnits(amount, participationTokenDecimals!);
-      const amountPerEpoch = totalAmount / BigInt(epochCount);
+      const amountPerEpoch = totalAmount / BigInt(epochCountNum);
 
       const pToken = getTokenV1Contract(
         walletClient,
@@ -494,7 +515,7 @@ export default function DistributionDetail({
       const participateTx = await distributor.write.participate(
         [
           amountPerEpoch,
-          { from: BigInt(currentEpoch), length: BigInt(epochCount) },
+          { from: BigInt(currentEpoch), length: BigInt(epochCountNum) },
           walletClient.account.address,
           "0x",
         ],
@@ -597,32 +618,43 @@ export default function DistributionDetail({
                 Participation epoch counts
               </label>
               <div
-                className={`ddp-participation__input${epochCount > 1 ? " is-active" : ""}`}
+                className={`ddp-participation__input${epochCountNum > 1 ? " is-active" : ""}`}
               >
                 <input
                   id={`${idPrefix}-epochs`}
                   type="text"
-                  readOnly
-                  value={epochCount}
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={epochCount.value}
+                  onChange={(e) => epochCount.onChange(e.target.value)}
                 />
                 <span>Epochs</span>
               </div>
+              {epochCount.error && (
+                <p className="ddp-participation__error">{epochCount.error}</p>
+              )}
             </div>
-            <div className="ddp-participation__steppers">
+            <div className="ddp-participation__steppers mt-7">
               <IconButton
                 icon={<IconMinus size={20} strokeWidth={1.75} />}
                 variant="outline"
                 size="m"
                 aria-label="Decrease epoch count"
-                disabled={epochCount <= 1}
-                onClick={() => setEpochCount((n) => Math.max(1, n - 1))}
+                disabled={epochCountNum <= 1}
+                onClick={() =>
+                  epochCount.onChange(String(Math.max(1, epochCountNum - 1)))
+                }
               />
               <IconButton
                 icon={<IconPlus size={20} strokeWidth={1.75} />}
                 variant="secondary"
                 size="m"
                 aria-label="Increase epoch count"
-                onClick={() => setEpochCount((n) => n + 1)}
+                onClick={() =>
+                  epochCount.onChange(
+                    String(Math.min(maxEpochs, epochCountNum + 1)),
+                  )
+                }
               />
             </div>
           </div>

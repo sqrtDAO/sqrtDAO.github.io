@@ -705,7 +705,7 @@
 
 .ddp-participation__row {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 8px;
 }
 
@@ -770,7 +770,7 @@
 
 .ddp-participation__error {
   font-size: var(--font-size-body-s);
-  color: var(--sqrt-action-danger-rest);
+  color: var(--sqrt-state-danger);
   margin-top: 4px;
 }
 
