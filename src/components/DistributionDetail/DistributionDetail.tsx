@@ -389,12 +389,12 @@ export default function DistributionDetail({
       distributedSupply: supplyPerEpoch * closed.length,
       totalSupply: supplyPerEpoch * epochs.length,
       totalParticipation,
-      uniqueParticipants: Math.round(closed.length * 83.5),
+      uniqueParticipants: contractInfo?.totalUniqueParticipants ?? 0n,
       supplyRemaining: supplyPerEpoch * future.length,
       current,
       lastClearPrice: lastClosed?.clearPrice ?? null,
     };
-  }, [epochs, supplyPerEpoch]);
+  }, [epochs, supplyPerEpoch, contractInfo]);
 
   const sharesPct = useMemo(() => {
     if (!contractInfo)
@@ -867,7 +867,7 @@ export default function DistributionDetail({
                   <div className="ddp-block-card__stats-bottom">
                     <InlineStat
                       label="Unique participants"
-                      value={fmtInt(stats.uniqueParticipants)}
+                      value={Number(stats.uniqueParticipants).toString()}
                     />
                     <InlineStat
                       label="Supply remaining"
