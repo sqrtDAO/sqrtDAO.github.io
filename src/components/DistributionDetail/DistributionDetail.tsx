@@ -913,9 +913,9 @@ export default function DistributionDetail({
               <div className="ddp-fund-split__header">
                 <div className="ddp-fund-split__title-row">
                   <h2>Epoch fund split</h2>
-                  <Button variant="ghost" size="s">
+                  {/* <Button variant="ghost" size="s">
                     Details
-                  </Button>
+                  </Button> */}
                 </div>
                 <p>
                   How each epoch&apos;s funds are split. Set by the founder
