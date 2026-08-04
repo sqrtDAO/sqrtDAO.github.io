@@ -16,6 +16,9 @@ import DropDownInput from "@/components/DropDownInput/DropDownInput";
 import { useInput } from "@/hooks/useInput";
 import {
   allowCharsModifier,
+  commaModifier,
+  composeModifiers,
+  decimalOnlyModifier,
   noModifier,
   numberOnlyModifier,
 } from "@/utils/modifier";
@@ -89,12 +92,12 @@ export default function DistributionWizard(props: {
   // Step 2 — Supply and backing
   const initialParticipationLiquidity = useInput(
     "",
-    allowCharsModifier(/[^0-9,]/g),
+    composeModifiers(decimalOnlyModifier, commaModifier),
     positiveNumberValidator("Initial liquidity"),
   );
   const initialDistributionLiquidity = useInput(
     "",
-    allowCharsModifier(/[^0-9,]/g),
+    composeModifiers(decimalOnlyModifier, commaModifier),
     positiveNumberValidator("Initial token supply"),
   );
   const supplyValidator: InputValidator = (v) => {
@@ -106,7 +109,11 @@ export default function DistributionWizard(props: {
       return "Insufficient balance";
     return null;
   };
-  const supply = useInput("", allowCharsModifier(/[^0-9.,]/g), supplyValidator);
+  const supply = useInput(
+    "",
+    composeModifiers(decimalOnlyModifier, commaModifier),
+    supplyValidator,
+  );
   const [backingAssetIdx, setBackingAssetIdx] = useState(0);
 
   // Step 3 — Release strategy
@@ -143,7 +150,7 @@ export default function DistributionWizard(props: {
   );
   const releasePerEpoch = useInput(
     "",
-    allowCharsModifier(/[^0-9.,]/g),
+    composeModifiers(decimalOnlyModifier, commaModifier),
     positiveNumberValidator("Release per epoch"),
   );
   const startRef = useRef<HTMLInputElement>(null);
@@ -151,8 +158,10 @@ export default function DistributionWizard(props: {
   const endRef = useRef<HTMLInputElement>(null);
 
   // Step 4 — Rules
-  const minParticipation = useInput("0", allowCharsModifier(/[^0-9.]/g), (v) =>
-    v === "" ? "Minimum participation is required" : null,
+  const minParticipation = useInput(
+    "0",
+    composeModifiers(decimalOnlyModifier, commaModifier),
+    (v) => (v === "" ? "Minimum participation is required" : null),
   );
   const claimDelay = useInput("0", numberOnlyModifier, (v) =>
     v === "" ? "Claim delay is required" : null,
@@ -199,12 +208,12 @@ export default function DistributionWizard(props: {
   };
 
   const releaseOnChange = (v: string) => {
-    const clean = v.replace(/[^0-9.,]/g, "");
+    const clean = decimalOnlyModifier(v);
     releasePerEpoch.onChange(clean);
     if (!clean) {
       numberOfEpochs.onChange("");
     } else {
-      const perEpochNum = parseInt(clean);
+      const perEpochNum = parseFloat(clean);
       numberOfEpochs.onChange(
         supplyNum && perEpochNum ? (supplyNum / perEpochNum).toString() : "",
       );
@@ -369,7 +378,7 @@ export default function DistributionWizard(props: {
         numberOfEpochs: numberOfEpochsN,
         releasePerEpoch: releasePerEpochN,
         minimumParticipation: parseUnits(
-          minParticipation.value,
+          minParticipation.value.replace(/,/g, ""),
           pTokenDecimals,
         ),
         claimDelay: BigInt(parseInt(claimDelay.value) * 86400), // convert days to seconds

@@ -9,10 +9,12 @@ import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
 import { IconButton } from "@/components/IconButton/IconButton";
 import { Button } from "@/components/Button/Button";
 import "./TokenLaunch.css";
-import { parseEther } from "viem";
+import { parseUnits } from "viem";
 import {
+  composeModifiers,
+  commaModifier,
+  decimalOnlyModifier,
   noModifier,
-  numberOnlyModifier,
   uppercaseModifier,
 } from "@/utils/modifier";
 import {
@@ -27,7 +29,11 @@ export default function TokenLaunch(props: {
 }) {
   const name = useInput("", noModifier, requiredValidator("Name"));
   const symbol = useInput("", uppercaseModifier, requiredValidator("Symbol"));
-  const totalSupply = useInput("", numberOnlyModifier, nonZeroAmountValidator);
+  const totalSupply = useInput(
+    "",
+    composeModifiers(decimalOnlyModifier, commaModifier),
+    nonZeroAmountValidator,
+  );
 
   const onContinueClick = () => {
     if (!validateAll(name, symbol, totalSupply)) return;
@@ -35,7 +41,7 @@ export default function TokenLaunch(props: {
       name: name.value,
       symbol: symbol.value,
       decimals: 18,
-      totalSupply: parseEther(totalSupply.value),
+      totalSupply: parseUnits(totalSupply.value.replace(/,/g, ""), 18),
     });
   };
 
