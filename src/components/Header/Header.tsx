@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { IconMenu2, IconWallet, IconX } from "@tabler/icons-react";
+import { IconWallet } from "@tabler/icons-react";
+import Link from "next/link";
 import Logo from "@/components/Logo/Logo";
 import { Button } from "@/components/Button/Button";
 import { IconButton } from "@/components/IconButton/IconButton";
@@ -33,12 +34,9 @@ export default function Header({
   return (
     <header className={`sqrt-header${className ? ` ${className}` : ""}`}>
       <div className="sqrt-header__inner">
-        <Logo
-          mono
-          width={92}
-          height={40}
-          className="sqrt-header__logo sqrt-header__logo--desktop"
-        />
+        <Link href="/" className="sqrt-header__logo sqrt-header__logo--desktop">
+          <Logo mono width={92} height={40} />
+        </Link>
         <nav className="sqrt-header__nav" aria-label="Primary">
           {/* <Button variant="ghost" size="m" onClick={onLaunchClick}>
             Launch token
@@ -130,13 +128,9 @@ export default function Header({
           className="sqrt-header__menu-btn"
           onClick={() => setMobileMenuOpen((open) => !open)}
         /> */}
-        <Logo
-          variant="sign"
-          mono
-          width={43}
-          height={33}
-          className="sqrt-header__logo sqrt-header__logo--mobile"
-        />
+        <Link href="/" className="sqrt-header__logo sqrt-header__logo--mobile">
+          <Logo variant="sign" mono width={43} height={33} />
+        </Link>
         <ConnectButton.Custom>
           {({
             account,
