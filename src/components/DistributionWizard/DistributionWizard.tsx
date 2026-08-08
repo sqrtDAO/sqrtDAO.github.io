@@ -102,10 +102,7 @@ export default function DistributionWizard(props: {
   );
   const supplyValidator: InputValidator = (v) => {
     if (v === "") return "Supply amount is required";
-    const tokenLiquidityF = parseFloat(
-      initialDistributionLiquidity.value.replace(/,/g, ""),
-    );
-    if (parseFloat(v.replace(/,/g, "")) + tokenLiquidityF > totalSupplyF)
+    if (parseFloat(v.replace(/,/g, "")) > totalSupplyF)
       return "Insufficient balance";
     return null;
   };
