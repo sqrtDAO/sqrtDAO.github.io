@@ -29,7 +29,7 @@ const addresses: Record<ChainId, ContractAddresses> = {
   },
   [baseSepolia.id]: {
     factoryV1: "0x4d20cC2F43fE5D97d983Db4Ce941dce295B78b6c",
-    rootToken: "0x0112525bB0bFeccFa3650bE04427e5C99cb94268", // root token
+    rootToken: "0x0112525bB0bFeccFa3650bE04427e5C99cb94268",
     fixedEmission: "0xECE320d5d55FcB77d76a0eE30006D65354595d36",
     linearEmission: "0xBF68b456c91A40260c534ce98912FD01aa3FCAC6",
     exponentialEmission: "0xbA5A285806c343AaD955a40FE4b6e5e607B752b6",
@@ -37,13 +37,13 @@ const addresses: Record<ChainId, ContractAddresses> = {
     buyAndBurnHook: "0xF22031bdF281a7F71Ad214801BE847A0BF174Ca8",
   },
   [sepolia.id]: {
-    factoryV1: "0xf33e6214867Ee20fbB3E9E01C1195243280036fB",
-    rootToken: "0x40ce0bf2924a5f8870b9d3949972737b4494fabf", // root token
-    fixedEmission: "0xa01a4FAfE3833F34b105Ae5129DC89F479c8367B",
-    linearEmission: "0xcdB592D529782D20f63e45420d169bb137A3DCF9",
-    exponentialEmission: "0x89169F68f62026dC0451838dAD8F28951E572266",
-    transferToHook: "0xC676049B0ec9C45af8346276a62d6dE22f8A1378",
-    buyAndBurnHook: "0xC5C818297De826f9AfEe72f2544646E2dB1a3021",
+    factoryV1: "0x0CB62196F396184Bc8D8448dcb12Cc24c6E36cAD",
+    rootToken: "0x40ce0bf2924a5f8870b9d3949972737b4494fabf",
+    fixedEmission: "0xc7CBd3765D7F30240Ea7473410c741Ac58Fa1A9a",
+    linearEmission: "0x38C1E64345D0dC98c094C72e03062D7475018978",
+    exponentialEmission: "0x61456fd608b387dD3177f0Bfd11cc1429ee16D19",
+    transferToHook: "0xEfD3eE63cfB17E0c6622F78e1756B4d596712889",
+    buyAndBurnHook: "0x86A52818FA5F510990E19D8198821d3EB43855E2",
   },
   [base.id]: {
     factoryV1: zeroAddress,
