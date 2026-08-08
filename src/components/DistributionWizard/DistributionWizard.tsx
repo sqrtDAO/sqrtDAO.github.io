@@ -102,10 +102,7 @@ export default function DistributionWizard(props: {
   );
   const supplyValidator: InputValidator = (v) => {
     if (v === "") return "Supply amount is required";
-    const tokenLiquidityF = parseFloat(
-      initialDistributionLiquidity.value.replace(/,/g, ""),
-    );
-    if (parseFloat(v.replace(/,/g, "")) + tokenLiquidityF > totalSupplyF)
+    if (parseFloat(v.replace(/,/g, "")) > totalSupplyF)
       return "Insufficient balance";
     return null;
   };
@@ -159,9 +156,8 @@ export default function DistributionWizard(props: {
 
   // Step 4 — Rules
   const minParticipation = useInput(
-    "0",
+    "",
     composeModifiers(decimalOnlyModifier, commaModifier),
-    (v) => (v === "" ? "Minimum participation is required" : null),
   );
   const claimDelay = useInput("0", numberOnlyModifier, (v) =>
     v === "" ? "Claim delay is required" : null,
@@ -362,13 +358,20 @@ export default function DistributionWizard(props: {
         );
       }
       const pTokenDecimals = await participationToken.read.decimals();
+      const initialParticipationLiquidityN = parseUnits(
+        initialParticipationLiquidity.value.replace(/,/g, ""),
+        pTokenDecimals,
+      );
+      const minParS = minParticipation.value.replace(/,/g, "").trim();
+      const minimumParticipationN = parseUnits(
+        minParS !== "" ? minParS : "0",
+        pTokenDecimals,
+      );
       props.onFinish({
-        totalDistributionAmount: totalDistributionAmountN,
+        totalDistributionAmount:
+          totalDistributionAmountN - initialParticipationLiquidityN,
         participationToken: participationToken.address,
-        initialParticipationLiquidity: parseUnits(
-          initialParticipationLiquidity.value.replace(/,/g, ""),
-          pTokenDecimals,
-        ),
+        initialParticipationLiquidity: initialParticipationLiquidityN,
         initialDistributionLiquidity: parseUnits(
           initialDistributionLiquidity.value.replace(/,/g, ""),
           props.token.decimals,
@@ -377,10 +380,7 @@ export default function DistributionWizard(props: {
         epochDuration: epochDurationN, // BigInt(60) | epochDurationN
         numberOfEpochs: numberOfEpochsN,
         releasePerEpoch: releasePerEpochN,
-        minimumParticipation: parseUnits(
-          minParticipation.value.replace(/,/g, ""),
-          pTokenDecimals,
-        ),
+        minimumParticipation: minimumParticipationN,
         claimDelay: BigInt(parseInt(claimDelay.value) * 86400), // convert days to seconds
         founderShareBps: founderShareOn
           ? BigInt(founderPercentNum * 100) // *100 percent to bps
