@@ -159,9 +159,8 @@ export default function DistributionWizard(props: {
 
   // Step 4 — Rules
   const minParticipation = useInput(
-    "0",
+    "",
     composeModifiers(decimalOnlyModifier, commaModifier),
-    (v) => (v === "" ? "Minimum participation is required" : null),
   );
   const claimDelay = useInput("0", numberOnlyModifier, (v) =>
     v === "" ? "Claim delay is required" : null,
@@ -366,8 +365,14 @@ export default function DistributionWizard(props: {
         initialParticipationLiquidity.value.replace(/,/g, ""),
         pTokenDecimals,
       );
+      const minParS = minParticipation.value.replace(/,/g, "").trim();
+      const minimumParticipationN = parseUnits(
+        minParS !== "" ? minParS : "0",
+        pTokenDecimals,
+      );
       props.onFinish({
-        totalDistributionAmount: totalDistributionAmountN - initialParticipationLiquidityN,
+        totalDistributionAmount:
+          totalDistributionAmountN - initialParticipationLiquidityN,
         participationToken: participationToken.address,
         initialParticipationLiquidity: initialParticipationLiquidityN,
         initialDistributionLiquidity: parseUnits(
@@ -378,10 +383,7 @@ export default function DistributionWizard(props: {
         epochDuration: epochDurationN, // BigInt(60) | epochDurationN
         numberOfEpochs: numberOfEpochsN,
         releasePerEpoch: releasePerEpochN,
-        minimumParticipation: parseUnits(
-          minParticipation.value.replace(/,/g, ""),
-          pTokenDecimals,
-        ),
+        minimumParticipation: minimumParticipationN,
         claimDelay: BigInt(parseInt(claimDelay.value) * 86400), // convert days to seconds
         founderShareBps: founderShareOn
           ? BigInt(founderPercentNum * 100) // *100 percent to bps
