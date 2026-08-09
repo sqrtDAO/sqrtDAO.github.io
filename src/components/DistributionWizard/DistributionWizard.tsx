@@ -362,6 +362,10 @@ export default function DistributionWizard(props: {
         initialParticipationLiquidity.value.replace(/,/g, ""),
         pTokenDecimals,
       );
+      const initialDistributionLiquidityN = parseUnits(
+        initialDistributionLiquidity.value.replace(/,/g, ""),
+        props.token.decimals,
+      );
       const minParS = minParticipation.value.replace(/,/g, "").trim();
       const minimumParticipationN = parseUnits(
         minParS !== "" ? minParS : "0",
@@ -369,13 +373,10 @@ export default function DistributionWizard(props: {
       );
       props.onFinish({
         totalDistributionAmount:
-          totalDistributionAmountN - initialParticipationLiquidityN,
+          totalDistributionAmountN - initialDistributionLiquidityN,
         participationToken: participationToken.address,
         initialParticipationLiquidity: initialParticipationLiquidityN,
-        initialDistributionLiquidity: parseUnits(
-          initialDistributionLiquidity.value.replace(/,/g, ""),
-          props.token.decimals,
-        ),
+        initialDistributionLiquidity: initialDistributionLiquidityN,
         startTime: startTimeN,
         epochDuration: epochDurationN, // BigInt(60) | epochDurationN
         numberOfEpochs: numberOfEpochsN,
