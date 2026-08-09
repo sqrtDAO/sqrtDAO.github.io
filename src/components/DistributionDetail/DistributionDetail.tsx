@@ -387,7 +387,7 @@ export default function DistributionDetail({
       closedCount: closed.length,
       epochsLeft: future.length,
       distributedSupply: supplyPerEpoch * closed.length,
-      totalSupply: supplyPerEpoch * epochs.length,
+      totalSupply: supplyPerEpoch * Number(contractInfo?.numberOfEpochs ?? 0n),
       totalParticipation,
       uniqueParticipants: contractInfo?.totalUniqueParticipants ?? 0n,
       supplyRemaining: supplyPerEpoch * future.length,
