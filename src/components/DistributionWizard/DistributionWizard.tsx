@@ -371,7 +371,7 @@ export default function DistributionWizard(props: {
         minParS !== "" ? minParS : "0",
         pTokenDecimals,
       );
-      props.onFinish({
+      await props.onFinish({
         totalDistributionAmount:
           totalDistributionAmountN - initialDistributionLiquidityN,
         participationToken: participationToken.address,
