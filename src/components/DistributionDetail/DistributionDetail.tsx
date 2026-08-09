@@ -356,6 +356,15 @@ export default function DistributionDetail({
   }, [contractInfo, currentEpoch]);
 
   useEffect(() => {
+    if (!contractInfo) return;
+    const startTime = Number(contractInfo.startingTimestamp * 1000n);
+    const delay = startTime - Date.now();
+    if (delay < 0) return; // already started
+    const id = setTimeout(() => refetch(), delay);
+    return () => clearTimeout(id);
+  }, [contractInfo, refetch]);
+
+  useEffect(() => {
     if (currentEpochEndMs <= 0 || state !== "running") return;
     const delay = currentEpochEndMs - Date.now();
     if (delay <= 0) {
