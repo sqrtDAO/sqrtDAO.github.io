@@ -37,7 +37,9 @@ export default function Page() {
   const onDistributionConfirm = async (dd: DistributionDetails) => {
     // WARNING: Do NOT use try catch here, caller is doing it
 
-    const factory = getFactoryV1Contract(walletClient!);
+    if (!walletClient || !publicClient) throw "wallet not connected";
+
+    const factory = getFactoryV1Contract(walletClient);
     const participationToken = getTokenV1Contract(
       walletClient!,
       dd.participationToken,
