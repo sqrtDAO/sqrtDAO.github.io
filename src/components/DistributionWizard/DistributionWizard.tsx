@@ -200,6 +200,9 @@ export default function DistributionWizard(props: {
 
   // Epoch-based: typing one field recomputes the other
   const epochsOnChange = (v: string) => {
+    const initialDistributionLiquidityNum = parseFloat(
+      initialDistributionLiquidity.value.replace(/,/g, ""),
+    );
     const clean = v.replace(/[^0-9]/g, "");
     numberOfEpochs.onChange(clean);
     if (!clean) {
@@ -207,12 +210,20 @@ export default function DistributionWizard(props: {
     } else {
       const epochsNum = parseInt(clean);
       releasePerEpoch.onChange(
-        supplyNum && epochsNum ? (supplyNum / epochsNum).toString() : "",
+        supplyNum && epochsNum
+          ? (
+              (supplyNum - initialDistributionLiquidityNum) /
+              epochsNum
+            ).toString()
+          : "",
       );
     }
   };
 
   const releaseOnChange = (v: string) => {
+    const initialDistributionLiquidityNum = parseFloat(
+      initialDistributionLiquidity.value.replace(/,/g, ""),
+    );
     const clean = decimalOnlyModifier(v);
     releasePerEpoch.onChange(clean);
     if (!clean) {
@@ -220,7 +231,12 @@ export default function DistributionWizard(props: {
     } else {
       const perEpochNum = parseFloat(clean);
       numberOfEpochs.onChange(
-        supplyNum && perEpochNum ? (supplyNum / perEpochNum).toString() : "",
+        supplyNum && perEpochNum
+          ? (
+              (supplyNum - initialDistributionLiquidityNum) /
+              perEpochNum
+            ).toString()
+          : "",
       );
     }
   };
