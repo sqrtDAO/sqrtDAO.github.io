@@ -386,10 +386,6 @@ export default function DistributionDetail({
     const closed = epochs.filter((e) => e.state === "passed");
     const current = epochs.find((e) => e.state === "current");
     const future = epochs.filter((e) => e.state === "future");
-    const totalParticipation = epochs.reduce(
-      (sum, e) => sum + (e.state !== "future" ? e.participationVolume : 0),
-      0,
-    );
     const lastClosed = closed[closed.length - 1];
     return {
       totalEpochs: epochs.length,
@@ -397,7 +393,7 @@ export default function DistributionDetail({
       epochsLeft: future.length,
       distributedSupply: supplyPerEpoch * closed.length,
       totalSupply: supplyPerEpoch * Number(contractInfo?.numberOfEpochs ?? 0n),
-      totalParticipation,
+      totalParticipation: contractInfo?.totalParticipation ?? 0n,
       uniqueParticipants: contractInfo?.totalUniqueParticipants ?? 0n,
       supplyRemaining: supplyPerEpoch * future.length,
       current,
@@ -789,7 +785,10 @@ export default function DistributionDetail({
                     <span className="ddp-stat__label">Total participation</span>
                     <div className="ddp-stat__value-row">
                       <span className="ddp-stat__value-primary">
-                        {fmtInt(stats.totalParticipation)}
+                        {formatUnits(
+                          stats.totalParticipation,
+                          participationTokenDecimals ?? 18,
+                        )}
                       </span>
                       <span className="ddp-stat__unit">
                         {participationTokenSymbol}
