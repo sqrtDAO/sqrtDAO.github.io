@@ -412,6 +412,11 @@ export const distributorV1Abi = [
             type: 'uint256',
           },
           {
+            name: 'totalParticipation',
+            internalType: 'uint256',
+            type: 'uint256',
+          },
+          {
             name: 'remainingRewards',
             internalType: 'uint256',
             type: 'uint256',
@@ -581,6 +586,13 @@ export const distributorV1Abi = [
         ],
       },
     ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'totalParticipation',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
     stateMutability: 'view',
   },
   {
@@ -1781,6 +1793,15 @@ export const useReadDistributorV1Shares = /*#__PURE__*/ createUseReadContract({
   abi: distributorV1Abi,
   functionName: 'shares',
 })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"totalParticipation"`
+ */
+export const useReadDistributorV1TotalParticipation =
+  /*#__PURE__*/ createUseReadContract({
+    abi: distributorV1Abi,
+    functionName: 'totalParticipation',
+  })
 
 /**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"totalUniqueParticipants"`

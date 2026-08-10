@@ -16,11 +16,12 @@ import {
   decodeEventLog,
   encodeFunctionData,
   encodePacked,
+  maxUint256,
   zeroAddress,
 } from "viem";
 import { EMPTY_PERMIT2 } from "@/lib/utils/permit2";
 import { getAddresses } from "@/contracts/contract-addresses";
-import { factoryV1Abi, transferToHookAbi } from "@/contracts/abis";
+import { factoryV1Abi, tokenV1Abi, transferToHookAbi } from "@/contracts/abis";
 import { quickSqrtPriceX96 } from "@/lib/utils/sqrtPricex96";
 
 // Flow steps for the token wizard overlay
@@ -83,42 +84,65 @@ export default function Page() {
     const buyBackAndBurnShareBps =
       BigInt(10000) - (dd.founderShareBps + dd.protocolFeeBps);
 
-    const txHash = await participationToken.write.approve(
-      [factory.address, dd.initialParticipationLiquidity],
-      { account: walletClient!.account, chain: walletClient!.chain },
-    );
+    const allowance = await participationToken.read.allowance([
+      walletClient!.account.address,
+      factory.address,
+    ]);
+    if (allowance < dd.initialParticipationLiquidity) {
+      await publicClient!.simulateContract({
+        address: dd.participationToken,
+        abi: tokenV1Abi,
+        functionName: "approve",
+        args: [factory.address, maxUint256],
+        account: walletClient!.account.address,
+      });
+      const txHash = await participationToken.write.approve(
+        [factory.address, maxUint256],
+        { account: walletClient!.account, chain: walletClient!.chain },
+      );
 
-    const approveReceipt = await publicClient!.waitForTransactionReceipt({
-      hash: txHash,
+      const approveReceipt = await publicClient!.waitForTransactionReceipt({
+        hash: txHash,
+      });
+      if (approveReceipt.status === "reverted") throw "approve failed";
+    }
+
+    const config = {
+      distributionToken: zeroAddress,
+      participationToken: dd.participationToken,
+      epochDuration: dd.epochDuration,
+      startTimestamp: dd.startTime,
+      minParticipation: dd.minimumParticipation,
+      claimDelaySeconds: dd.claimDelay,
+      allowFutureEpochParticipation: true,
+      shares: shares,
+      emissionFunction,
+      allowlistSigner: zeroAddress,
+      allowlistDeadline: BigInt(0),
+      numberOfEpochs: dd.numberOfEpochs,
+      totalDistributionAmount: dd.totalDistributionAmount,
+    };
+    const createTokenParams = [
+      token!.name,
+      token!.symbol,
+      allocation,
+      BigInt(_sqrtPriceX96),
+      dd.initialParticipationLiquidity,
+      dd.initialDistributionLiquidity,
+      config,
+      buyBackAndBurnShareBps,
+      EMPTY_PERMIT2,
+    ] as const;
+    await publicClient!.simulateContract({
+      address: factory.address,
+      abi: factoryV1Abi,
+      functionName: "createTokenAndLiquidityAndDistribution",
+      args: createTokenParams,
+      account: walletClient!.account.address,
     });
-    if (approveReceipt.status === "reverted") throw "approve failed";
 
     const hash = await factory.write.createTokenAndLiquidityAndDistribution(
-      [
-        token!.name,
-        token!.symbol,
-        allocation,
-        BigInt(_sqrtPriceX96),
-        dd.initialParticipationLiquidity,
-        dd.initialDistributionLiquidity,
-        {
-          distributionToken: zeroAddress,
-          participationToken: dd.participationToken,
-          epochDuration: dd.epochDuration,
-          startTimestamp: dd.startTime,
-          minParticipation: dd.minimumParticipation,
-          claimDelaySeconds: dd.claimDelay,
-          allowFutureEpochParticipation: true,
-          shares: shares,
-          emissionFunction,
-          allowlistSigner: zeroAddress,
-          allowlistDeadline: BigInt(0),
-          numberOfEpochs: dd.numberOfEpochs,
-          totalDistributionAmount: dd.totalDistributionAmount,
-        },
-        buyBackAndBurnShareBps,
-        EMPTY_PERMIT2,
-      ],
+      createTokenParams,
       {
         account: walletClient!.account,
         chain: walletClient!.chain,

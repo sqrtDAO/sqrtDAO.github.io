@@ -15,6 +15,7 @@ export type DistributorContractInfo = {
   startingTimestamp: bigint;
   minParticipation: bigint;
   claimDelaySeconds: bigint;
+  totalParticipation: bigint;
   remainingRewards: bigint;
   numberOfEpochs: bigint;
   totalDistributionAmount: bigint;
