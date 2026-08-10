@@ -136,6 +136,15 @@ export default function DistributionWizard(props: {
         parseUTCToTimestampSec(startDate.value, startTime.value)
     )
       return "End must be after start";
+
+    const epochs = calcEpochs(
+      startDate.value,
+      startTime.value,
+      v,
+      EPOCH_DURATION_MS[epochDurationInput.value],
+    );
+    if (epochs !== null && epochs === 0)
+      return "End date too close: must cover at least one full epoch";
     return null;
   };
   const endDate = useInput("", noModifier, endDateValidator);
@@ -767,6 +776,7 @@ export default function DistributionWizard(props: {
                               state={epochDurationInput}
                               label="Epoch duration"
                               placeholder="Select an option"
+                              onOptionChange={endDate.clearError}
                               options={EPOCH_DURATION_OPTIONS}
                             />
                           </div>
@@ -798,6 +808,7 @@ export default function DistributionWizard(props: {
                               state={epochDurationInput}
                               label="Epoch duration"
                               placeholder="Select an option"
+                              onOptionChange={endDate.clearError}
                               options={EPOCH_DURATION_OPTIONS}
                             />
                           </div>

@@ -13,6 +13,7 @@ export interface DropDownInputProps {
   error?: boolean;
   errorMessage?: string;
   disabled?: boolean;
+  onOptionChange?: () => void;
   "aria-describedby"?: string;
 }
 
@@ -26,6 +27,7 @@ const DropDownInput = forwardRef<HTMLInputElement, DropDownInputProps>(
       error: errorOverride,
       errorMessage: errorMessageOverride,
       disabled,
+      onOptionChange,
       "aria-describedby": ariaDescribedBy,
     },
     ref,
@@ -106,6 +108,7 @@ const DropDownInput = forwardRef<HTMLInputElement, DropDownInputProps>(
                   aria-selected={opt === value}
                   onClick={() => {
                     onChange(opt);
+                    if (onOptionChange) onOptionChange();
                     setMenuOpen(false);
                   }}
                 >
