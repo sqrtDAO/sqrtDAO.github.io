@@ -10,7 +10,7 @@ import {
   IconShare,
   IconSquareRoundedCheckFilled,
 } from "@tabler/icons-react";
-import { type Address, formatUnits, parseUnits } from "viem";
+import { maxUint256, type Address, formatUnits, parseUnits } from "viem";
 import {
   useAccount,
   useChainId,
@@ -39,6 +39,7 @@ import {
   getDistributorV1Contract,
   getTokenV1Contract,
 } from "@/contracts/contracts";
+import { distributorV1Abi, tokenV1Abi } from "@/contracts/abis";
 import { getAddresses } from "@/contracts/contract-addresses";
 import { useInput } from "@/hooks/useInput";
 import { numberOnlyModifier } from "@/utils/modifier";
@@ -450,6 +451,13 @@ export default function DistributionDetail({
         };
       });
       console.log("claim params:", claimParams);
+      await publicClient.simulateContract({
+        address: contractAddress as Address,
+        abi: distributorV1Abi,
+        functionName: "claimMany",
+        args: [claimParams],
+        account: walletClient.account.address,
+      });
       const claimTx = await distributor.write.claimMany([claimParams], {
         account: walletClient.account,
         chain: walletClient.chain,
@@ -510,11 +518,24 @@ export default function DistributionDetail({
         walletClient,
         contractInfo.participationToken,
       );
-      const approveTx = await pToken.write.approve(
-        [contractAddress as Address, totalAmount],
-        { account: walletClient.account, chain: walletClient.chain },
-      );
-      await publicClient!.waitForTransactionReceipt({ hash: approveTx });
+      const allowance = await pToken.read.allowance([
+        walletClient.account.address,
+        contractAddress as Address,
+      ]);
+      if (allowance < totalAmount) {
+        await publicClient!.simulateContract({
+          address: contractInfo.participationToken,
+          abi: tokenV1Abi,
+          functionName: "approve",
+          args: [contractAddress as Address, maxUint256],
+          account: walletClient.account.address,
+        });
+        const approveTx = await pToken.write.approve(
+          [contractAddress as Address, maxUint256],
+          { account: walletClient.account, chain: walletClient.chain },
+        );
+        await publicClient!.waitForTransactionReceipt({ hash: approveTx });
+      }
 
       setParticipateState("participating");
 
@@ -522,15 +543,23 @@ export default function DistributionDetail({
         walletClient,
         contractAddress as Address,
       );
-      const participateTx = await distributor.write.participate(
-        [
-          amountPerEpoch,
-          { from: BigInt(currentEpoch), length: BigInt(epochCountNum) },
-          walletClient.account.address,
-          "0x",
-        ],
-        { account: walletClient.account, chain: walletClient.chain },
-      );
+      const params = [
+        amountPerEpoch,
+        { from: BigInt(currentEpoch), length: BigInt(epochCountNum) },
+        walletClient.account.address,
+        "0x",
+      ] as const;
+      await publicClient!.simulateContract({
+        address: contractAddress as Address,
+        abi: distributorV1Abi,
+        functionName: "participate",
+        args: params,
+        account: walletClient.account.address,
+      });
+      const participateTx = await distributor.write.participate(params, {
+        account: walletClient.account,
+        chain: walletClient.chain,
+      });
       await publicClient!.waitForTransactionReceipt({ hash: participateTx });
 
       setParticipateState("idle");
