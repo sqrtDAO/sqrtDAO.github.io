@@ -952,7 +952,7 @@ export default function DistributionDetail({
                       <span>Participation this epoch</span>
                       <div className="ddp-epoch-card__data-row ddp-epoch-card__data-row--participation">
                         <strong className={isHovering ? "is-accent" : ""}>
-                          {fmtInt(displayParticipation)}
+                          {displayParticipation.toFixed(2)}
                         </strong>
                         <span className="ddp-epoch-card__unit">
                           {participationTokenSymbol}
