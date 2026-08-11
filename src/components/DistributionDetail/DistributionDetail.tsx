@@ -81,7 +81,7 @@ const FAQ_ITEMS = [
 const BLOCK_LEGEND = [
   {
     swatch: "var(--color-charts-epochs-500)",
-    label: "Participated (more vol → darker)",
+    label: "Participated (more vol → lighter)",
   },
   { swatch: "var(--sqrt-action-primary-rest)", label: "Current" },
   { swatch: "var(--color-alpha-steel-08)", label: "No participation" },
