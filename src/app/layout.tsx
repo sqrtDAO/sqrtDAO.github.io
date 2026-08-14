@@ -58,6 +58,7 @@ export const metadata: Metadata = {
   },
   other: {
     "theme-color": "#0B0D12",
+    "base:app_id": "6a7df3d61726567795dd07db",
   },
 };
 
