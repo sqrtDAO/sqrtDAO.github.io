@@ -52,6 +52,11 @@
   --color-danger:  var(--sqrt-state-danger);  /* text-danger / bg-danger   #d65f54 */
   --color-info:    var(--sqrt-state-info);    /* text-info / bg-info       #67739c */
 
+  /* ── Distribution status (Status component pill) ── */
+  --color-status-live:     var(--sqrt-action-primary-rest);   /* bg-status-live     — same value as bg-action */
+  --color-status-upcoming: var(--color-alpha-amber-45);       /* bg-status-upcoming — same value as bg-focus */
+  --color-status-ended:    var(--color-alpha-steel-12);       /* bg-status-ended    — same value as bg-muted */
+
   /* ── Font sizes → text-{name} utilities (Tailwind v4 uses --text-* namespace) ── */
   --text-display-xl: var(--font-size-display-xl); /* text-display-xl 112px */
   --text-display-l:  var(--font-size-display-l);  /* text-display-l   84px */
