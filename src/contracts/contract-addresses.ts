@@ -1,11 +1,7 @@
 import { zeroAddress, type Address } from "viem";
-import { base, baseSepolia, anvil, sepolia } from "wagmi/chains";
+import { base, anvil, sepolia } from "wagmi/chains";
 
-export type ChainId =
-  | typeof anvil.id
-  | typeof base.id
-  | typeof baseSepolia.id
-  | typeof sepolia.id;
+export type ChainId = typeof anvil.id | typeof base.id | typeof sepolia.id;
 
 export interface ContractAddresses {
   factoryV1: Address;
@@ -15,6 +11,8 @@ export interface ContractAddresses {
   exponentialEmission: Address;
   transferToHook: Address;
   buyAndBurnHook: Address;
+  tokenFactory: Address;
+  distributorFactory: Address;
 }
 
 const addresses: Record<ChainId, ContractAddresses> = {
@@ -26,24 +24,19 @@ const addresses: Record<ChainId, ContractAddresses> = {
     exponentialEmission: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
     transferToHook: "0x0165878A594ca255338adfa4d48449f69242Eb8F",
     buyAndBurnHook: "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
-  },
-  [baseSepolia.id]: {
-    factoryV1: "0x4d20cC2F43fE5D97d983Db4Ce941dce295B78b6c",
-    rootToken: "0x0112525bB0bFeccFa3650bE04427e5C99cb94268",
-    fixedEmission: "0xECE320d5d55FcB77d76a0eE30006D65354595d36",
-    linearEmission: "0xBF68b456c91A40260c534ce98912FD01aa3FCAC6",
-    exponentialEmission: "0xbA5A285806c343AaD955a40FE4b6e5e607B752b6",
-    transferToHook: "0xDFc2752691b3F93fEEe55356E1bbB856505e9BD3",
-    buyAndBurnHook: "0xF22031bdF281a7F71Ad214801BE847A0BF174Ca8",
+    tokenFactory: "0xtodo",
+    distributorFactory: "0xtodo",
   },
   [sepolia.id]: {
-    factoryV1: "0x2263D10D805D32C74d16caAde1f85AD2BbBDcCC5",
+    factoryV1: "0x2821d8Fd1Ed684008d36f61074ACdc88299971e3",
     rootToken: "0x40ce0bf2924a5f8870b9d3949972737b4494fabf",
-    fixedEmission: "0xA06668d7de0421A043C4616E7ee472049EED6d33",
-    linearEmission: "0x4568b90c822d966B629e1141b4e2CFfC1C79A774",
-    exponentialEmission: "0x03F41dC0802D3a07A84dC4a7723963C07eC8a3a8",
-    transferToHook: "0xA3Fcbb8857FBd7c38d9e65A91E17823Eb2841193",
-    buyAndBurnHook: "0x9d0446724a02f4592a6eFef6924dF70aC649989c",
+    fixedEmission: "0xfA0f8aBdd46BD55F7E915981f54A61B2CeD25dD8",
+    linearEmission: "0xf3B24aC2eCf80c911E801AB68C3Ccf3799174574",
+    exponentialEmission: "0xc131817C3B02048762AD2D8D04Cd608966ef8482",
+    transferToHook: "0xfea9055f9A0E963D9e7d1a0AC2D7B19aC42793b4",
+    buyAndBurnHook: "0x50C1EcD6B79731DE92Ee9BAcD1b87d6298b414aD",
+    tokenFactory: "0x533ee7D342F2258b0d6E8f537DdE99f2aBe2701d",
+    distributorFactory: "0x533E7f8e7B4a741D0B0142b5aE97C5649E3f39f0",
   },
   [base.id]: {
     factoryV1: zeroAddress,
@@ -53,6 +46,8 @@ const addresses: Record<ChainId, ContractAddresses> = {
     exponentialEmission: zeroAddress,
     transferToHook: zeroAddress,
     buyAndBurnHook: zeroAddress,
+    tokenFactory: zeroAddress,
+    distributorFactory: zeroAddress,
   },
 };
 

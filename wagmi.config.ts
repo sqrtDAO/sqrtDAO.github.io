@@ -16,6 +16,8 @@ export default defineConfig({
         "LinearEmission.sol/**",
         "TokenV1.sol/**",
         "TransferToHook.sol/**",
+        "DistributionV1Factory.sol/**",
+        "TokenV1Factory.sol/**",
       ],
     }),
     react(),

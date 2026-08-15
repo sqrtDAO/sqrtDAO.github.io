@@ -1,11 +1,23 @@
 import { Address, Client, getContract } from "viem";
 import { getAddresses } from "./contract-addresses";
-import { distributorV1Abi, factoryV1Abi, tokenV1Abi } from "./abis";
+import {
+  distributorV1Abi,
+  distributionV1FactoryAbi,
+  factoryV1Abi,
+  tokenV1Abi,
+} from "./abis";
 
 export const getFactoryV1Contract = (client: Client) =>
   getContract({
     address: getAddresses(client.chain!.id).factoryV1,
     abi: factoryV1Abi,
+    client,
+  });
+
+export const getDistributionV1FactoryContract = (client: Client) =>
+  getContract({
+    address: getAddresses(client.chain!.id).distributorFactory,
+    abi: distributionV1FactoryAbi,
     client,
   });
 

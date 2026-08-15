@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { IconChevronRight } from "@tabler/icons-react";
 import TableCell from "@/components/TableCell/TableCell";
 import type { Distribution } from "@/lib/fixtures/distributions";
@@ -18,13 +17,17 @@ const cellBorder = "h-16 align-middle border-y border-muted group-hover:border-t
 
 export default function TableRow({ index, distribution }: TableRowProps) {
   return (
-    <tr className="group hover:bg-canvas">
+    <tr
+      className="group relative cursor-pointer hover:bg-canvas"
+      onClick={() =>
+        window.open(
+          `/distribution/?address=${distribution.address}`,
+          "_blank",
+          "noopener,noreferrer",
+        )
+      }
+    >
       <td className={`relative rounded-l-m border-l ${cellBorder}`}>
-        <Link
-          aria-label={`View ${distribution.tokenName} distribution`}
-          className="absolute inset-0"
-          href={`/distribution?address=${distribution.address}`}
-        />
         <TableCell value={index + 1} variant="index" />
       </td>
       <td className={cellBorder}>
