@@ -1,7 +1,7 @@
 import type { EpochData } from "./types";
 
-/** Light → dark. Darker = more participation volume. */
-const VIOLET_STOPS = [100, 200, 300, 400, 500, 600, 700, 800, 900] as const;
+/** Dark → light. Lighter = more participation volume. */
+const VIOLET_STOPS = [900, 800, 700, 600, 500, 400, 300, 200, 100] as const;
 
 export interface VolumeRange {
   min: number;
@@ -23,8 +23,8 @@ export function getParticipationVolumeRange(epochs: EpochData[]): VolumeRange {
 
 /**
  * Linear (equal value-width, not equal-population) bucketing into the 9-stop
- * violet ramp. t=0 (lowest nonzero vol) -> lightest (100); t=1 (highest) ->
- * darkest (900). All-equal-volume dataset defaults to darkest.
+ * violet ramp. t=0 (lowest nonzero vol) -> darkest (900); t=1 (highest) ->
+ * lightest (100). All-equal-volume dataset defaults to lightest.
  */
 export function getVolumeBucketVar(vol: number, range: VolumeRange): string {
   const t = range.max === range.min ? 1 : (vol - range.min) / (range.max - range.min);

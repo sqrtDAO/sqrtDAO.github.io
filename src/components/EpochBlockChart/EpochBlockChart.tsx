@@ -48,11 +48,6 @@ function fillFor(e: EpochData, volumeRange: VolumeRange): string {
   return getVolumeBucketVar(e.participationVolume, volumeRange);
 }
 
-function findCurrentIndex(epochs: EpochData[]): number {
-  const i = epochs.findIndex((e) => e.state === "current");
-  return i === -1 ? Math.max(0, epochs.length - 1) : i;
-}
-
 export default function EpochBlockChart({
   epochs,
   quoteSymbol,
@@ -90,23 +85,16 @@ export default function EpochBlockChart({
     return () => tooltip.destroy();
   }, []);
 
-  const currentIndex = useMemo(() => findCurrentIndex(epochs), [epochs]);
   const volumeRange = useMemo(
     () => getParticipationVolumeRange(epochs),
     [epochs],
   );
-  // Never scrolls — this is the exact slice of `epochs` that fits the
-  // container at this device's fixed block size, within 5 rows, windowed
-  // around the current epoch when the full history doesn't fit.
+  // Never scrolls — fills the container width with as many columns as fit
+  // and renders the full history across however many rows that takes.
   const displayWindow = useMemo(
     () =>
-      computeBlockDisplayWindow(
-        containerWidth,
-        epochs.length,
-        currentIndex,
-        device,
-      ),
-    [containerWidth, epochs.length, currentIndex, device],
+      computeBlockDisplayWindow(containerWidth, epochs.length, device),
+    [containerWidth, epochs.length, device],
   );
   const visibleEpochs = useMemo(
     () => epochs.slice(displayWindow.startIndex, displayWindow.endIndex),

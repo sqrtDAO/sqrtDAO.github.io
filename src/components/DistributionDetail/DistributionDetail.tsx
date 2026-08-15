@@ -81,7 +81,7 @@ const FAQ_ITEMS = [
 const BLOCK_LEGEND = [
   {
     swatch: "var(--color-charts-epochs-500)",
-    label: "Participated (more vol → darker)",
+    label: "Participated (more vol → lighter)",
   },
   { swatch: "var(--sqrt-action-primary-rest)", label: "Current" },
   { swatch: "var(--color-alpha-steel-08)", label: "No participation" },
@@ -952,7 +952,7 @@ export default function DistributionDetail({
                       <span>Participation this epoch</span>
                       <div className="ddp-epoch-card__data-row ddp-epoch-card__data-row--participation">
                         <strong className={isHovering ? "is-accent" : ""}>
-                          {fmtInt(displayParticipation)}
+                          {displayParticipation.toFixed(2)}
                         </strong>
                         <span className="ddp-epoch-card__unit">
                           {participationTokenSymbol}
