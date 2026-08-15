@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Logo from "@/components/Logo/Logo";
 import { Button } from "@/components/Button/Button";
 
@@ -32,9 +33,22 @@ function LandingFooterMobile({
         </p>
 
         <div className="flex w-full flex-col items-center gap-4">
-          <Button variant="primary" size="m" fullWidth onClick={onTryItClick}>
-            Try it on testnet
-          </Button>
+          <div className="flex w-full gap-4">
+            <Button
+              variant="primary"
+              size="m"
+              className="flex-1"
+              onClick={onTryItClick}
+            >
+              Try it on testnet
+            </Button>
+            <Link
+              href="/dev/distributions-v1"
+              className="sqrt-btn sqrt-btn--secondary sqrt-btn--m flex-1"
+            >
+              <span className="sqrt-btn__label">Distributions</span>
+            </Link>
+          </div>
           <div className="flex w-full gap-4">
             <Button
               variant="outline"
@@ -111,6 +125,12 @@ export default function LandingFooter({
           <Button variant="primary" size="m" onClick={onTryItClick}>
             Try it on testnet
           </Button>
+          <Link
+            href="/dev/distributions-v1"
+            className="sqrt-btn sqrt-btn--secondary sqrt-btn--m"
+          >
+            <span className="sqrt-btn__label">Explore distributions</span>
+          </Link>
           <Button
             variant="outline"
             size="m"
