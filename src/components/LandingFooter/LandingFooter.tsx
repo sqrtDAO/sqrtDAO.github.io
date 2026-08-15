@@ -43,7 +43,7 @@ function LandingFooterMobile({
               Try it on testnet
             </Button>
             <Link
-              href="/dev/distributions-v1"
+              href="/distribution-list"
               className="sqrt-btn sqrt-btn--secondary sqrt-btn--m flex-1"
             >
               <span className="sqrt-btn__label">Distributions</span>
@@ -126,7 +126,7 @@ export default function LandingFooter({
             Try it on testnet
           </Button>
           <Link
-            href="/dev/distributions-v1"
+            href="/distribution-list"
             className="sqrt-btn sqrt-btn--secondary sqrt-btn--m"
           >
             <span className="sqrt-btn__label">Explore distributions</span>
