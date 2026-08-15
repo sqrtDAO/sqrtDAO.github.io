@@ -21,7 +21,12 @@ import {
 } from "viem";
 import { EMPTY_PERMIT2 } from "@/lib/utils/permit2";
 import { getAddresses } from "@/contracts/contract-addresses";
-import { factoryV1Abi, tokenV1Abi, transferToHookAbi } from "@/contracts/abis";
+import {
+  distributionV1FactoryAbi,
+  factoryV1Abi,
+  tokenV1Abi,
+  transferToHookAbi,
+} from "@/contracts/abis";
 import { quickSqrtPriceX96 } from "@/lib/utils/sqrtPricex96";
 
 // Flow steps for the token wizard overlay
@@ -160,7 +165,7 @@ export default function Page() {
     for (const log of receipt.logs) {
       try {
         const event = decodeEventLog({
-          abi: factoryV1Abi,
+          abi: distributionV1FactoryAbi,
           data: log.data,
           topics: log.topics,
         });
