@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Logo from "@/components/Logo/Logo";
 import { Button } from "@/components/Button/Button";
 
@@ -9,9 +10,17 @@ import { Button } from "@/components/Button/Button";
 // own in the frame sequence; it's called directly after the mobile card).
 // Desktop's own footer usage is untouched (mt only applies inside this
 // xl:hidden block). Skeleton only — no GlitchReveal yet.
-function LandingFooterMobile({ onTryItClick }: { onTryItClick?: () => void }) {
+function LandingFooterMobile({
+  onTryItClick,
+  mobileTopMargin,
+}: {
+  onTryItClick?: () => void;
+  mobileTopMargin: string;
+}) {
   return (
-    <div className="relative mt-[240px] flex w-full flex-col items-center gap-8 bg-canvas px-4 py-12 xl:hidden">
+    <div
+      className={`relative ${mobileTopMargin} flex w-full flex-col items-center gap-8 bg-canvas px-4 py-12 xl:hidden`}
+    >
       <div className="absolute left-[16px] top-[-27px] rounded-none bg-black p-[6px]">
         <Logo variant="complete" dark width={94} height={41} />
       </div>
@@ -24,9 +33,22 @@ function LandingFooterMobile({ onTryItClick }: { onTryItClick?: () => void }) {
         </p>
 
         <div className="flex w-full flex-col items-center gap-4">
-          <Button variant="primary" size="m" fullWidth onClick={onTryItClick}>
-            Try it on testnet
-          </Button>
+          <div className="flex w-full gap-4">
+            <Button
+              variant="primary"
+              size="m"
+              className="flex-1"
+              onClick={onTryItClick}
+            >
+              Try it on testnet
+            </Button>
+            <Link
+              href="/dev/distributions-v1"
+              className="sqrt-btn sqrt-btn--secondary sqrt-btn--m flex-1"
+            >
+              <span className="sqrt-btn__label">Distributions</span>
+            </Link>
+          </div>
           <div className="flex w-full gap-4">
             <Button
               variant="outline"
@@ -73,8 +95,15 @@ function LandingFooterMobile({ onTryItClick }: { onTryItClick?: () => void }) {
 
 export default function LandingFooter({
   onTryItClick,
+  mobileTopMargin = "mt-[240px]",
 }: {
   onTryItClick?: () => void;
+  /** Tailwind margin-top class for the mobile variant. Defaults to the
+   * landing page's own "one screen, one focus" spacing (mt-[240px]) so
+   * existing call sites (e.g. src/app/page.tsx) render unchanged; pass
+   * "mt-0" or similar when this footer follows content that already
+   * defines its own spacing, e.g. a flush footer per Figma. */
+  mobileTopMargin?: string;
 }) {
   return (
     <>
@@ -96,6 +125,12 @@ export default function LandingFooter({
           <Button variant="primary" size="m" onClick={onTryItClick}>
             Try it on testnet
           </Button>
+          <Link
+            href="/dev/distributions-v1"
+            className="sqrt-btn sqrt-btn--secondary sqrt-btn--m"
+          >
+            <span className="sqrt-btn__label">Explore distributions</span>
+          </Link>
           <Button
             variant="outline"
             size="m"
@@ -131,7 +166,10 @@ export default function LandingFooter({
         />
       </div>
 
-      <LandingFooterMobile onTryItClick={onTryItClick} />
+      <LandingFooterMobile
+        mobileTopMargin={mobileTopMargin}
+        onTryItClick={onTryItClick}
+      />
     </>
   );
 }
