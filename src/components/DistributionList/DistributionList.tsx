@@ -71,8 +71,8 @@ export default function DistributionList({
                   Token Distributions
                 </h1>
                 <p className="max-w-[566px] text-body leading-[22px] text-secondary xl:text-body-l xl:leading-6">
-                  Live distributions running right now. Open any one to
-                  watch it settle — or take part.
+                  Live distributions running right now. Open any one to watch it
+                  settle — or take part.
                 </p>
               </div>
             </div>
@@ -99,7 +99,7 @@ export default function DistributionList({
             </div>
           ) : (
             <>
-              <div className="hidden max-h-[606px] w-full overflow-y-auto bg-black px-6 xl:mb-4 xl:block">
+              <div className="hidden w-full bg-black px-6 xl:mb-4 xl:block">
                 <table className="w-full border-separate border-spacing-y-2">
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-black">
