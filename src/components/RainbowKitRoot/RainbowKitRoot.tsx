@@ -16,8 +16,9 @@ const sepolia = /*#__PURE__*/ defineChain({
   rpcUrls: {
     default: {
       http: [
-        "https://sepolia.gateway.tenderly.co",
+        // NOTE: there is no failover, viem only uses first one
         "https://sepolia.drpc.org",
+        "https://sepolia.gateway.tenderly.co",
         "https://ethereum-sepolia-rpc.publicnode.com",
       ],
     },
