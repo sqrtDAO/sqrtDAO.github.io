@@ -1,8 +1,9 @@
 import { formatUnits } from "viem";
 import { usePublicClient } from "wagmi";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { getDistributionV1FactoryContract } from "@/contracts/contracts";
-import { tokenV1Abi } from "@/contracts/abis";
+import { distributionV1FactoryAbi, tokenV1Abi } from "@/contracts/abis";
+import { getAddresses } from "@/contracts/contract-addresses";
 import type {
   Distribution,
   DistributionStatus,
@@ -21,15 +22,25 @@ const getStatus = (
 const getEpochsCompleted = (currentEpoch: number, numberOfEpochs: number) =>
   Math.min(Math.max(currentEpoch, 0), numberOfEpochs);
 
-export function useDistributions() {
+type UseDistributionsParams = {
+  page: number;
+  pageSize: number;
+};
+
+export function useDistributions({ page, pageSize }: UseDistributionsParams) {
   const publicClient = usePublicClient();
 
   const [distributions, setDistributions] = useState<Distribution[]>([]);
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | undefined>(undefined);
   const [fetchKey, setFetchKey] = useState(0);
 
   const refetch = useCallback(() => setFetchKey((k) => k + 1), []);
+
+  const hasNewDistribution = useRef(false);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   useEffect(() => {
     (async () => {
@@ -37,11 +48,23 @@ export function useDistributions() {
       setIsLoading(true);
       setError(undefined);
       try {
-        const distributorFactory = getDistributionV1FactoryContract(publicClient);
-        const length = Number(await distributorFactory.read.distributionListLength());
+        const distributorFactory =
+          getDistributionV1FactoryContract(publicClient);
+        const length = Number(
+          await distributorFactory.read.distributionListLength(),
+        );
+        setTotal(length);
+
+        const offset = BigInt(Math.max(0, length - page * pageSize));
+        const clampedSize = Math.min(pageSize, length - (page - 1) * pageSize);
         const items =
-          length > 0
-            ? await distributorFactory.read.getDistributionsInfo([0n, BigInt(length)])
+          length > 0 && clampedSize > 0
+            ? [
+                ...(await distributorFactory.read.getDistributionsInfo([
+                  offset,
+                  BigInt(clampedSize),
+                ])),
+              ].reverse()
             : [];
 
         const metadata = await publicClient.multicall({
@@ -110,7 +133,28 @@ export function useDistributions() {
       }
       setIsLoading(false);
     })();
-  }, [publicClient, fetchKey]);
+  }, [publicClient, fetchKey, page, pageSize]);
 
-  return { distributions, isLoading, error, refetch };
+  useEffect(() => {
+    if (!publicClient || !publicClient.chain) return;
+
+    const unwatch = publicClient.watchContractEvent({
+      address: getAddresses(publicClient.chain.id).distributorFactory,
+      abi: distributionV1FactoryAbi,
+      eventName: "NewDistributor",
+      onLogs: () => {
+        if (!hasNewDistribution.current) {
+          hasNewDistribution.current = true;
+          refetch();
+        }
+      },
+    });
+
+    return () => {
+      unwatch();
+      hasNewDistribution.current = false;
+    };
+  }, [refetch, publicClient]);
+
+  return { distributions, isLoading, error, refetch, total, totalPages };
 }
