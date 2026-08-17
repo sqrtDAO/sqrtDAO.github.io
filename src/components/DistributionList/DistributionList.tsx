@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { IconLoader2 } from "@tabler/icons-react";
 import Header from "@/components/Header/Header";
@@ -13,8 +12,6 @@ import SmokeMeshBackground from "@/components/SmokeMeshBackground/SmokeMeshBackg
 import LandingAccentBar from "@/components/LandingAccentBar/LandingAccentBar";
 import LandingFragment from "@/components/LandingFragment/LandingFragment";
 import type { Distribution } from "@/lib/fixtures/distributions";
-
-const PAGE_SIZE = 10;
 
 const COLUMN_HEADERS = [
   "Token name",
@@ -29,20 +26,22 @@ export type DistributionListProps = {
   distributions: Distribution[];
   isLoading?: boolean;
   error?: string;
+  total: number;
+  totalPages: number;
+  page: number;
+  onPageChange: (page: number) => void;
 };
 
 export default function DistributionList({
   distributions,
   isLoading = false,
   error,
+  total,
+  totalPages,
+  page,
+  onPageChange,
 }: DistributionListProps) {
   const router = useRouter();
-  const [page, setPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(distributions.length / PAGE_SIZE));
-  const pageItems = distributions.slice(
-    (page - 1) * PAGE_SIZE,
-    page * PAGE_SIZE,
-  );
 
   return (
     <>
@@ -71,8 +70,8 @@ export default function DistributionList({
                   Token Distributions
                 </h1>
                 <p className="max-w-[566px] text-body leading-[22px] text-secondary xl:text-body-l xl:leading-6">
-                  Live distributions running right now. Open any one to
-                  watch it settle — or take part.
+                  Live distributions running right now. Open any one to watch it
+                  settle — or take part.
                 </p>
               </div>
             </div>
@@ -99,54 +98,65 @@ export default function DistributionList({
             </div>
           ) : (
             <>
-              <div className="hidden max-h-[606px] w-full overflow-y-auto bg-black px-6 xl:mb-4 xl:block">
-                <table className="w-full border-separate border-spacing-y-2">
-                  <thead className="sticky top-0 z-10">
-                    <tr className="bg-black">
-                      <th className="w-12" />
-                      {COLUMN_HEADERS.map((label) => (
-                        <th
-                          className="h-20 px-4 text-left align-middle text-body-l leading-6 font-normal text-secondary"
-                          key={label}
-                        >
-                          {label}
-                        </th>
-                      ))}
-                      <th className="w-12" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pageItems.map((distribution, i) => (
-                      <TableRow
-                        distribution={distribution}
-                        index={(page - 1) * PAGE_SIZE + i}
-                        key={distribution.address}
-                      />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <div className="relative w-full">
+                {isLoading && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60">
+                    <IconLoader2
+                      size={32}
+                      className="animate-spin text-tertiary"
+                    />
+                  </div>
+                )}
 
-              <div className="flex flex-col items-start gap-2 bg-black py-4 xl:hidden">
-                {pageItems.map((distribution) => (
-                  <DistributionCard
-                    distribution={distribution}
-                    key={distribution.address}
-                  />
-                ))}
+                <div className="hidden w-full bg-black px-6 xl:mb-4 xl:block">
+                  <table className="w-full border-separate border-spacing-y-2">
+                    <thead className="sticky top-0 z-10">
+                      <tr className="bg-black">
+                        <th className="w-12" />
+                        {COLUMN_HEADERS.map((label) => (
+                          <th
+                            className="h-20 px-4 text-left align-middle text-body-l leading-6 font-normal text-secondary"
+                            key={label}
+                          >
+                            {label}
+                          </th>
+                        ))}
+                        <th className="w-12" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {distributions.map((distribution, i) => (
+                        <TableRow
+                          distribution={distribution}
+                          index={total - (page - 1) * 10 - 1 - i}
+                          key={distribution.address}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex flex-col items-start gap-2 bg-black py-4 xl:hidden">
+                  {distributions.map((distribution) => (
+                    <DistributionCard
+                      distribution={distribution}
+                      key={distribution.address}
+                    />
+                  ))}
+                </div>
               </div>
 
               <div className="flex flex-col items-end gap-2 xl:flex-row xl:items-center xl:justify-end xl:gap-6">
                 <Pagination
                   className="order-1 xl:order-2"
                   currentPage={page}
-                  onPageChange={setPage}
+                  onPageChange={onPageChange}
                   totalPages={totalPages}
                 />
                 <p className="order-2 text-body leading-[22px] text-primary xl:order-1">
-                  {pageItems.length}{" "}
+                  {distributions.length}{" "}
                   <span className="text-secondary">
-                    of {distributions.length} Distributions
+                    of {total} Distributions
                   </span>
                 </p>
               </div>
