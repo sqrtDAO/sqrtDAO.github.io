@@ -35,6 +35,8 @@
 - for user inputs use `src/hooks/useInput.ts` and `src/components/Input/Input.tsx`
 - for validation use this `src/utils/validator.ts`
 - for modifiers use this `src/utils/modifiers.ts`
+- Use `next/image` `<Image />` instead of HTML `<img>` for automatic optimization and lazy loading
+- For links don't do onClick and navigator, Do it with standard <Link> component when possible
 
 ## Workflow
 
