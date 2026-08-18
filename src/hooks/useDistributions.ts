@@ -1,4 +1,3 @@
-import { formatUnits } from "viem";
 import { usePublicClient } from "wagmi";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { getDistributionV1FactoryContract } from "@/contracts/contracts";
@@ -112,12 +111,9 @@ export function useDistributions({ page, pageSize }: UseDistributionsParams) {
             tokenName: String(metadataSlice[0]!.result),
             tokenSymbol: String(metadataSlice[1]!.result),
             status: getStatus(currentEpoch, totalEpochs),
-            totalParticipation: Number(
-              formatUnits(
-                info.totalParticipation,
-                Number(metadataSlice[3]!.result) || 18,
-              ),
-            ),
+            totalParticipation: info.totalParticipation,
+            participationTokenDecimals:
+              Number(metadataSlice[3]!.result) || 18,
             participationTokenSymbol: String(metadataSlice[2]!.result),
             startedAt,
             finishedAt,

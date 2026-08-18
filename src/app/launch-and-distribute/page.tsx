@@ -131,7 +131,7 @@ export default function Page() {
       token!.name,
       token!.symbol,
       allocation,
-      BigInt(_sqrtPriceX96),
+      _sqrtPriceX96,
       dd.initialParticipationLiquidity,
       dd.initialDistributionLiquidity,
       config,

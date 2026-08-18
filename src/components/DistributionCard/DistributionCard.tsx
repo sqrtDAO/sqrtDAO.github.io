@@ -5,6 +5,7 @@ import { IconChevronRight } from "@tabler/icons-react";
 import type { Distribution } from "@/lib/fixtures/distributions";
 import Status from "@/components/Status/Status";
 import { formatDate } from "@/utils/formatDate";
+import { roundUnits } from "@/utils/round-units";
 
 export type DistributionCardProps = {
   distribution: Distribution;
@@ -44,7 +45,10 @@ export default function DistributionCard({
           {distribution.participationTokenSymbol} total funded
         </p>
         <p className="text-body-l leading-6 text-primary">
-          {distribution.totalParticipation.toLocaleString("en-US")}
+          {roundUnits(
+            distribution.totalParticipation,
+            distribution.participationTokenDecimals,
+          )}
         </p>
       </div>
 

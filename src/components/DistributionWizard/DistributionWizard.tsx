@@ -40,7 +40,7 @@ import Header from "@/components/Header/Header";
 import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
 import "./DistributionWizard.css";
 import { TokenDetails } from "../TokenLaunch/TokenLaunch";
-import { Address, formatEther, parseUnits } from "viem";
+import { Address, parseUnits, formatUnits } from "viem";
 import {
   getFactoryV1Contract,
   getTokenV1Contract,
@@ -48,6 +48,7 @@ import {
 import { useAccount, usePublicClient } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { getAddresses } from "@/contracts/contract-addresses";
+import { roundUnits } from "@/utils/round-units";
 
 export type DistributionDetails = {
   totalDistributionAmount: bigint;
@@ -78,8 +79,6 @@ export default function DistributionWizard(props: {
 
   // ── Validators ────────────────────────────────────────────────────────────
 
-  const totalSupplyF = parseFloat(formatEther(props.token.totalSupply));
-
   const startTimeValidator: InputValidator = (v) =>
     v === "" ? "Start time is required" : null;
   const founderShareValidator: InputValidator = (v) => {
@@ -102,7 +101,10 @@ export default function DistributionWizard(props: {
   );
   const supplyValidator: InputValidator = (v) => {
     if (v === "") return "Supply amount is required";
-    if (parseFloat(v.replace(/,/g, "")) > totalSupplyF)
+    if (
+      parseUnits(v.replace(/,/g, ""), props.token.decimals) >
+      props.token.totalSupply
+    )
       return "Insufficient balance";
     return null;
   };
@@ -519,7 +521,7 @@ export default function DistributionWizard(props: {
                         </span>
                         <div className="dw-balance-line">
                           <span className="dw-balance-amount">
-                            {formatEther(props.token.totalSupply)}
+                            {formatUnits(props.token.totalSupply, 18)}
                           </span>
                           <span className="dw-balance-unit">
                             {props.token.symbol}
@@ -532,7 +534,10 @@ export default function DistributionWizard(props: {
                           size="m"
                           onClick={() =>
                             supply.onChange(
-                              formatEther(props.token.totalSupply / BigInt(2)),
+                              formatUnits(
+                                props.token.totalSupply / BigInt(2),
+                                18,
+                              ),
                             )
                           }
                         >
@@ -543,7 +548,7 @@ export default function DistributionWizard(props: {
                           size="m"
                           onClick={() =>
                             supply.onChange(
-                              formatEther(props.token.totalSupply),
+                              formatUnits(props.token.totalSupply, 18),
                             )
                           }
                         >
@@ -1049,7 +1054,7 @@ export default function DistributionWizard(props: {
                       value={
                         supply.value
                           ? `${supply.value} ${props.token.symbol}`
-                          : `— ${formatEther(props.token.totalSupply)}`
+                          : `— ${roundUnits(props.token.totalSupply, 18)}`
                       }
                     />
                   </div>
@@ -1201,7 +1206,15 @@ export default function DistributionWizard(props: {
                       label="Tokenomics:"
                       value={
                         supply.value
-                          ? `${((supplyNum / totalSupplyF) * 100).toFixed(2)}% public distribution`
+                          ? `${formatUnits(
+                              (parseUnits(
+                                supply.value.replace(/,/g, ""),
+                                props.token.decimals,
+                              ) *
+                                10000n) /
+                                props.token.totalSupply,
+                              2,
+                            )}% public distribution`
                           : "—"
                       }
                     />

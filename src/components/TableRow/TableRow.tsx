@@ -2,6 +2,7 @@ import { IconChevronRight } from "@tabler/icons-react";
 import TableCell from "@/components/TableCell/TableCell";
 import type { Distribution } from "@/lib/fixtures/distributions";
 import { formatDate } from "@/utils/formatDate";
+import { roundUnits } from "@/utils/round-units";
 
 export type TableRowProps = {
   index: number;
@@ -43,7 +44,10 @@ export default function TableRow({ index, distribution }: TableRowProps) {
       <td className={cellBorder}>
         <TableCell
           unit={distribution.participationTokenSymbol}
-          value={distribution.totalParticipation.toLocaleString("en-US")}
+          value={roundUnits(
+            distribution.totalParticipation,
+            distribution.participationTokenDecimals,
+          )}
           variant="amount"
         />
       </td>
