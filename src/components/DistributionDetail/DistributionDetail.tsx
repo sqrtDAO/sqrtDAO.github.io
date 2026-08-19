@@ -174,6 +174,7 @@ function buildEpochs(
   contractInfo: DistributorContractInfo,
   currentEpoch: bigint,
   epochInfo: readonly EpochInfo[] | undefined,
+  epochsFrom: bigint,
   decimals: number,
 ): EpochData[] {
   const numberOfEpochs = Number(contractInfo.numberOfEpochs);
@@ -185,13 +186,15 @@ function buildEpochs(
   const supplyPerEpoch =
     numberOfEpochs > 0 ? totalDistribution / numberOfEpochs : 0;
   const currentIdx = Number(currentEpoch);
+  const fromIdx = Number(epochsFrom);
 
   const epochs: EpochData[] = [];
   for (let i = 0; i < numberOfEpochs; i++) {
     const state: "passed" | "current" | "future" =
       i < currentIdx ? "passed" : i === currentIdx ? "current" : "future";
     const timestamp = (startingTimestampSec + i * epochDurationSec) * 1000;
-    const info = epochInfo?.[i];
+    const info =
+      i >= fromIdx && epochInfo ? epochInfo[i - fromIdx] : undefined;
     const participationVolume = info
       ? Number(formatUnits(info.totalParticipationAmount, decimals))
       : 0;
@@ -258,6 +261,7 @@ export default function DistributionDetail({
     contractInfo,
     currentEpoch,
     epochsInfo,
+    epochsFrom,
     tokenName,
     tokenSymbol,
     claimData,
@@ -323,11 +327,17 @@ export default function DistributionDetail({
     if (isLoading) return;
 
     if (contractInfo && currentEpoch !== undefined) {
-      const built = buildEpochs(contractInfo, currentEpoch, epochsInfo, 18);
+      const built = buildEpochs(
+        contractInfo,
+        currentEpoch,
+        epochsInfo,
+        epochsFrom,
+        18,
+      );
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setEpochs(built);
     }
-  }, [isLoading, contractInfo, currentEpoch, epochsInfo]);
+  }, [isLoading, contractInfo, currentEpoch, epochsInfo, epochsFrom]);
 
   const [endTimestampMs, setEndTimestampMs] = useState(0);
   useEffect(() => {

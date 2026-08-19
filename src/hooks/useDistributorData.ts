@@ -61,6 +61,7 @@ export function useDistributorData(contractAddress: Address) {
   const [epochs, setEpochs] = useState<readonly EpochInfo[] | undefined>(
     undefined,
   );
+  const [epochsFrom, setEpochsFrom] = useState<bigint>(0n);
 
   const [claimData, setClaimData] = useState<ClaimData | undefined>(undefined);
 
@@ -118,6 +119,7 @@ export function useDistributorData(contractAddress: Address) {
         ]);
         console.log("epochInfos", epochInfos);
         setEpochs(epochInfos);
+        setEpochsFrom(fromEpoch);
 
         const ranges: Range[] = [];
         let currentRange: Range | null = null;
@@ -174,6 +176,7 @@ export function useDistributorData(contractAddress: Address) {
     contractInfo: contractInfo as DistributorContractInfo | undefined,
     currentEpoch: currentEpoch as bigint | undefined,
     epochsInfo: epochs,
+    epochsFrom,
     tokenName,
     tokenSymbol,
     claimData,
