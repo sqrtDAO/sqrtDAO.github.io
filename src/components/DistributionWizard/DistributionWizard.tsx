@@ -153,7 +153,7 @@ export default function DistributionWizard(props: {
   const epochDurationInput = useInput(EPOCH_DURATION_OPTIONS[3]);
   const numberOfEpochs = useInput(
     "",
-    numberOnlyModifier,
+    decimalOnlyModifier,
     positiveNumberValidator("Number of epochs"),
   );
   const releasePerEpoch = useInput(
@@ -205,12 +205,12 @@ export default function DistributionWizard(props: {
     const initialDistributionLiquidityNum = parseFloat(
       initialDistributionLiquidity.value.replace(/,/g, ""),
     );
-    const clean = v.replace(/[^0-9]/g, "");
+    const clean = decimalOnlyModifier(v);
     numberOfEpochs.onChange(clean);
     if (!clean) {
       releasePerEpoch.onChange("");
     } else {
-      const epochsNum = parseInt(clean);
+      const epochsNum = parseFloat(clean);
       releasePerEpoch.onChange(
         supplyNum && epochsNum
           ? (
@@ -261,19 +261,22 @@ export default function DistributionWizard(props: {
     return supplyNum / epochsFromDates;
   }, [supplyNum, epochsFromDates]);
 
+  // Epoch-based: integer epoch count (rounded up) for contract + derived dates
+  const epochCount = Math.ceil(parseFloat(numberOfEpochs.value) || 0);
+
   // Epoch-based: computed end date from start + count
   const endDateFromEpochs = useMemo(
     () =>
       calcEndDateFromEpochs(
         startDate.value,
         startTime.value,
-        parseInt(numberOfEpochs.value),
+        epochCount,
         EPOCH_DURATION_MS[epochDurationInput.value] / 1000,
       ),
     [
       startDate.value,
       startTime.value,
-      numberOfEpochs.value,
+      epochCount,
       epochDurationInput.value,
     ],
   );
@@ -376,7 +379,7 @@ export default function DistributionWizard(props: {
         releasePerEpochN = totalDistributionAmountN / numberOfEpochsN;
       } else {
         // Epoch base
-        numberOfEpochsN = BigInt(parseInt(numberOfEpochs.value));
+        numberOfEpochsN = BigInt(epochCount);
         releasePerEpochN = BigInt(
           parseUnits(
             releasePerEpoch.value.replace(/,/g, ""),
@@ -854,14 +857,14 @@ export default function DistributionWizard(props: {
                         <p className="dw-release-summary">
                           This creates{" "}
                           <strong>
-                            {parseInt(numberOfEpochs.value)} total epochs (
+                            {epochCount} total epochs (
                             {epochDurationInput.value} each).
                           </strong>{" "}
                           Ends{" "}
                           <strong>
                             {formatDateLong(endDateFromEpochs)} (
                             {(
-                              (parseInt(numberOfEpochs.value) *
+                              (epochCount *
                                 EPOCH_DURATION_MS[epochDurationInput.value]) /
                               (24 * 60 * 60 * 1000)
                             ).toFixed(1)}{" "}
