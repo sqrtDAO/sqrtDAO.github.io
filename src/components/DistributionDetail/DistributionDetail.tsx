@@ -43,6 +43,7 @@ import { distributorV1Abi, tokenV1Abi } from "@/contracts/abis";
 import { getAddresses } from "@/contracts/contract-addresses";
 import { useInput } from "@/hooks/useInput";
 import { numberOnlyModifier } from "@/utils/modifier";
+import { roundUnits } from "@/utils/round-units";
 
 const EpochComboChart = dynamic(
   () => import("@/components/EpochComboChart/EpochComboChart"),
@@ -173,6 +174,7 @@ function buildEpochs(
   contractInfo: DistributorContractInfo,
   currentEpoch: bigint,
   epochInfo: readonly EpochInfo[] | undefined,
+  epochsFrom: bigint,
   decimals: number,
 ): EpochData[] {
   const numberOfEpochs = Number(contractInfo.numberOfEpochs);
@@ -184,13 +186,15 @@ function buildEpochs(
   const supplyPerEpoch =
     numberOfEpochs > 0 ? totalDistribution / numberOfEpochs : 0;
   const currentIdx = Number(currentEpoch);
+  const fromIdx = Number(epochsFrom);
 
   const epochs: EpochData[] = [];
   for (let i = 0; i < numberOfEpochs; i++) {
     const state: "passed" | "current" | "future" =
       i < currentIdx ? "passed" : i === currentIdx ? "current" : "future";
     const timestamp = (startingTimestampSec + i * epochDurationSec) * 1000;
-    const info = epochInfo?.[i];
+    const info =
+      i >= fromIdx && epochInfo ? epochInfo[i - fromIdx] : undefined;
     const participationVolume = info
       ? Number(formatUnits(info.totalParticipationAmount, decimals))
       : 0;
@@ -257,6 +261,7 @@ export default function DistributionDetail({
     contractInfo,
     currentEpoch,
     epochsInfo,
+    epochsFrom,
     tokenName,
     tokenSymbol,
     claimData,
@@ -276,7 +281,7 @@ export default function DistributionDetail({
 
   const maxEpochs = useMemo(() => {
     if (!contractInfo || currentEpoch === undefined) return 1;
-    return Math.max(1, Number(contractInfo.numberOfEpochs) - currentEpoch);
+    return Math.max(1, Number(contractInfo.numberOfEpochs - currentEpoch));
   }, [contractInfo, currentEpoch]);
 
   const epochCount = useInput("1", numberOnlyModifier, (v) => {
@@ -324,14 +329,15 @@ export default function DistributionDetail({
     if (contractInfo && currentEpoch !== undefined) {
       const built = buildEpochs(
         contractInfo,
-        BigInt(currentEpoch),
+        currentEpoch,
         epochsInfo,
+        epochsFrom,
         18,
       );
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setEpochs(built);
     }
-  }, [isLoading, contractInfo, currentEpoch, epochsInfo]);
+  }, [isLoading, contractInfo, currentEpoch, epochsInfo, epochsFrom]);
 
   const [endTimestampMs, setEndTimestampMs] = useState(0);
   useEffect(() => {
@@ -351,7 +357,7 @@ export default function DistributionDetail({
     return (
       Number(
         contractInfo.startingTimestamp +
-          BigInt(Number(currentEpoch) + 1) * contractInfo.epochDuration,
+          (currentEpoch + 1n) * contractInfo.epochDuration,
       ) * 1000
     );
   }, [contractInfo, currentEpoch]);
@@ -545,7 +551,7 @@ export default function DistributionDetail({
       );
       const params = [
         amountPerEpoch,
-        { from: BigInt(currentEpoch), length: BigInt(epochCountNum) },
+        { from: currentEpoch, length: BigInt(epochCountNum) },
         walletClient.account.address,
         "0x",
       ] as const;
@@ -594,7 +600,7 @@ export default function DistributionDetail({
               <>
                 <div className="ddp-claim-card__amount">
                   <span>
-                    {formatUnits(claimData?.claimableAmount ?? BigInt(0), 18)}
+                    {roundUnits(claimData?.claimableAmount ?? BigInt(0), 18)}
                   </span>
                   <span className="ddp-claim-card__unit">{tokenSymbol}</span>
                 </div>
@@ -814,7 +820,7 @@ export default function DistributionDetail({
                     <span className="ddp-stat__label">Total participation</span>
                     <div className="ddp-stat__value-row">
                       <span className="ddp-stat__value-primary">
-                        {formatUnits(
+                        {roundUnits(
                           stats.totalParticipation,
                           participationTokenDecimals ?? 18,
                         )}
@@ -904,7 +910,7 @@ export default function DistributionDetail({
                   <div className="ddp-block-card__stats-bottom">
                     <InlineStat
                       label="Unique participants"
-                      value={Number(stats.uniqueParticipants).toString()}
+                      value={stats.uniqueParticipants.toString()}
                     />
                     <InlineStat
                       label="Supply remaining"

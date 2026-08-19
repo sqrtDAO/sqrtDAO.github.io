@@ -40,7 +40,7 @@ import Header from "@/components/Header/Header";
 import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
 import "./DistributionWizard.css";
 import { TokenDetails } from "../TokenLaunch/TokenLaunch";
-import { Address, formatEther, parseUnits } from "viem";
+import { Address, parseUnits, formatUnits } from "viem";
 import {
   getFactoryV1Contract,
   getTokenV1Contract,
@@ -48,6 +48,7 @@ import {
 import { useAccount, usePublicClient } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { getAddresses } from "@/contracts/contract-addresses";
+import { roundUnits } from "@/utils/round-units";
 
 export type DistributionDetails = {
   totalDistributionAmount: bigint;
@@ -78,8 +79,6 @@ export default function DistributionWizard(props: {
 
   // ── Validators ────────────────────────────────────────────────────────────
 
-  const totalSupplyF = parseFloat(formatEther(props.token.totalSupply));
-
   const startTimeValidator: InputValidator = (v) =>
     v === "" ? "Start time is required" : null;
   const founderShareValidator: InputValidator = (v) => {
@@ -102,7 +101,10 @@ export default function DistributionWizard(props: {
   );
   const supplyValidator: InputValidator = (v) => {
     if (v === "") return "Supply amount is required";
-    if (parseFloat(v.replace(/,/g, "")) > totalSupplyF)
+    if (
+      parseUnits(v.replace(/,/g, ""), props.token.decimals) >
+      props.token.totalSupply
+    )
       return "Insufficient balance";
     return null;
   };
@@ -151,7 +153,7 @@ export default function DistributionWizard(props: {
   const epochDurationInput = useInput(EPOCH_DURATION_OPTIONS[3]);
   const numberOfEpochs = useInput(
     "",
-    numberOnlyModifier,
+    decimalOnlyModifier,
     positiveNumberValidator("Number of epochs"),
   );
   const releasePerEpoch = useInput(
@@ -203,12 +205,12 @@ export default function DistributionWizard(props: {
     const initialDistributionLiquidityNum = parseFloat(
       initialDistributionLiquidity.value.replace(/,/g, ""),
     );
-    const clean = v.replace(/[^0-9]/g, "");
+    const clean = decimalOnlyModifier(v);
     numberOfEpochs.onChange(clean);
     if (!clean) {
       releasePerEpoch.onChange("");
     } else {
-      const epochsNum = parseInt(clean);
+      const epochsNum = parseFloat(clean);
       releasePerEpoch.onChange(
         supplyNum && epochsNum
           ? (
@@ -259,19 +261,22 @@ export default function DistributionWizard(props: {
     return supplyNum / epochsFromDates;
   }, [supplyNum, epochsFromDates]);
 
+  // Epoch-based: integer epoch count (rounded up) for contract + derived dates
+  const epochCount = Math.ceil(parseFloat(numberOfEpochs.value) || 0);
+
   // Epoch-based: computed end date from start + count
   const endDateFromEpochs = useMemo(
     () =>
       calcEndDateFromEpochs(
         startDate.value,
         startTime.value,
-        parseInt(numberOfEpochs.value),
+        epochCount,
         EPOCH_DURATION_MS[epochDurationInput.value] / 1000,
       ),
     [
       startDate.value,
       startTime.value,
-      numberOfEpochs.value,
+      epochCount,
       epochDurationInput.value,
     ],
   );
@@ -374,7 +379,7 @@ export default function DistributionWizard(props: {
         releasePerEpochN = totalDistributionAmountN / numberOfEpochsN;
       } else {
         // Epoch base
-        numberOfEpochsN = BigInt(parseInt(numberOfEpochs.value));
+        numberOfEpochsN = BigInt(epochCount);
         releasePerEpochN = BigInt(
           parseUnits(
             releasePerEpoch.value.replace(/,/g, ""),
@@ -519,7 +524,7 @@ export default function DistributionWizard(props: {
                         </span>
                         <div className="dw-balance-line">
                           <span className="dw-balance-amount">
-                            {formatEther(props.token.totalSupply)}
+                            {formatUnits(props.token.totalSupply, 18)}
                           </span>
                           <span className="dw-balance-unit">
                             {props.token.symbol}
@@ -532,7 +537,10 @@ export default function DistributionWizard(props: {
                           size="m"
                           onClick={() =>
                             supply.onChange(
-                              formatEther(props.token.totalSupply / BigInt(2)),
+                              formatUnits(
+                                props.token.totalSupply / BigInt(2),
+                                18,
+                              ),
                             )
                           }
                         >
@@ -543,7 +551,7 @@ export default function DistributionWizard(props: {
                           size="m"
                           onClick={() =>
                             supply.onChange(
-                              formatEther(props.token.totalSupply),
+                              formatUnits(props.token.totalSupply, 18),
                             )
                           }
                         >
@@ -849,14 +857,14 @@ export default function DistributionWizard(props: {
                         <p className="dw-release-summary">
                           This creates{" "}
                           <strong>
-                            {parseInt(numberOfEpochs.value)} total epochs (
+                            {epochCount} total epochs (
                             {epochDurationInput.value} each).
                           </strong>{" "}
                           Ends{" "}
                           <strong>
                             {formatDateLong(endDateFromEpochs)} (
                             {(
-                              (parseInt(numberOfEpochs.value) *
+                              (epochCount *
                                 EPOCH_DURATION_MS[epochDurationInput.value]) /
                               (24 * 60 * 60 * 1000)
                             ).toFixed(1)}{" "}
@@ -1049,7 +1057,7 @@ export default function DistributionWizard(props: {
                       value={
                         supply.value
                           ? `${supply.value} ${props.token.symbol}`
-                          : `— ${formatEther(props.token.totalSupply)}`
+                          : `— ${roundUnits(props.token.totalSupply, 18)}`
                       }
                     />
                   </div>
@@ -1201,7 +1209,15 @@ export default function DistributionWizard(props: {
                       label="Tokenomics:"
                       value={
                         supply.value
-                          ? `${((supplyNum / totalSupplyF) * 100).toFixed(2)}% public distribution`
+                          ? `${formatUnits(
+                              (parseUnits(
+                                supply.value.replace(/,/g, ""),
+                                props.token.decimals,
+                              ) *
+                                10000n) /
+                                props.token.totalSupply,
+                              2,
+                            )}% public distribution`
                           : "—"
                       }
                     />
