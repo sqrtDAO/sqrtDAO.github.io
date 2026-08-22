@@ -28,6 +28,7 @@ import { IconButton } from "@/components/IconButton/IconButton";
 import EpochBlockChart from "@/components/EpochBlockChart/EpochBlockChart";
 import FaqCard from "@/components/FaqCard/FaqCard";
 import { useDistributorData } from "@/hooks/useDistributorData";
+import useTokenAvatar from "@/hooks/useTokenAvatar";
 import type {
   DistributorContractInfo,
   EpochInfo,
@@ -270,6 +271,8 @@ export default function DistributionDetail({
     isLoading,
     refetch,
   } = useDistributorData(contractAddress as Address);
+
+  const tokenAvatarUrl = useTokenAvatar(contractInfo?.participationToken);
 
   const { isConnected: isWalletConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -753,6 +756,7 @@ export default function DistributionDetail({
               <div className="ddp-token-header__row1">
                 <TokenAvatar
                   seed={`${tokenName} ${tokenSymbol}`}
+                  imageUrl={tokenAvatarUrl ?? undefined}
                   className="ddp-token-header__avatar"
                 />
                 <div className="ddp-token-header__info">

@@ -1,9 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import "./TokenAvatar.css";
 
 export interface TokenAvatarProps {
   seed?: string;
+  imageUrl?: string;
   className?: string;
 }
 
@@ -20,27 +22,46 @@ function seedToHues(seed: string): [number, number] {
   return [h1, h2];
 }
 
-export default function TokenAvatar({ seed, className }: TokenAvatarProps) {
+export default function TokenAvatar({
+  seed,
+  imageUrl,
+  className,
+}: TokenAvatarProps) {
   const trimmed = seed?.trim() ?? "";
+  const hasImage = Boolean(imageUrl);
   const hasSeed = trimmed.length > 0;
   const initials = trimmed.slice(0, 2).toUpperCase();
 
-  const style = hasSeed
-    ? (() => {
-        const [h1, h2] = seedToHues(trimmed);
-        return {
-          backgroundImage: `linear-gradient(135deg, hsl(${h1}, 70%, 55%), hsl(${h2}, 70%, 45%))`,
-        };
-      })()
-    : undefined;
+  const style =
+    !hasImage && hasSeed
+      ? (() => {
+          const [h1, h2] = seedToHues(trimmed);
+          return {
+            backgroundImage: `linear-gradient(135deg, hsl(${h1}, 70%, 55%), hsl(${h2}, 70%, 45%))`,
+          };
+        })()
+      : undefined;
+
+  const variant = hasImage ? " is-image" : hasSeed ? " is-generated" : "";
 
   return (
     <div
-      className={`token-avatar${hasSeed ? " is-generated" : ""}${className ? ` ${className}` : ""}`}
+      className={`token-avatar${variant}${className ? ` ${className}` : ""}`}
       style={style}
       aria-hidden="true"
     >
-      {hasSeed && <span className="token-avatar__initials">{initials}</span>}
+      {hasImage ? (
+        <Image
+          className="token-avatar__image"
+          src={imageUrl!}
+          alt=""
+          fill
+          sizes="(max-width: 767px) 180px, 258px"
+          unoptimized
+        />
+      ) : (
+        hasSeed && <span className="token-avatar__initials">{initials}</span>
+      )}
     </div>
   );
 }

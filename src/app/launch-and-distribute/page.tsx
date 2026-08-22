@@ -25,9 +25,11 @@ import {
   distributionV1FactoryAbi,
   factoryV1Abi,
   tokenV1Abi,
+  tokenV1FactoryAbi,
   transferToHookAbi,
 } from "@/contracts/abis";
 import { quickSqrtPriceX96 } from "@/lib/utils/sqrtPricex96";
+import { setupTokenAvatar } from "@/utils/avatar-api";
 
 // Flow steps for the token wizard overlay
 type FlowStep = "launch" | "distribute";
@@ -162,6 +164,8 @@ export default function Page() {
     if (receipt.status === "reverted")
       throw 'transaction "createTokenAndLiquidityAndDistribution" failed ';
 
+    let distributor: `0x${string}` | undefined;
+    let tokenAddress: `0x${string}` | undefined;
     for (const log of receipt.logs) {
       try {
         const event = decodeEventLog({
@@ -170,12 +174,30 @@ export default function Page() {
           topics: log.topics,
         });
         if (event.eventName === "NewDistributor") {
-          const distributor = (event.args as { distributor: `0x${string}` })
+          distributor = (event.args as { distributor: `0x${string}` })
             .distributor;
-          document.location.href = `/distribution/?address=${distributor}`;
-          return;
         }
       } catch {}
+      try {
+        const event = decodeEventLog({
+          abi: tokenV1FactoryAbi,
+          data: log.data,
+          topics: log.topics,
+        });
+        if (event.eventName === "NewToken") {
+          tokenAddress = (event.args as { tokenAddress: `0x${string}` })
+            .tokenAddress;
+        }
+      } catch {}
+    }
+
+    if (distributor) {
+      // Avatar is optional: bind best-effort, never block the launch flow
+      if (token!.avatarCid && tokenAddress) {
+        await setupTokenAvatar(tokenAddress, token!.avatarCid).catch(() => {});
+      }
+      document.location.href = `/distribution/?address=${distributor}`;
+      return;
     }
   };
 
