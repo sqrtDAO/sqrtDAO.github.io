@@ -54,6 +54,18 @@ deliberate pass with a warm-up window (skip N seconds/frames post-load before
 sampling) so startup jank can't be counted as sustained slowness — not a
 drop-in re-add of the old logic.
 
+## Docs headings: unlayered h1-h3 reset beats margin utilities
+
+**Status:** Worked around in `src/components/Docs/prose.tsx` (H2 uses `pt-*`, not `mt-*`).
+
+**Why:** `globals.css` resets `h1, h2, h3 { margin: 0 }` as *unlayered* author CSS.
+Unlayered styles win against everything in `@layer utilities` regardless of
+order/specificity, so `mt-*` on any heading silently does nothing (verified:
+`.mt-24` was present in the built CSS and HTML but had no effect). Any future
+spacing on h1-h3 must use padding or a wrapper element — unless the reset is
+moved into `@layer base`, which is off-limits while the teammate branch rule
+from above applies.
+
 ## V.1 mobile layout: dual-block-per-file, not separate Tablet components
 
 **Status:** Chosen architecture, not deferred.
