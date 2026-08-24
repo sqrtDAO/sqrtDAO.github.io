@@ -1,4 +1,4 @@
-export const AVATAR_API_BASE = "http://localhost:8080";
+export const AVATAR_API_BASE = "https://api.sqrtdao.org";
 
 export const AVATAR_ALLOWED_MIME_TYPES = [
   "image/png",

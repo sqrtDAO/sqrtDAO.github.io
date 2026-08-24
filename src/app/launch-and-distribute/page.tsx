@@ -194,7 +194,7 @@ export default function Page() {
     if (distributor) {
       // Avatar is optional: bind best-effort, never block the launch flow
       if (token!.avatarCid && tokenAddress) {
-        await setupTokenAvatar(tokenAddress, token!.avatarCid).catch(() => {});
+        await setupTokenAvatar(tokenAddress, token!.avatarCid);
       }
       document.location.href = `/distribution/?address=${distributor}`;
       return;

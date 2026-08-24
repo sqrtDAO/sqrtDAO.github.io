@@ -194,8 +194,7 @@ function buildEpochs(
     const state: "passed" | "current" | "future" =
       i < currentIdx ? "passed" : i === currentIdx ? "current" : "future";
     const timestamp = (startingTimestampSec + i * epochDurationSec) * 1000;
-    const info =
-      i >= fromIdx && epochInfo ? epochInfo[i - fromIdx] : undefined;
+    const info = i >= fromIdx && epochInfo ? epochInfo[i - fromIdx] : undefined;
     const participationVolume = info
       ? Number(formatUnits(info.totalParticipationAmount, decimals))
       : 0;
@@ -272,7 +271,7 @@ export default function DistributionDetail({
     refetch,
   } = useDistributorData(contractAddress as Address);
 
-  const tokenAvatarUrl = useTokenAvatar(contractInfo?.participationToken);
+  const tokenAvatarUrl = useTokenAvatar(contractInfo?.distributionToken);
 
   const { isConnected: isWalletConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
