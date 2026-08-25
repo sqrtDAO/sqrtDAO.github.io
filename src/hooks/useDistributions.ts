@@ -108,6 +108,7 @@ export function useDistributions({ page, pageSize }: UseDistributionsParams) {
 
           return {
             address: item.addr,
+            tokenAddress: info.distributionToken,
             tokenName: String(metadataSlice[0]!.result),
             tokenSymbol: String(metadataSlice[1]!.result),
             status: getStatus(currentEpoch, totalEpochs),

@@ -125,10 +125,9 @@ export default function DistributionList({
                       </tr>
                     </thead>
                     <tbody>
-                      {distributions.map((distribution, i) => (
+                      {distributions.map((distribution) => (
                         <TableRow
                           distribution={distribution}
-                          index={total - (page - 1) * 10 - 1 - i}
                           key={distribution.address}
                         />
                       ))}

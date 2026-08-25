@@ -7,6 +7,8 @@ export interface TokenAvatarProps {
   seed?: string;
   imageUrl?: string;
   className?: string;
+  /** px; overrides the 258px default from TokenAvatar.css */
+  size?: number;
 }
 
 // Deterministic hash → hue pair, so the same token name/symbol always
@@ -26,11 +28,14 @@ export default function TokenAvatar({
   seed,
   imageUrl,
   className,
+  size,
 }: TokenAvatarProps) {
   const trimmed = seed?.trim() ?? "";
   const hasImage = Boolean(imageUrl);
   const hasSeed = trimmed.length > 0;
   const initials = trimmed.slice(0, 2).toUpperCase();
+
+  const sizingStyle = size ? { width: size, height: size } : undefined;
 
   const style =
     !hasImage && hasSeed
@@ -38,9 +43,10 @@ export default function TokenAvatar({
           const [h1, h2] = seedToHues(trimmed);
           return {
             backgroundImage: `linear-gradient(135deg, hsl(${h1}, 70%, 55%), hsl(${h2}, 70%, 45%))`,
+            ...sizingStyle,
           };
         })()
-      : undefined;
+      : sizingStyle;
 
   const variant = hasImage ? " is-image" : hasSeed ? " is-generated" : "";
 
@@ -60,7 +66,14 @@ export default function TokenAvatar({
           unoptimized
         />
       ) : (
-        hasSeed && <span className="token-avatar__initials">{initials}</span>
+        hasSeed && (
+          <span
+            className="token-avatar__initials"
+            style={size ? { fontSize: Math.round(size / 3) } : undefined}
+          >
+            {initials}
+          </span>
+        )
       )}
     </div>
   );
