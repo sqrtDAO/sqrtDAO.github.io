@@ -2,6 +2,7 @@
    Figma source: "Component 1" (node 4930:21571) */
 
 .token-avatar {
+  position: relative;
   width: 258px;
   height: 258px;
   flex-shrink: 0;
@@ -15,9 +16,14 @@
   transition: border-color var(--motion-duration-fast) var(--motion-easing-standard);
 }
 
-.token-avatar.is-generated {
+.token-avatar.is-generated,
+.token-avatar.is-image {
   border-style: solid;
   border-color: transparent;
+}
+
+.token-avatar__image {
+  object-fit: cover;
 }
 
 .token-avatar__initials {

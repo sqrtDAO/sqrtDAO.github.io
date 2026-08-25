@@ -59,8 +59,8 @@ export default function ComponentsV1PreviewPage() {
       <Section title="TableRow">
         <table className="w-full border-separate border-spacing-y-2">
           <tbody>
-            {rows.map((distribution, i) => (
-              <TableRow distribution={distribution} index={i} key={distribution.address} />
+            {rows.map((distribution) => (
+              <TableRow distribution={distribution} key={distribution.address} />
             ))}
           </tbody>
         </table>

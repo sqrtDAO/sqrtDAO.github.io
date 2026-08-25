@@ -4,6 +4,7 @@ export type { DistributionStatus };
 
 export type Distribution = {
   address: `0x${string}`;
+  tokenAddress: `0x${string}`;
   tokenName: string;
   tokenSymbol: string;
   status: DistributionStatus;
@@ -83,6 +84,7 @@ const buildDistribution = (index: number, now: number): Distribution => {
 
   return {
     address: buildAddress(index),
+    tokenAddress: buildAddress(index + 1000),
     tokenName: name,
     tokenSymbol: name.slice(0, 4).toUpperCase(),
     status,
