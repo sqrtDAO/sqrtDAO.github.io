@@ -114,6 +114,49 @@
   align-items: flex-start;
 }
 
+/* ── Avatar picker ────────────────────────────────────── */
+.tl-avatar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tl-avatar-picker {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 16px;
+}
+
+.tl-avatar-picker__glyph {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.tl-avatar-hint {
+  margin: 0;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--sqrt-text-secondary);
+}
+
+.tl-avatar-hint.is-error {
+  color: var(--sqrt-state-danger);
+}
+
 .tl-form {
   flex: 1;
   min-width: 0;

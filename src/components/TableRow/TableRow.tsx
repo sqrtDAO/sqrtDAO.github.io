@@ -1,11 +1,12 @@
 import { IconChevronRight } from "@tabler/icons-react";
 import TableCell from "@/components/TableCell/TableCell";
+import TokenAvatar from "@/components/TokenAvatar/TokenAvatar";
+import useTokenAvatar from "@/hooks/useTokenAvatar";
 import type { Distribution } from "@/lib/fixtures/distributions";
 import { formatDate } from "@/utils/formatDate";
 import { roundUnits } from "@/utils/round-units";
 
 export type TableRowProps = {
-  index: number;
   distribution: Distribution;
 };
 
@@ -16,7 +17,9 @@ export type TableRowProps = {
 // (h-16) with align-middle to center each cell's shorter content within it.
 const cellBorder = "h-16 align-middle border-y border-muted group-hover:border-transparent";
 
-export default function TableRow({ index, distribution }: TableRowProps) {
+export default function TableRow({ distribution }: TableRowProps) {
+  const tokenAvatarUrl = useTokenAvatar(distribution.tokenAddress);
+
   return (
     <tr
       className="group relative cursor-pointer hover:bg-canvas"
@@ -29,7 +32,14 @@ export default function TableRow({ index, distribution }: TableRowProps) {
       }
     >
       <td className={`relative rounded-l-m border-l ${cellBorder}`}>
-        <TableCell value={index + 1} variant="index" />
+        <div className="flex w-full items-center justify-center px-2 py-3">
+          <TokenAvatar
+            seed={`${distribution.tokenName} ${distribution.tokenSymbol}`}
+            imageUrl={tokenAvatarUrl ?? undefined}
+            size={40}
+            className="!rounded-full"
+          />
+        </div>
       </td>
       <td className={cellBorder}>
         <TableCell
