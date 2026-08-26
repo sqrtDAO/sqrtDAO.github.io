@@ -6,6 +6,7 @@ import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 // import { sepolia } from "wagmi/chains";
 import { useState, type ReactNode } from "react";
+import WalletToastWatcher from "@/components/WalletToastWatcher/WalletToastWatcher";
 import "@rainbow-me/rainbowkit/styles.css";
 import { defineChain } from "viem";
 
@@ -64,6 +65,7 @@ export default function RainbowKitRoot({ children }: { children: ReactNode }) {
           })}
           modalSize="compact"
         >
+          <WalletToastWatcher />
           {children}
         </RainbowKitProvider>
       </QueryClientProvider>

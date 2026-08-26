@@ -10,7 +10,7 @@ import {
   IconShare,
   IconSquareRoundedCheckFilled,
 } from "@tabler/icons-react";
-import { maxUint256, type Address, formatUnits, parseUnits } from "viem";
+import { type Address, formatUnits, maxUint256, parseUnits } from "viem";
 import {
   useAccount,
   useChainId,
@@ -27,9 +27,12 @@ import { Button } from "@/components/Button/Button";
 import { IconButton } from "@/components/IconButton/IconButton";
 import EpochBlockChart from "@/components/EpochBlockChart/EpochBlockChart";
 import FaqCard from "@/components/FaqCard/FaqCard";
+import InsideFooter from "@/components/InsideFooter/InsideFooter";
+import Status, { type DistributionStatus } from "@/components/Status/Status";
 import { useDistributorData } from "@/hooks/useDistributorData";
 import useTokenAvatar from "@/hooks/useTokenAvatar";
 import type {
+  DistributionState,
   DistributorContractInfo,
   EpochInfo,
 } from "@/hooks/useDistributorData";
@@ -44,6 +47,11 @@ import { distributorV1Abi, tokenV1Abi } from "@/contracts/abis";
 import { getAddresses } from "@/contracts/contract-addresses";
 import { useInput } from "@/hooks/useInput";
 import { numberOnlyModifier } from "@/utils/modifier";
+import { formatDate } from "@/utils/formatDate";
+import { formatDuration } from "@/utils/formatDuration";
+import { showToast } from "@/hooks/useToast";
+import { isUserRejectedError } from "@/utils/wallet-error";
+import { viewTransactionAction } from "@/utils/explorer-utils";
 import { roundUnits } from "@/utils/round-units";
 
 const EpochComboChart = dynamic(
@@ -52,6 +60,12 @@ const EpochComboChart = dynamic(
     ssr: false,
   },
 );
+
+const STATE_TO_STATUS: Record<DistributionState, DistributionStatus> = {
+  waiting: "upcoming",
+  running: "live",
+  ended: "ended",
+};
 
 const FAQ_ITEMS = [
   {
@@ -114,10 +128,12 @@ function InlineStat({
   label,
   value,
   valueFirst,
+  danger,
 }: {
   label: string;
   value: string;
   valueFirst?: boolean;
+  danger?: boolean;
 }) {
   const labelEl = (
     <span key="label" className="ddp-inline-stat__label">
@@ -125,13 +141,66 @@ function InlineStat({
     </span>
   );
   const valueEl = (
-    <span key="value" className="ddp-inline-stat__value">
+    <span
+      key="value"
+      className={`ddp-inline-stat__value${danger ? " ddp-inline-stat__value--danger" : ""}`}
+    >
       {value}
     </span>
   );
   return (
     <div className="ddp-inline-stat">
       {valueFirst ? [valueEl, labelEl] : [labelEl, valueEl]}
+    </div>
+  );
+}
+
+function CountdownClock({
+  value,
+}: {
+  value: { days: number; hours: number; minutes: number; seconds: number };
+}) {
+  return (
+    <div className="ddp-countdown-clock">
+      <div className="ddp-countdown-segment">
+        <strong>{value.days}</strong>
+        <span>D</span>
+      </div>
+      <span className="ddp-countdown-divider" />
+      <div className="ddp-countdown-segment">
+        <strong>{value.hours}</strong>
+        <span>H</span>
+      </div>
+      <span className="ddp-countdown-divider" />
+      <div className="ddp-countdown-segment">
+        <strong>{value.minutes}</strong>
+        <span>M</span>
+      </div>
+      <span className="ddp-countdown-divider" />
+      <div className="ddp-countdown-segment">
+        <strong>{value.seconds}</strong>
+        <span>S</span>
+      </div>
+    </div>
+  );
+}
+
+function PeriodLabel({
+  title,
+  prefix,
+  value,
+}: {
+  title: string;
+  prefix: string;
+  value: string;
+}) {
+  return (
+    <div className="ddp-countdown-label">
+      <span>{title}</span>
+      <div className="ddp-countdown-sub">
+        <span>{prefix}</span>
+        <span className="ddp-countdown-sub__value">{value}</span>
+      </div>
     </div>
   );
 }
@@ -169,6 +238,24 @@ function fmtEpochDate(timestamp: number, withTime: boolean): string {
     return `${day} ${month}, ${time}`;
   }
   return `${day} ${month}, ${d.getFullYear()}`;
+}
+
+// "distribution period" / "starts in" label, e.g. "12:45, 21 June, 2026" —
+// reuses the shared formatDate util (full month name + year) for the date
+// half, distinct from fmtEpochDate above which the epoch card still uses.
+function fmtPeriodDateTime(timestampMs: number): string {
+  const time = new Date(timestampMs).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  return `${time}, ${formatDate(timestampMs)}`;
+}
+
+// Short form for the participation button's "Starts 21 Jun!" label.
+function fmtShortDate(timestampMs: number): string {
+  const d = new Date(timestampMs);
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
 
 function buildEpochs(
@@ -311,11 +398,15 @@ export default function DistributionDetail({
   const shareTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleShare = useCallback(() => {
-    navigator.clipboard.writeText(window.location.href).then(() => {
-      setShareCopied(true);
-      if (shareTimeoutRef.current) clearTimeout(shareTimeoutRef.current);
-      shareTimeoutRef.current = setTimeout(() => setShareCopied(false), 1500);
-    });
+    navigator.clipboard
+      .writeText(window.location.href)
+      .then(() => {
+        showToast("copy.link");
+        setShareCopied(true);
+        if (shareTimeoutRef.current) clearTimeout(shareTimeoutRef.current);
+        shareTimeoutRef.current = setTimeout(() => setShareCopied(false), 1500);
+      })
+      .catch(() => showToast("generic.error"));
   }, []);
 
   useEffect(
@@ -353,6 +444,22 @@ export default function DistributionDetail({
   }, [contractInfo]);
 
   const countdown = useCountdown(endTimestampMs);
+
+  const startTimestampMs = useMemo(() => {
+    if (!contractInfo) return 0;
+    return Number(contractInfo.startingTimestamp) * 1000;
+  }, [contractInfo]);
+  const startCountdown = useCountdown(startTimestampMs);
+
+  const epochDurationLabel = useMemo(() => {
+    if (!contractInfo) return "—";
+    return formatDuration(Number(contractInfo.epochDuration));
+  }, [contractInfo]);
+
+  const claimDelayLabel = useMemo(() => {
+    if (!contractInfo) return "—";
+    return formatDuration(Number(contractInfo.claimDelaySeconds));
+  }, [contractInfo]);
 
   const currentEpochEndMs = useMemo(() => {
     if (!contractInfo || currentEpoch === undefined) return 0;
@@ -443,14 +550,19 @@ export default function DistributionDetail({
   const handleClaim = useCallback(async () => {
     if (!walletClient || !publicClient || !contractInfo || !claimData) return;
 
-    if (claimData.claimableAmount === BigInt(0)) return;
+    if (claimData.claimableAmount === BigInt(0)) {
+      showToast("claim.nothing");
+      return;
+    }
 
     const distributor = getDistributorV1Contract(
       walletClient,
       contractAddress as Address,
     );
 
+    const toastId = `claim-${contractAddress}`;
     setClaimState("claiming");
+    showToast("claim.pending", { id: toastId, params: { symbol: tokenSymbol ?? "" } });
     try {
       const claimParams = claimData!.ranges.map((r) => {
         return {
@@ -470,12 +582,27 @@ export default function DistributionDetail({
         account: walletClient.account,
         chain: walletClient.chain,
       });
-      await publicClient.waitForTransactionReceipt({ hash: claimTx });
+      const claimReceipt = await publicClient.waitForTransactionReceipt({ hash: claimTx });
+      if (claimReceipt.status === "reverted") {
+        showToast("claim.failed", { id: toastId, action: viewTransactionAction(chainId, claimTx) });
+        setClaimState("error");
+        return;
+      }
+
+      showToast("claim.success", {
+        id: toastId,
+        params: {
+          amount: formatUnits(claimData.claimableAmount, 18),
+          symbol: tokenSymbol ?? "",
+        },
+        action: viewTransactionAction(chainId, claimTx),
+      });
 
       setClaimState("done");
       refetch();
     } catch (e) {
       console.error("Claim failed:", e);
+      showToast(isUserRejectedError(e) ? "claim.rejected" : "claim.failed", { id: toastId });
       setClaimState("error");
     }
   }, [
@@ -485,6 +612,8 @@ export default function DistributionDetail({
     contractAddress,
     refetch,
     claimData,
+    chainId,
+    tokenSymbol,
   ]);
 
   const canParticipate =
@@ -498,15 +627,13 @@ export default function DistributionDetail({
     participateState === "approving" || participateState === "participating";
   const participateLabel = !isWalletConnected
     ? "Connect wallet"
-    : state === "waiting"
-      ? "Not started"
-      : isParticipating
-        ? participateState === "approving"
-          ? "Approving..."
-          : "Participating..."
-        : canParticipate
-          ? `Participate in ${epochCountNum} epoch${epochCountNum > 1 ? "s" : ""}`
-          : "Participate";
+    : isParticipating
+      ? participateState === "approving"
+        ? "Approving..."
+        : "Participating..."
+      : canParticipate
+        ? `Participate in ${epochCountNum} epoch${epochCountNum > 1 ? "s" : ""}`
+        : "Participate";
 
   const handleParticipateClick = async () => {
     if (!isWalletConnected) {
@@ -516,8 +643,11 @@ export default function DistributionDetail({
     if (!epochCount.validate()) return;
     if (!walletClient || !contractInfo || currentEpoch === undefined) return;
 
+    const toastId = `participate-${contractAddress}`;
+
     try {
       setParticipateState("approving");
+      showToast("participate.pending", { id: toastId, params: { epoch: Number(currentEpoch) } });
 
       const totalAmount = parseUnits(amount, participationTokenDecimals!);
       const amountPerEpoch = totalAmount / BigInt(epochCountNum);
@@ -542,7 +672,12 @@ export default function DistributionDetail({
           [contractAddress as Address, maxUint256],
           { account: walletClient.account, chain: walletClient.chain },
         );
-        await publicClient!.waitForTransactionReceipt({ hash: approveTx });
+        const approveReceipt = await publicClient!.waitForTransactionReceipt({ hash: approveTx });
+
+      if (approveReceipt.status === "reverted") {
+        showToast("approve.failed", { id: toastId, action: viewTransactionAction(chainId, approveTx) });
+        setParticipateState("error");
+        return;}
       }
 
       setParticipateState("participating");
@@ -568,13 +703,29 @@ export default function DistributionDetail({
         account: walletClient.account,
         chain: walletClient.chain,
       });
-      await publicClient!.waitForTransactionReceipt({ hash: participateTx });
+      const participateReceipt = await publicClient!.waitForTransactionReceipt({ hash: participateTx });
+      if (participateReceipt.status === "reverted") {
+        showToast("participate.failed", { id: toastId, action: viewTransactionAction(chainId, participateTx) });
+        setParticipateState("error");
+        return;
+      }
+      const action = viewTransactionAction(chainId, participateTx);
+      if (epochCountNum > 1) {
+        showToast("participate.multiSuccess", {
+          id: toastId,
+          params: { n: epochCountNum, first: Number(currentEpoch), last: Number(currentEpoch) + epochCountNum - 1 },
+          action,
+        });
+      } else {
+        showToast("participate.success", { id: toastId, params: { epoch: Number(currentEpoch) }, action });
+      }
 
       setParticipateState("idle");
       setAmount("");
       refetch();
     } catch (e) {
       console.error("Participate failed:", e);
+      showToast(isUserRejectedError(e) ? "participate.rejected" : "participate.failed", { id: toastId });
       setParticipateState("error");
     }
   };
@@ -586,6 +737,13 @@ export default function DistributionDetail({
     }
     setDialogueOpen(true);
   };
+
+  const isInteractive = state === "running";
+  const submitLabel = isInteractive
+    ? participateLabel
+    : state === "waiting"
+      ? `Starts ${fmtShortDate(startTimestampMs)}!`
+      : "Distribution is finished!";
 
   function renderClaimAndParticipation(idPrefix: string) {
     return (
@@ -634,7 +792,9 @@ export default function DistributionDetail({
           </div>
         )}
 
-        <div className="ddp-participation">
+        <div
+          className={`ddp-participation${isInteractive ? "" : " ddp-participation--disabled"}`}
+        >
           <h2>Participation</h2>
           <div className="ddp-participation__field">
             <label htmlFor={`${idPrefix}-amount`}>
@@ -648,6 +808,7 @@ export default function DistributionDetail({
                 placeholder="e.g. 50"
                 autoComplete="off"
                 value={amount}
+                disabled={!isInteractive}
                 onChange={(e) => setAmount(e.target.value)}
               />
               <span>{participationTokenSymbol}</span>
@@ -673,6 +834,7 @@ export default function DistributionDetail({
                   inputMode="numeric"
                   autoComplete="off"
                   value={epochCount.value}
+                  disabled={!isInteractive}
                   onChange={(e) => epochCount.onChange(e.target.value)}
                 />
                 <span>Epochs</span>
@@ -687,7 +849,7 @@ export default function DistributionDetail({
                 variant="outline"
                 size="m"
                 aria-label="Decrease epoch count"
-                disabled={epochCountNum <= 1}
+                disabled={!isInteractive || epochCountNum <= 1}
                 onClick={() =>
                   epochCount.onChange(String(Math.max(1, epochCountNum - 1)))
                 }
@@ -697,6 +859,7 @@ export default function DistributionDetail({
                 variant="secondary"
                 size="m"
                 aria-label="Increase epoch count"
+                disabled={!isInteractive}
                 onClick={() =>
                   epochCount.onChange(
                     String(Math.min(maxEpochs, epochCountNum + 1)),
@@ -705,15 +868,21 @@ export default function DistributionDetail({
               />
             </div>
           </div>
-          <Button
-            variant="primary"
-            size="m"
-            fullWidth
-            disabled={isWalletConnected && !canParticipate}
-            onClick={handleParticipateClick}
-          >
-            {participateLabel}
-          </Button>
+          <div className="ddp-participation__action">
+            <div className="ddp-participation__delay">
+              <span>Claim delay</span>
+              <span>{claimDelayLabel}</span>
+            </div>
+            <Button
+              variant="primary"
+              size="m"
+              className="ddp-participation__submit"
+              disabled={!isInteractive || (isWalletConnected && !canParticipate)}
+              onClick={handleParticipateClick}
+            >
+              {submitLabel}
+            </Button>
+          </div>
         </div>
       </>
     );
@@ -762,6 +931,12 @@ export default function DistributionDetail({
                   <div className="ddp-token-header__name-row">
                     <h1>{tokenName}</h1>
                     <span className="ddp-ticker">{tokenSymbol}</span>
+                    {state && (
+                      <Status
+                        status={STATE_TO_STATUS[state]}
+                        className="ddp-token-header__status"
+                      />
+                    )}
                   </div>
                   <div className="ddp-token-header__creator ddp-token-header__creator--desktop">
                     <span>Created by</span>
@@ -805,78 +980,87 @@ export default function DistributionDetail({
 
             <div className="ddp-main-content">
               <section className="ddp-summary">
-                <div className="ddp-summary-row">
-                  <div className="ddp-stat">
-                    <span className="ddp-stat__label">Distributed supply</span>
-                    <div className="ddp-stat__value-row">
-                      <span className="ddp-stat__value-primary">
-                        {fmtInt(stats.distributedSupply)}
-                      </span>
-                      <span className="ddp-stat__slash">/</span>
-                      <span className="ddp-stat__value-secondary">
-                        {fmtInt(stats.totalSupply)}
-                      </span>
-                      <span className="ddp-stat__unit">{tokenSymbol}</span>
+                {state !== "waiting" && (
+                  <div className="ddp-summary-row">
+                    <div className="ddp-stat">
+                      <span className="ddp-stat__label">Distributed supply</span>
+                      <div className="ddp-stat__value-row">
+                        <span className="ddp-stat__value-primary">
+                          {fmtInt(stats.distributedSupply)}
+                        </span>
+                        <span className="ddp-stat__slash">/</span>
+                        <span className="ddp-stat__value-secondary">
+                          {fmtInt(stats.totalSupply)}
+                        </span>
+                        <span className="ddp-stat__unit">{tokenSymbol}</span>
+                      </div>
+                    </div>
+                    <div className="ddp-stat">
+                      <span className="ddp-stat__label">Total participation</span>
+                      <div className="ddp-stat__value-row">
+                        <span className="ddp-stat__value-primary">
+                          {roundUnits(stats.totalParticipation,participationTokenDecimals??18)}
+                        </span>
+                        <span className="ddp-stat__unit">
+                          {participationTokenSymbol}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div className="ddp-stat">
-                    <span className="ddp-stat__label">Total participation</span>
-                    <div className="ddp-stat__value-row">
-                      <span className="ddp-stat__value-primary">
-                        {roundUnits(
-                          stats.totalParticipation,
-                          participationTokenDecimals ?? 18,
-                        )}
-                      </span>
-                      <span className="ddp-stat__unit">
-                        {participationTokenSymbol}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                )}
 
-                <div className="ddp-countdown-row">
-                  <div className="ddp-countdown-label">
-                    <span>Distribution period</span>
-                    <div className="ddp-countdown-sub">
-                      <span>Ends</span>
-                      <span className="ddp-countdown-sub__value">
-                        {fmtEpochDate(endTimestampMs, true)}
-                      </span>
-                    </div>
+                {state === "waiting" ? (
+                  <div className="ddp-countdown-row">
+                    <PeriodLabel
+                      title="Distribution starts in"
+                      prefix="Starts"
+                      value={fmtPeriodDateTime(startTimestampMs)}
+                    />
+                    <CountdownClock value={startCountdown} />
                   </div>
-                  <div className="ddp-countdown-clock">
-                    <div className="ddp-countdown-segment">
-                      <strong>{countdown.days}</strong>
-                      <span>D</span>
-                    </div>
-                    <span className="ddp-countdown-divider" />
-                    <div className="ddp-countdown-segment">
-                      <strong>{countdown.hours}</strong>
-                      <span>H</span>
-                    </div>
-                    <span className="ddp-countdown-divider" />
-                    <div className="ddp-countdown-segment">
-                      <strong>{countdown.minutes}</strong>
-                      <span>M</span>
-                    </div>
-                    <span className="ddp-countdown-divider" />
-                    <div className="ddp-countdown-segment">
-                      <strong>{countdown.seconds}</strong>
-                      <span>S</span>
-                    </div>
+                ) : state === "ended" ? (
+                  <div className="ddp-countdown-row">
+                    <PeriodLabel
+                      title="Distribution period"
+                      prefix="Ends"
+                      value={fmtPeriodDateTime(endTimestampMs)}
+                    />
+                    <p className="ddp-countdown-finished">
+                      This distribution is finished!
+                    </p>
                   </div>
-                </div>
+                ) : (
+                  <div className="ddp-countdown-row">
+                    <PeriodLabel
+                      title="Distribution period"
+                      prefix="Ends"
+                      value={fmtPeriodDateTime(endTimestampMs)}
+                    />
+                    <CountdownClock value={countdown} />
+                  </div>
+                )}
 
-                <Button
-                  variant="primary"
-                  size="m"
-                  fullWidth
-                  className="ddp-summary__participate"
-                  onClick={handleMobileParticipateClick}
-                >
-                  {participateLabel}
-                </Button>
+                {isInteractive ? (
+                  <Button
+                    variant="primary"
+                    size="m"
+                    fullWidth
+                    className="ddp-summary__participate"
+                    onClick={handleMobileParticipateClick}
+                  >
+                    {participateLabel}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="m"
+                    fullWidth
+                    className="ddp-summary__participate ddp-summary__participate--muted"
+                    onClick={() => setDialogueOpen(true)}
+                  >
+                    {submitLabel}
+                  </Button>
+                )}
               </section>
 
               <section className="ddp-epochs-data">
@@ -889,6 +1073,10 @@ export default function DistributionDetail({
                     <InlineStat
                       label="Supply per epoch (Flat release)"
                       value={`${fmtInt(supplyPerEpoch)} ${tokenSymbol}`}
+                    />
+                    <InlineStat
+                      label="Epoch duration"
+                      value={epochDurationLabel}
                     />
                   </div>
                   <EpochBlockChart
@@ -927,34 +1115,29 @@ export default function DistributionDetail({
                   </div>
                 </div>
 
-                <div className="ddp-epoch-card">
-                  <div className="ddp-epoch-card__info">
-                    <div className="ddp-epoch-card__data">
-                      <span>
-                        {isHovering ? "Epoch number" : "Current epoch"}
-                      </span>
-                      <div className="ddp-epoch-card__data-row ddp-epoch-card__data-row--epoch">
-                        <strong className={isHovering ? "is-accent" : ""}>
-                          #{displayEpoch?.epoch ?? "—"}
-                        </strong>
-                        <time className={isHovering ? "is-accent" : ""}>
-                          {displayEpoch
-                            ? fmtEpochDate(displayEpoch.timestamp, !isHovering)
-                            : "—"}
-                        </time>
-                      </div>
-                    </div>
-                    <div className="ddp-epoch-card__data">
-                      <span>
-                        {isHovering ? "Clear price" : "Last clear price"}
-                      </span>
-                      <div className="ddp-epoch-card__data-row ddp-epoch-card__data-row--price">
-                        <strong className={isHovering ? "is-accent" : ""}>
-                          {displayClearPrice?.toFixed(4) ?? "—"}
-                        </strong>
-                        <span className="ddp-epoch-card__unit">
-                          {participationTokenSymbol}
+                {state !== "waiting" && (
+                  <div className="ddp-epoch-card">
+                    <div className="ddp-epoch-card__info">
+                      <div className="ddp-epoch-card__data">
+                        <span>
+                          {isHovering ? "Epoch number" : "Current epoch"}
+                          {!isHovering && state === "ended" && (
+                            <span className="ddp-epoch-card__tag">
+                              {" "}
+                              Last epoch
+                            </span>
+                          )}
                         </span>
+                        <div className="ddp-epoch-card__data-row ddp-epoch-card__data-row--epoch">
+                          <strong className={isHovering ? "is-accent" : ""}>
+                            #{displayEpoch?.epoch ?? "—"}
+                          </strong>
+                          <time className={isHovering ? "is-accent" : ""}>
+                            {displayEpoch
+                              ? fmtEpochDate(displayEpoch.timestamp, !isHovering)
+                              : "—"}
+                          </time>
+                        </div>
                       </div>
                     </div>
                     <div className="ddp-epoch-card__data">
@@ -966,27 +1149,46 @@ export default function DistributionDetail({
                         <span className="ddp-epoch-card__unit">
                           {participationTokenSymbol}
                         </span>
-                        <span className="ddp-epoch-card__by">by</span>
-                        <strong className={isHovering ? "is-accent" : ""}>
-                          {displayParticipants}
-                        </strong>
-                        <span className="ddp-epoch-card__by">participants</span>
+                        <div className="ddp-epoch-card__data-row ddp-epoch-card__data-row--price">
+                          <strong className={isHovering ? "is-accent" : ""}>
+                            {displayClearPrice?.toFixed(4) ?? "—"}
+                          </strong>
+                          <span className="ddp-epoch-card__unit">
+                            {participationTokenSymbol}
+                          </span>
+                        </div>
                       </div>
+                      <div className="ddp-epoch-card__data">
+                        <span>Participation this epoch</span>
+                        <div className="ddp-epoch-card__data-row ddp-epoch-card__data-row--participation">
+                          <strong className={isHovering ? "is-accent" : ""}>
+                            {fmtInt(displayParticipation)}
+                          </strong>
+                          <span className="ddp-epoch-card__unit">
+                            {participationTokenSymbol}
+                          </span>
+                          <span className="ddp-epoch-card__by">by</span>
+                          <strong className={isHovering ? "is-accent" : ""}>
+                            {displayParticipants}
+                          </strong>
+                          <span className="ddp-epoch-card__by">participants</span>
+                        </div>
+                      </div>
+                      <p className="ddp-epoch-card__note">
+                        The clear price is set when the epoch closes, everyone in
+                        the epoch gets the same price.
+                      </p>
                     </div>
-                    <p className="ddp-epoch-card__note">
-                      The clear price is set when the epoch closes, everyone in
-                      the epoch gets the same price.
-                    </p>
+                    <div className="ddp-epoch-card__chart">
+                      <EpochComboChart
+                        epochs={epochs}
+                        quoteSymbol={participationTokenSymbol}
+                        tokenSymbol={tokenSymbol}
+                        onHoverEpoch={setHoveredEpoch}
+                      />
+                    </div>
                   </div>
-                  <div className="ddp-epoch-card__chart">
-                    <EpochComboChart
-                      epochs={epochs}
-                      quoteSymbol={participationTokenSymbol}
-                      tokenSymbol={tokenSymbol}
-                      onHoverEpoch={setHoveredEpoch}
-                    />
-                  </div>
-                </div>
+                )}
               </section>
 
               <section className="ddp-faq">
@@ -1078,6 +1280,8 @@ export default function DistributionDetail({
           </div>
         </div>
       </div>
+
+      <InsideFooter />
 
       {dialogueOpen && (
         <div

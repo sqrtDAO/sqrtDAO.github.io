@@ -29,6 +29,8 @@ import {
   transferToHookAbi,
 } from "@/contracts/abis";
 import { quickSqrtPriceX96 } from "@/lib/utils/sqrtPricex96";
+import { showToast } from "@/hooks/useToast";
+import { viewTransactionAction as viewTxAction } from "@/utils/explorer-utils";
 import { setupTokenAvatar } from "@/utils/avatar-api";
 
 // Flow steps for the token wizard overlay
@@ -90,6 +92,9 @@ export default function Page() {
     }
     const buyBackAndBurnShareBps =
       BigInt(10000) - (dd.founderShareBps + dd.protocolFeeBps);
+
+    const toastId = "distribution-launch";
+    showToast("deploy.pending", { id: toastId });
 
     const allowance = await participationToken.read.allowance([
       walletClient!.account.address,
@@ -161,8 +166,22 @@ export default function Page() {
 
     const receipt = await publicClient!.waitForTransactionReceipt({ hash });
 
-    if (receipt.status === "reverted")
+    if (receipt.status === "reverted") {
+      showToast("deploy.failed", {
+        id: toastId,
+        action: viewTxAction(walletClient!.chain.id, hash),
+      });
       throw 'transaction "createTokenAndLiquidityAndDistribution" failed ';
+    }
+
+    showToast("deploy.success", {
+      id: toastId,
+      params: { symbol: token!.symbol },
+      action: viewTxAction(walletClient!.chain.id, hash),
+    });
+    showToast("launch.success", {
+      action: viewTxAction(walletClient!.chain.id, hash),
+    });
 
     let distributor: `0x${string}` | undefined;
     let tokenAddress: `0x${string}` | undefined;
@@ -176,6 +195,12 @@ export default function Page() {
         if (event.eventName === "NewDistributor") {
           distributor = (event.args as { distributor: `0x${string}` })
             .distributor;
+          // brief pause so the success toasts are visible before the full-page
+          // navigation below wipes the (in-memory) toast state
+          setTimeout(() => {
+            document.location.href = `/distribution/?address=${distributor}`;
+          }, 1500);
+          return;
         }
       } catch {}
       try {

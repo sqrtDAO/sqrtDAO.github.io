@@ -2,34 +2,27 @@
 
 import { useState } from "react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { IconWallet } from "@tabler/icons-react";
+import { IconMenu2, IconWallet, IconX } from "@tabler/icons-react";
 import Link from "next/link";
 import Logo from "@/components/Logo/Logo";
 import { Button } from "@/components/Button/Button";
 import { IconButton } from "@/components/IconButton/IconButton";
+import {
+  DOCS_URL,
+  EXPLORE_DISTRIBUTIONS_HREF,
+  TRY_TESTNET_HREF,
+} from "@/constants/links";
 import "./Header.css";
 
 export interface HeaderProps {
-  onLaunchClick?: () => void;
-  onDistributeClick?: () => void;
-  onAboutClick?: () => void;
   onConnectWallet?: () => void;
   className?: string;
 }
 
-export default function Header({
-  onLaunchClick,
-  onDistributeClick,
-  onAboutClick,
-  onConnectWallet,
-  className,
-}: HeaderProps) {
+export default function Header({ onConnectWallet, className }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const handleNavClick = (handler?: () => void) => () => {
-    setMobileMenuOpen(false);
-    handler?.();
-  };
+  const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
     <header className={`sqrt-header${className ? ` ${className}` : ""}`}>
@@ -38,15 +31,20 @@ export default function Header({
           <Logo mono width={92} height={40} />
         </Link>
         <nav className="sqrt-header__nav" aria-label="Primary">
-          {/* <Button variant="ghost" size="m" onClick={onLaunchClick}>
-            Launch token
-          </Button>
-          <Button variant="ghost" size="m" onClick={onDistributeClick}>
-            Distribute token
-          </Button>
-          <Button variant="ghost" size="m" onClick={onAboutClick}>
-            About us
-          </Button> */}
+          <Link href={TRY_TESTNET_HREF} className="sqrt-btn sqrt-btn--ghost sqrt-btn--m">
+            <span className="sqrt-btn__label">Launch and distribute token</span>
+          </Link>
+          <Link href={EXPLORE_DISTRIBUTIONS_HREF} className="sqrt-btn sqrt-btn--ghost sqrt-btn--m">
+            <span className="sqrt-btn__label">Distributions</span>
+          </Link>
+          <a
+            href={DOCS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="sqrt-btn sqrt-btn--ghost sqrt-btn--m"
+          >
+            <span className="sqrt-btn__label">Documentation</span>
+          </a>
         </nav>
         <ConnectButton.Custom>
           {({
@@ -113,7 +111,7 @@ export default function Header({
           }}
         </ConnectButton.Custom>
 
-        {/* <IconButton
+        <IconButton
           icon={
             mobileMenuOpen ? (
               <IconX size={24} strokeWidth={1.75} />
@@ -127,7 +125,7 @@ export default function Header({
           aria-expanded={mobileMenuOpen}
           className="sqrt-header__menu-btn"
           onClick={() => setMobileMenuOpen((open) => !open)}
-        /> */}
+        />
         <Link href="/" className="sqrt-header__logo sqrt-header__logo--mobile">
           <Logo variant="sign" mono width={43} height={33} />
         </Link>
@@ -200,30 +198,29 @@ export default function Header({
       {mobileMenuOpen && (
         <nav className="sqrt-header__mobile-menu" aria-label="Primary">
           <div className="sqrt-header__mobile-menu-inner">
-            <Button
-              variant="ghost"
-              size="l"
-              fullWidth
-              onClick={handleNavClick(onLaunchClick)}
+            <Link
+              href={TRY_TESTNET_HREF}
+              onClick={closeMobileMenu}
+              className="sqrt-btn sqrt-btn--ghost sqrt-btn--l sqrt-btn--full"
             >
-              Launch token
-            </Button>
-            <Button
-              variant="ghost"
-              size="l"
-              fullWidth
-              onClick={handleNavClick(onDistributeClick)}
+              <span className="sqrt-btn__label">Launch and distribute token</span>
+            </Link>
+            <Link
+              href={EXPLORE_DISTRIBUTIONS_HREF}
+              onClick={closeMobileMenu}
+              className="sqrt-btn sqrt-btn--ghost sqrt-btn--l sqrt-btn--full"
             >
-              Distribute token
-            </Button>
-            <Button
-              variant="ghost"
-              size="l"
-              fullWidth
-              onClick={handleNavClick(onAboutClick)}
+              <span className="sqrt-btn__label">Distributions</span>
+            </Link>
+            <a
+              href={DOCS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={closeMobileMenu}
+              className="sqrt-btn sqrt-btn--ghost sqrt-btn--l sqrt-btn--full"
             >
-              About us
-            </Button>
+              <span className="sqrt-btn__label">Documentation</span>
+            </a>
           </div>
         </nav>
       )}

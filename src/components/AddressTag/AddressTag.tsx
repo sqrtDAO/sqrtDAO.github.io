@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { IconCopy } from "@tabler/icons-react";
+import { showToast } from "@/hooks/useToast";
 import "./AddressTag.css";
 
 export interface AddressTagProps {
@@ -30,11 +31,12 @@ export default function AddressTag({ value, className }: AddressTagProps) {
     navigator.clipboard
       .writeText(value)
       .then(() => {
+        showToast("copy.address");
         setCopied(true);
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => setCopied(false), COPIED_DURATION_MS);
       })
-      .catch(() => {});
+      .catch(() => showToast("generic.error"));
   }, [value]);
 
   return (
