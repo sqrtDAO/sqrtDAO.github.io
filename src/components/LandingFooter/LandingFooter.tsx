@@ -1,7 +1,12 @@
 import Link from "next/link";
 import Logo from "@/components/Logo/Logo";
 import { Button } from "@/components/Button/Button";
-import { DISCORD_URL, X_URL, EXPLORE_DISTRIBUTIONS_HREF } from "@/constants/links";
+import {
+  DISCORD_URL,
+  X_URL,
+  DOCS_URL,
+  EXPLORE_DISTRIBUTIONS_HREF,
+} from "@/constants/links";
 
 // Narrow (mobile/tablet) layout — Figma clean component "landing footer"
 // (node 7063-28761), which frame "10" (node 7060-28154) instances directly.
@@ -34,21 +39,24 @@ function LandingFooterMobile({
         </p>
 
         <div className="flex w-full flex-col items-center gap-4">
+          <Button variant="primary" size="m" fullWidth onClick={onTryItClick}>
+            Try it on testnet
+          </Button>
           <div className="flex w-full gap-4">
-            <Button
-              variant="primary"
-              size="m"
-              className="flex-1"
-              onClick={onTryItClick}
-            >
-              Try it on testnet
-            </Button>
             <Link
               href={EXPLORE_DISTRIBUTIONS_HREF}
               className="sqrt-btn sqrt-btn--secondary sqrt-btn--m flex-1"
             >
               <span className="sqrt-btn__label">Distributions</span>
             </Link>
+            <a
+              href={DOCS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="sqrt-btn sqrt-btn--outline sqrt-btn--m flex-1"
+            >
+              <span className="sqrt-btn__label">Documentation</span>
+            </a>
           </div>
           <div className="flex w-full gap-4">
             <Button

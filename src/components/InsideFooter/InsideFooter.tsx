@@ -4,6 +4,7 @@ import { Button } from "@/components/Button/Button";
 import {
   DISCORD_URL,
   X_URL,
+  DOCS_URL,
   EXPLORE_DISTRIBUTIONS_HREF,
   TRY_TESTNET_HREF,
 } from "@/constants/links";
@@ -46,6 +47,14 @@ function InsideFooterMobile() {
         >
           Follow on X
         </Button>
+        <a
+          href={DOCS_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="sqrt-btn sqrt-btn--ghost sqrt-btn--m w-full"
+        >
+          <span className="sqrt-btn__label">Documentation</span>
+        </a>
       </nav>
       <p className="w-full text-center text-body-s text-tertiary">{COPYRIGHT}</p>
     </div>
@@ -71,6 +80,14 @@ export default function InsideFooter() {
           >
             <span className="sqrt-btn__label">Explore distributions</span>
           </Link>
+          <a
+            href={DOCS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="sqrt-btn sqrt-btn--ghost sqrt-btn--m"
+          >
+            <span className="sqrt-btn__label">Documentation</span>
+          </a>
           <Button
             variant="ghost"
             size="m"
