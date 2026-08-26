@@ -3,13 +3,10 @@
   width: 100%;
 }
 
-/* "container and layout will have a fixed width" on real pages — this
-   scroller is the safety net for the rare case a distribution has more
-   epochs than fit columns*5 blocks at that width. */
+/* Grid uses as many columns as fit the container width and grows rows to
+   hold the rest — the SVG is always sized to the container, so no scroll. */
 .epoch-block-chart__scroll {
   width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
 }
 
 .epoch-block-chart__grid {

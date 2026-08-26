@@ -10,7 +10,7 @@ import {
   IconShare,
   IconSquareRoundedCheckFilled,
 } from "@tabler/icons-react";
-import { type Address, formatUnits, parseUnits } from "viem";
+import { type Address, formatUnits, maxUint256, parseUnits } from "viem";
 import {
   useAccount,
   useChainId,
@@ -30,6 +30,7 @@ import FaqCard from "@/components/FaqCard/FaqCard";
 import InsideFooter from "@/components/InsideFooter/InsideFooter";
 import Status, { type DistributionStatus } from "@/components/Status/Status";
 import { useDistributorData } from "@/hooks/useDistributorData";
+import useTokenAvatar from "@/hooks/useTokenAvatar";
 import type {
   DistributionState,
   DistributorContractInfo,
@@ -42,6 +43,7 @@ import {
   getDistributorV1Contract,
   getTokenV1Contract,
 } from "@/contracts/contracts";
+import { distributorV1Abi, tokenV1Abi } from "@/contracts/abis";
 import { getAddresses } from "@/contracts/contract-addresses";
 import { useInput } from "@/hooks/useInput";
 import { numberOnlyModifier } from "@/utils/modifier";
@@ -50,6 +52,7 @@ import { formatDuration } from "@/utils/formatDuration";
 import { showToast } from "@/hooks/useToast";
 import { isUserRejectedError } from "@/utils/wallet-error";
 import { viewTransactionAction } from "@/utils/explorer-utils";
+import { roundUnits } from "@/utils/round-units";
 
 const EpochComboChart = dynamic(
   () => import("@/components/EpochComboChart/EpochComboChart"),
@@ -89,6 +92,15 @@ const FAQ_ITEMS = [
     q: "What happens when all the epochs are done?",
     a: "The distribution ends — remaining supply has all been released across the schedule, and the token trades freely from there.",
   },
+];
+
+const BLOCK_LEGEND = [
+  {
+    swatch: "var(--color-charts-epochs-500)",
+    label: "Participated (more vol → lighter)",
+  },
+  { swatch: "var(--sqrt-action-primary-rest)", label: "Current" },
+  { swatch: "var(--color-alpha-steel-08)", label: "No participation" },
 ];
 
 function useCountdown(endTimestamp: number) {
@@ -250,6 +262,7 @@ function buildEpochs(
   contractInfo: DistributorContractInfo,
   currentEpoch: bigint,
   epochInfo: readonly EpochInfo[] | undefined,
+  epochsFrom: bigint,
   decimals: number,
 ): EpochData[] {
   const numberOfEpochs = Number(contractInfo.numberOfEpochs);
@@ -261,13 +274,14 @@ function buildEpochs(
   const supplyPerEpoch =
     numberOfEpochs > 0 ? totalDistribution / numberOfEpochs : 0;
   const currentIdx = Number(currentEpoch);
+  const fromIdx = Number(epochsFrom);
 
   const epochs: EpochData[] = [];
   for (let i = 0; i < numberOfEpochs; i++) {
     const state: "passed" | "current" | "future" =
       i < currentIdx ? "passed" : i === currentIdx ? "current" : "future";
     const timestamp = (startingTimestampSec + i * epochDurationSec) * 1000;
-    const info = epochInfo?.[i];
+    const info = i >= fromIdx && epochInfo ? epochInfo[i - fromIdx] : undefined;
     const participationVolume = info
       ? Number(formatUnits(info.totalParticipationAmount, decimals))
       : 0;
@@ -334,6 +348,7 @@ export default function DistributionDetail({
     contractInfo,
     currentEpoch,
     epochsInfo,
+    epochsFrom,
     tokenName,
     tokenSymbol,
     claimData,
@@ -342,6 +357,8 @@ export default function DistributionDetail({
     isLoading,
     refetch,
   } = useDistributorData(contractAddress as Address);
+
+  const tokenAvatarUrl = useTokenAvatar(contractInfo?.distributionToken);
 
   const { isConnected: isWalletConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -353,7 +370,7 @@ export default function DistributionDetail({
 
   const maxEpochs = useMemo(() => {
     if (!contractInfo || currentEpoch === undefined) return 1;
-    return Math.max(1, Number(contractInfo.numberOfEpochs) - currentEpoch);
+    return Math.max(1, Number(contractInfo.numberOfEpochs - currentEpoch));
   }, [contractInfo, currentEpoch]);
 
   const epochCount = useInput("1", numberOnlyModifier, (v) => {
@@ -405,14 +422,15 @@ export default function DistributionDetail({
     if (contractInfo && currentEpoch !== undefined) {
       const built = buildEpochs(
         contractInfo,
-        BigInt(currentEpoch),
+        currentEpoch,
         epochsInfo,
+        epochsFrom,
         18,
       );
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setEpochs(built);
     }
-  }, [isLoading, contractInfo, currentEpoch, epochsInfo]);
+  }, [isLoading, contractInfo, currentEpoch, epochsInfo, epochsFrom]);
 
   const [endTimestampMs, setEndTimestampMs] = useState(0);
   useEffect(() => {
@@ -448,10 +466,19 @@ export default function DistributionDetail({
     return (
       Number(
         contractInfo.startingTimestamp +
-          BigInt(Number(currentEpoch) + 1) * contractInfo.epochDuration,
+          (currentEpoch + 1n) * contractInfo.epochDuration,
       ) * 1000
     );
   }, [contractInfo, currentEpoch]);
+
+  useEffect(() => {
+    if (!contractInfo) return;
+    const startTime = Number(contractInfo.startingTimestamp * 1000n);
+    const delay = startTime - Date.now();
+    if (delay < 0) return; // already started
+    const id = setTimeout(() => refetch(), delay);
+    return () => clearTimeout(id);
+  }, [contractInfo, refetch]);
 
   useEffect(() => {
     if (currentEpochEndMs <= 0 || state !== "running") return;
@@ -475,20 +502,16 @@ export default function DistributionDetail({
     const closed = epochs.filter((e) => e.state === "passed");
     const current = epochs.find((e) => e.state === "current");
     const future = epochs.filter((e) => e.state === "future");
-    const totalParticipation = epochs.reduce(
-      (sum, e) => sum + (e.state !== "future" ? e.participationVolume : 0),
-      0,
-    );
     const lastClosed = closed[closed.length - 1];
     return {
       totalEpochs: epochs.length,
       closedCount: closed.length,
       epochsLeft: future.length,
       distributedSupply: supplyPerEpoch * closed.length,
-      totalSupply: supplyPerEpoch * epochs.length,
-      totalParticipation,
+      totalSupply: supplyPerEpoch * Number(contractInfo?.numberOfEpochs ?? 0n),
+      totalParticipation: contractInfo?.totalParticipation ?? 0n,
       uniqueParticipants: contractInfo?.totalUniqueParticipants ?? 0n,
-      supplyRemaining: supplyPerEpoch * future.length,
+      supplyRemaining: supplyPerEpoch * (future.length + 1), // +1 because we count current epochs as not released yet
       current,
       lastClearPrice: lastClosed?.clearPrice ?? null,
     };
@@ -546,6 +569,14 @@ export default function DistributionDetail({
           user: walletClient.account.address!,
           range: { from: r.from, length: r.to - r.from + BigInt(1) },
         };
+      });
+      console.log("claim params:", claimParams);
+      await publicClient.simulateContract({
+        address: contractAddress as Address,
+        abi: distributorV1Abi,
+        functionName: "claimMany",
+        args: [claimParams],
+        account: walletClient.account.address,
       });
       const claimTx = await distributor.write.claimMany([claimParams], {
         account: walletClient.account,
@@ -616,7 +647,7 @@ export default function DistributionDetail({
 
     try {
       setParticipateState("approving");
-      showToast("participate.pending", { id: toastId, params: { epoch: currentEpoch } });
+      showToast("participate.pending", { id: toastId, params: { epoch: Number(currentEpoch) } });
 
       const totalAmount = parseUnits(amount, participationTokenDecimals!);
       const amountPerEpoch = totalAmount / BigInt(epochCountNum);
@@ -625,15 +656,28 @@ export default function DistributionDetail({
         walletClient,
         contractInfo.participationToken,
       );
-      const approveTx = await pToken.write.approve(
-        [contractAddress as Address, totalAmount],
-        { account: walletClient.account, chain: walletClient.chain },
-      );
-      const approveReceipt = await publicClient!.waitForTransactionReceipt({ hash: approveTx });
+      const allowance = await pToken.read.allowance([
+        walletClient.account.address,
+        contractAddress as Address,
+      ]);
+      if (allowance < totalAmount) {
+        await publicClient!.simulateContract({
+          address: contractInfo.participationToken,
+          abi: tokenV1Abi,
+          functionName: "approve",
+          args: [contractAddress as Address, maxUint256],
+          account: walletClient.account.address,
+        });
+        const approveTx = await pToken.write.approve(
+          [contractAddress as Address, maxUint256],
+          { account: walletClient.account, chain: walletClient.chain },
+        );
+        const approveReceipt = await publicClient!.waitForTransactionReceipt({ hash: approveTx });
+
       if (approveReceipt.status === "reverted") {
         showToast("approve.failed", { id: toastId, action: viewTransactionAction(chainId, approveTx) });
         setParticipateState("error");
-        return;
+        return;}
       }
 
       setParticipateState("participating");
@@ -642,31 +686,38 @@ export default function DistributionDetail({
         walletClient,
         contractAddress as Address,
       );
-      const participateTx = await distributor.write.participate(
-        [
-          amountPerEpoch,
-          { from: BigInt(currentEpoch), length: BigInt(epochCountNum) },
-          walletClient.account.address,
-          "0x",
-        ],
-        { account: walletClient.account, chain: walletClient.chain },
-      );
+      const params = [
+        amountPerEpoch,
+        { from: currentEpoch, length: BigInt(epochCountNum) },
+        walletClient.account.address,
+        "0x",
+      ] as const;
+      await publicClient!.simulateContract({
+        address: contractAddress as Address,
+        abi: distributorV1Abi,
+        functionName: "participate",
+        args: params,
+        account: walletClient.account.address,
+      });
+      const participateTx = await distributor.write.participate(params, {
+        account: walletClient.account,
+        chain: walletClient.chain,
+      });
       const participateReceipt = await publicClient!.waitForTransactionReceipt({ hash: participateTx });
       if (participateReceipt.status === "reverted") {
         showToast("participate.failed", { id: toastId, action: viewTransactionAction(chainId, participateTx) });
         setParticipateState("error");
         return;
       }
-
       const action = viewTransactionAction(chainId, participateTx);
       if (epochCountNum > 1) {
         showToast("participate.multiSuccess", {
           id: toastId,
-          params: { n: epochCountNum, first: currentEpoch, last: currentEpoch + epochCountNum - 1 },
+          params: { n: epochCountNum, first: Number(currentEpoch), last: Number(currentEpoch) + epochCountNum - 1 },
           action,
         });
       } else {
-        showToast("participate.success", { id: toastId, params: { epoch: currentEpoch }, action });
+        showToast("participate.success", { id: toastId, params: { epoch: Number(currentEpoch) }, action });
       }
 
       setParticipateState("idle");
@@ -709,7 +760,7 @@ export default function DistributionDetail({
               <>
                 <div className="ddp-claim-card__amount">
                   <span>
-                    {formatUnits(claimData?.claimableAmount ?? BigInt(0), 18)}
+                    {roundUnits(claimData?.claimableAmount ?? BigInt(0), 18)}
                   </span>
                   <span className="ddp-claim-card__unit">{tokenSymbol}</span>
                 </div>
@@ -873,6 +924,7 @@ export default function DistributionDetail({
               <div className="ddp-token-header__row1">
                 <TokenAvatar
                   seed={`${tokenName} ${tokenSymbol}`}
+                  imageUrl={tokenAvatarUrl ?? undefined}
                   className="ddp-token-header__avatar"
                 />
                 <div className="ddp-token-header__info">
@@ -947,7 +999,7 @@ export default function DistributionDetail({
                       <span className="ddp-stat__label">Total participation</span>
                       <div className="ddp-stat__value-row">
                         <span className="ddp-stat__value-primary">
-                          {fmtInt(stats.totalParticipation)}
+                          {roundUnits(stats.totalParticipation,participationTokenDecimals??18)}
                         </span>
                         <span className="ddp-stat__unit">
                           {participationTokenSymbol}
@@ -956,6 +1008,21 @@ export default function DistributionDetail({
                     </div>
                   </div>
                 )}
+                  <div className="ddp-stat">
+                    <span className="ddp-stat__label">Total participation</span>
+                    <div className="ddp-stat__value-row">
+                      <span className="ddp-stat__value-primary">
+                        {roundUnits(
+                          stats.totalParticipation,
+                          participationTokenDecimals ?? 18,
+                        )}
+                      </span>
+                      <span className="ddp-stat__unit">
+                        {participationTokenSymbol}
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
                 {state === "waiting" ? (
                   <div className="ddp-countdown-row">
@@ -1032,25 +1099,35 @@ export default function DistributionDetail({
                     quoteSymbol={participationTokenSymbol}
                     tokenSymbol={tokenSymbol}
                   />
-                  {state !== "waiting" && (
-                    <div className="ddp-block-card__stats-bottom">
-                      <InlineStat
-                        label="Unique participants"
-                        value={Number(stats.uniqueParticipants).toString()}
-                      />
-                      <InlineStat
-                        label="Supply remaining"
-                        value={`${fmtInt(stats.supplyRemaining)} ${tokenSymbol}`}
-                        danger={state === "ended"}
-                      />
-                      <InlineStat
-                        label="Epochs left"
-                        value={fmtInt(stats.epochsLeft)}
-                        valueFirst
-                        danger={state === "ended"}
-                      />
-                    </div>
-                  )}
+                  <div className="ddp-block-card__legend">
+                    {BLOCK_LEGEND.map((item) => (
+                      <span
+                        key={item.label}
+                        className="ddp-block-card__legend-item"
+                      >
+                        <span
+                          className="ddp-block-card__legend-swatch"
+                          style={{ background: item.swatch }}
+                        />
+                        {item.label}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="ddp-block-card__stats-bottom">
+                    <InlineStat
+                      label="Unique participants"
+                      value={stats.uniqueParticipants.toString()}
+                    />
+                    <InlineStat
+                      label="Supply remaining"
+                      value={`${fmtInt(stats.supplyRemaining)} ${tokenSymbol}`}
+                    />
+                    <InlineStat
+                      label="Epochs left"
+                      value={fmtInt(stats.epochsLeft)}
+                      valueFirst
+                    />
+                  </div>
                 </div>
 
                 {state !== "waiting" && (
@@ -1077,9 +1154,15 @@ export default function DistributionDetail({
                           </time>
                         </div>
                       </div>
-                      <div className="ddp-epoch-card__data">
-                        <span>
-                          {isHovering ? "Clear price" : "Last clear price"}
+                    </div>
+                    <div className="ddp-epoch-card__data">
+                      <span>Participation this epoch</span>
+                      <div className="ddp-epoch-card__data-row ddp-epoch-card__data-row--participation">
+                        <strong className={isHovering ? "is-accent" : ""}>
+                          {displayParticipation.toFixed(2)}
+                        </strong>
+                        <span className="ddp-epoch-card__unit">
+                          {participationTokenSymbol}
                         </span>
                         <div className="ddp-epoch-card__data-row ddp-epoch-card__data-row--price">
                           <strong className={isHovering ? "is-accent" : ""}>

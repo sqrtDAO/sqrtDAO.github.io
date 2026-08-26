@@ -20,7 +20,10 @@ const ibmPlex = IBM_Plex_Sans_Condensed({
 });
 
 export const metadata: Metadata = {
-  title: "sqrtDAO | Launch and distribute infrastructure",
+  title: {
+    default: "sqrtDAO | Launch and distribute infrastructure",
+    template: "%s | sqrtDAO docs",
+  },
   description:
     "Fair-launch infrastructure for tokens. Slow, pro-rata distribution across epochs, backing that can't be pulled, and no gatekeepers. Create a token or distribute an existing one | one fair engine, two ways in.",
   metadataBase: new URL("https://sqrtdao.org"),

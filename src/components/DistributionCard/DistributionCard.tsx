@@ -5,6 +5,7 @@ import { IconChevronRight } from "@tabler/icons-react";
 import type { Distribution } from "@/lib/fixtures/distributions";
 import Status from "@/components/Status/Status";
 import { formatDate } from "@/utils/formatDate";
+import { roundUnits } from "@/utils/round-units";
 
 export type DistributionCardProps = {
   distribution: Distribution;
@@ -22,7 +23,9 @@ export default function DistributionCard({
       <Link
         aria-label={`View ${distribution.tokenName} distribution`}
         className="absolute inset-0"
-        href={`/distribution?address=${distribution.address}`}
+        href={`/distribution/?address=${distribution.address}`}
+        target="_blank"
+        rel="noopener noreferrer"
       />
       <div className="flex items-center gap-2">
         <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-1">
@@ -42,7 +45,10 @@ export default function DistributionCard({
           {distribution.participationTokenSymbol} total funded
         </p>
         <p className="text-body-l leading-6 text-primary">
-          {distribution.totalParticipation.toLocaleString("en-US")}
+          {roundUnits(
+            distribution.totalParticipation,
+            distribution.participationTokenDecimals,
+          )}
         </p>
       </div>
 

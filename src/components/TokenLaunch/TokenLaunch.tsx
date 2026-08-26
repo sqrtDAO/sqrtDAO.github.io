@@ -1,6 +1,7 @@
 "use client";
 
-import { IconChevronLeft } from "@tabler/icons-react";
+import { useRef, useState } from "react";
+import { IconChevronLeft, IconPhotoPlus } from "@tabler/icons-react";
 import Input from "@/components/Input/Input";
 import { useInput } from "@/hooks/useInput";
 import TokenAvatar from "@/components/TokenAvatar/TokenAvatar";
@@ -22,6 +23,24 @@ import {
   requiredValidator,
   validateAll,
 } from "@/utils/validator";
+import {
+  requestUploadLink,
+  uploadToIpfs,
+} from "@/utils/avatar-api";
+import {
+  AVATAR_ALLOWED_MIME_TYPES,
+  AVATAR_MAX_FILE_SIZE,
+} from "@/constants/avatar";
+
+type AvatarStatus = "idle" | "uploading" | "ready" | "rejected" | "failed";
+
+const AVATAR_HINTS: Record<AvatarStatus, string> = {
+  idle: "Optional — click to set an avatar",
+  uploading: "Uploading avatar…",
+  ready: "Avatar ready",
+  rejected: "PNG, JPEG, GIF or WebP up to 5 MB",
+  failed: "Upload failed — try again",
+};
 
 export default function TokenLaunch(props: {
   onCancel: () => void;
@@ -35,13 +54,46 @@ export default function TokenLaunch(props: {
     nonZeroAmountValidator,
   );
 
-  const onContinueClick = () => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cidRef = useRef<string | null>(null);
+  const uploadTaskRef = useRef<Promise<void> | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [avatarStatus, setAvatarStatus] = useState<AvatarStatus>("idle");
+
+  const onPickFile = (file: File | undefined) => {
+    if (!file) return;
+    if (
+      !AVATAR_ALLOWED_MIME_TYPES.includes(file.type) ||
+      file.size > AVATAR_MAX_FILE_SIZE
+    ) {
+      setAvatarStatus("rejected");
+      return;
+    }
+    setPreviewUrl((old) => {
+      if (old) URL.revokeObjectURL(old);
+      return URL.createObjectURL(file);
+    });
+    setAvatarStatus("uploading");
+    uploadTaskRef.current = (async () => {
+      try {
+        const { upload_url } = await requestUploadLink();
+        cidRef.current = await uploadToIpfs(file, upload_url);
+        setAvatarStatus("ready");
+      } catch {
+        setAvatarStatus("failed");
+      }
+    })();
+  };
+
+  const onContinueClick = async () => {
     if (!validateAll(name, symbol, totalSupply)) return;
+    await uploadTaskRef.current;
     props.onFinish({
       name: name.value,
       symbol: symbol.value,
       decimals: 18,
       totalSupply: parseUnits(totalSupply.value.replace(/,/g, ""), 18),
+      avatarCid: cidRef.current ?? undefined,
     });
   };
 
@@ -73,7 +125,36 @@ export default function TokenLaunch(props: {
             </div>
 
             <div className="tl-row">
-              <TokenAvatar seed={symbol.value} />
+              <div className="tl-avatar">
+                <button
+                  type="button"
+                  className="tl-avatar-picker"
+                  onClick={() => fileInputRef.current?.click()}
+                  aria-label="Set token avatar"
+                >
+                  <TokenAvatar seed={symbol.value} imageUrl={previewUrl ?? undefined} />
+                  {avatarStatus !== "ready" && (
+                    <span className="tl-avatar-picker__glyph" aria-hidden="true">
+                      <IconPhotoPlus size={20} strokeWidth={2} />
+                    </span>
+                  )}
+                </button>
+                <p
+                  className={`tl-avatar-hint${avatarStatus === "rejected" || avatarStatus === "failed" ? " is-error" : ""}`}
+                >
+                  {AVATAR_HINTS[avatarStatus]}
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={AVATAR_ALLOWED_MIME_TYPES.join(",")}
+                  hidden
+                  onChange={(e) => {
+                    onPickFile(e.target.files?.[0]);
+                    e.target.value = "";
+                  }}
+                />
+              </div>
               <div className="tl-form">
                 <Input
                   state={name}
@@ -113,4 +194,5 @@ export type TokenDetails = {
   symbol: string;
   decimals: number;
   totalSupply: bigint;
+  avatarCid?: string;
 };

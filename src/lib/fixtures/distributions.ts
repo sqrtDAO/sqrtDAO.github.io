@@ -4,10 +4,12 @@ export type { DistributionStatus };
 
 export type Distribution = {
   address: `0x${string}`;
+  tokenAddress: `0x${string}`;
   tokenName: string;
   tokenSymbol: string;
   status: DistributionStatus;
-  totalParticipation: number;
+  totalParticipation: bigint;
+  participationTokenDecimals: number;
   participationTokenSymbol: string;
   /** ms since epoch. Future for "upcoming" rows. */
   startedAt: number;
@@ -82,10 +84,12 @@ const buildDistribution = (index: number, now: number): Distribution => {
 
   return {
     address: buildAddress(index),
+    tokenAddress: buildAddress(index + 1000),
     tokenName: name,
     tokenSymbol: name.slice(0, 4).toUpperCase(),
     status,
-    totalParticipation: ((index + 1) * 4137) % 500_000 + 5_000,
+    totalParticipation: BigInt(((index + 1) * 4137) % 500_000 + 5_000),
+    participationTokenDecimals: 18,
     participationTokenSymbol:
       PARTICIPATION_SYMBOLS[index % PARTICIPATION_SYMBOLS.length],
     ...buildTimestamps(index, status, now),

@@ -69,6 +69,256 @@ export const buyAndBurnHookV3Abi = [
 ] as const
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// DistributionV1Factory
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const distributionV1FactoryAbi = [
+  {
+    type: 'function',
+    inputs: [
+      { name: '_creator', internalType: 'address', type: 'address' },
+      {
+        name: '_config',
+        internalType: 'struct DistributorConfig',
+        type: 'tuple',
+        components: [
+          {
+            name: 'distributionToken',
+            internalType: 'address',
+            type: 'address',
+          },
+          {
+            name: 'participationToken',
+            internalType: 'address',
+            type: 'address',
+          },
+          { name: 'epochDuration', internalType: 'uint256', type: 'uint256' },
+          { name: 'startTimestamp', internalType: 'uint256', type: 'uint256' },
+          {
+            name: 'minParticipation',
+            internalType: 'uint256',
+            type: 'uint256',
+          },
+          {
+            name: 'claimDelaySeconds',
+            internalType: 'uint256',
+            type: 'uint256',
+          },
+          {
+            name: 'allowFutureEpochParticipation',
+            internalType: 'bool',
+            type: 'bool',
+          },
+          {
+            name: 'shares',
+            internalType: 'struct Share[]',
+            type: 'tuple[]',
+            components: [
+              { name: 'shareBps', internalType: 'uint256', type: 'uint256' },
+              {
+                name: 'hook',
+                internalType: 'struct Hook',
+                type: 'tuple',
+                components: [
+                  {
+                    name: 'contractAddress',
+                    internalType: 'address',
+                    type: 'address',
+                  },
+                  { name: 'callData', internalType: 'bytes', type: 'bytes' },
+                ],
+              },
+            ],
+          },
+          {
+            name: 'emissionFunction',
+            internalType: 'struct EmissionFunction',
+            type: 'tuple',
+            components: [
+              {
+                name: 'emissionContract',
+                internalType: 'contract IEmissionFunction',
+                type: 'address',
+              },
+              { name: 'curveConfig', internalType: 'bytes', type: 'bytes' },
+            ],
+          },
+          { name: 'allowlistSigner', internalType: 'address', type: 'address' },
+          {
+            name: 'allowlistDeadline',
+            internalType: 'uint256',
+            type: 'uint256',
+          },
+          { name: 'numberOfEpochs', internalType: 'uint256', type: 'uint256' },
+          {
+            name: 'totalDistributionAmount',
+            internalType: 'uint256',
+            type: 'uint256',
+          },
+        ],
+      },
+    ],
+    name: 'createDistributor',
+    outputs: [
+      { name: 'distributorAddress', internalType: 'address', type: 'address' },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: '', internalType: 'address', type: 'address' }],
+    name: 'creatorOf',
+    outputs: [{ name: '', internalType: 'address', type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'distributionListLength',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'factory',
+    outputs: [{ name: '', internalType: 'address', type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: '_offset', internalType: 'uint256', type: 'uint256' },
+      { name: '_size', internalType: 'uint256', type: 'uint256' },
+    ],
+    name: 'getDistributionsInfo',
+    outputs: [
+      {
+        name: 'result',
+        internalType: 'struct AddressAndDistributionInfo[]',
+        type: 'tuple[]',
+        components: [
+          {
+            name: 'info',
+            internalType: 'struct GetContractInfoResult',
+            type: 'tuple',
+            components: [
+              {
+                name: 'distributionToken',
+                internalType: 'address',
+                type: 'address',
+              },
+              {
+                name: 'participationToken',
+                internalType: 'address',
+                type: 'address',
+              },
+              {
+                name: 'epochDuration',
+                internalType: 'uint256',
+                type: 'uint256',
+              },
+              {
+                name: 'startingTimestamp',
+                internalType: 'uint256',
+                type: 'uint256',
+              },
+              {
+                name: 'minParticipation',
+                internalType: 'uint256',
+                type: 'uint256',
+              },
+              {
+                name: 'claimDelaySeconds',
+                internalType: 'uint256',
+                type: 'uint256',
+              },
+              {
+                name: 'totalParticipation',
+                internalType: 'uint256',
+                type: 'uint256',
+              },
+              {
+                name: 'remainingRewards',
+                internalType: 'uint256',
+                type: 'uint256',
+              },
+              {
+                name: 'numberOfEpochs',
+                internalType: 'uint256',
+                type: 'uint256',
+              },
+              {
+                name: 'totalDistributionAmount',
+                internalType: 'uint256',
+                type: 'uint256',
+              },
+              { name: 'creator', internalType: 'address', type: 'address' },
+              {
+                name: 'shares',
+                internalType: 'struct Share[]',
+                type: 'tuple[]',
+                components: [
+                  {
+                    name: 'shareBps',
+                    internalType: 'uint256',
+                    type: 'uint256',
+                  },
+                  {
+                    name: 'hook',
+                    internalType: 'struct Hook',
+                    type: 'tuple',
+                    components: [
+                      {
+                        name: 'contractAddress',
+                        internalType: 'address',
+                        type: 'address',
+                      },
+                      {
+                        name: 'callData',
+                        internalType: 'bytes',
+                        type: 'bytes',
+                      },
+                    ],
+                  },
+                ],
+              },
+              {
+                name: 'totalUniqueParticipants',
+                internalType: 'uint256',
+                type: 'uint256',
+              },
+            ],
+          },
+          { name: 'addr', internalType: 'address', type: 'address' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: '_factory', internalType: 'address', type: 'address' }],
+    name: 'setFactory',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      {
+        name: 'distributor',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+    name: 'NewDistributor',
+  },
+] as const
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // DistributorV1
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -412,6 +662,11 @@ export const distributorV1Abi = [
             type: 'uint256',
           },
           {
+            name: 'totalParticipation',
+            internalType: 'uint256',
+            type: 'uint256',
+          },
+          {
             name: 'remainingRewards',
             internalType: 'uint256',
             type: 'uint256',
@@ -586,6 +841,13 @@ export const distributorV1Abi = [
   {
     type: 'function',
     inputs: [],
+    name: 'totalParticipation',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
     name: 'totalUniqueParticipants',
     outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
     stateMutability: 'view',
@@ -743,6 +1005,16 @@ export const factoryV1Abi = [
         type: 'address',
       },
       { name: '_permit2', internalType: 'contract IPermit2', type: 'address' },
+      {
+        name: '_tokenFactory',
+        internalType: 'contract TokenV1Factory',
+        type: 'address',
+      },
+      {
+        name: '_distributorFactory',
+        internalType: 'contract DistributionV1Factory',
+        type: 'address',
+      },
     ],
     stateMutability: 'nonpayable',
   },
@@ -752,6 +1024,19 @@ export const factoryV1Abi = [
     name: 'BUY_AND_BURN_HOOK',
     outputs: [
       { name: '', internalType: 'contract BuyAndBurnHookV3', type: 'address' },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'DISTRIBUTOR_FACTORY',
+    outputs: [
+      {
+        name: '',
+        internalType: 'contract DistributionV1Factory',
+        type: 'address',
+      },
     ],
     stateMutability: 'view',
   },
@@ -779,6 +1064,15 @@ export const factoryV1Abi = [
         internalType: 'contract INonfungiblePositionManager',
         type: 'address',
       },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'TOKEN_FACTORY',
+    outputs: [
+      { name: '', internalType: 'contract TokenV1Factory', type: 'address' },
     ],
     stateMutability: 'view',
   },
@@ -1179,32 +1473,6 @@ export const factoryV1Abi = [
     anonymous: false,
     inputs: [
       {
-        name: 'distributor',
-        internalType: 'address',
-        type: 'address',
-        indexed: true,
-      },
-    ],
-    name: 'NewDistributor',
-  },
-  {
-    type: 'event',
-    anonymous: false,
-    inputs: [
-      {
-        name: 'tokenAddress',
-        internalType: 'address',
-        type: 'address',
-        indexed: true,
-      },
-    ],
-    name: 'NewToken',
-  },
-  {
-    type: 'event',
-    anonymous: false,
-    inputs: [
-      {
         name: 'previousOwner',
         internalType: 'address',
         type: 'address',
@@ -1449,6 +1717,86 @@ export const tokenV1Abi = [
 ] as const
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// TokenV1Factory
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const tokenV1FactoryAbi = [
+  {
+    type: 'function',
+    inputs: [
+      { name: '_name', internalType: 'string', type: 'string' },
+      { name: '_symbol', internalType: 'string', type: 'string' },
+      {
+        name: '_allocations',
+        internalType: 'struct Allocation[]',
+        type: 'tuple[]',
+        components: [
+          { name: 'recipient', internalType: 'address', type: 'address' },
+          { name: 'amount', internalType: 'uint256', type: 'uint256' },
+        ],
+      },
+      { name: '_creator', internalType: 'address', type: 'address' },
+    ],
+    name: 'createToken',
+    outputs: [
+      { name: 'tokenAddress', internalType: 'address', type: 'address' },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: '', internalType: 'address', type: 'address' }],
+    name: 'creatorOf',
+    outputs: [{ name: '', internalType: 'address', type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'factory',
+    outputs: [{ name: '', internalType: 'address', type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: '_offset', internalType: 'uint256', type: 'uint256' },
+      { name: '_size', internalType: 'uint256', type: 'uint256' },
+    ],
+    name: 'getTokens',
+    outputs: [{ name: 'result', internalType: 'address[]', type: 'address[]' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: '_factory', internalType: 'address', type: 'address' }],
+    name: 'setFactory',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'tokenListLength',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      {
+        name: 'tokenAddress',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+    name: 'NewToken',
+  },
+] as const
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // TransferToHook
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1552,6 +1900,112 @@ export const useWatchBuyAndBurnHookV3BoughtAndBurnedV3Event =
   /*#__PURE__*/ createUseWatchContractEvent({
     abi: buyAndBurnHookV3Abi,
     eventName: 'BoughtAndBurnedV3',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributionV1FactoryAbi}__
+ */
+export const useReadDistributionV1Factory = /*#__PURE__*/ createUseReadContract(
+  { abi: distributionV1FactoryAbi },
+)
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributionV1FactoryAbi}__ and `functionName` set to `"creatorOf"`
+ */
+export const useReadDistributionV1FactoryCreatorOf =
+  /*#__PURE__*/ createUseReadContract({
+    abi: distributionV1FactoryAbi,
+    functionName: 'creatorOf',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributionV1FactoryAbi}__ and `functionName` set to `"distributionListLength"`
+ */
+export const useReadDistributionV1FactoryDistributionListLength =
+  /*#__PURE__*/ createUseReadContract({
+    abi: distributionV1FactoryAbi,
+    functionName: 'distributionListLength',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributionV1FactoryAbi}__ and `functionName` set to `"factory"`
+ */
+export const useReadDistributionV1FactoryFactory =
+  /*#__PURE__*/ createUseReadContract({
+    abi: distributionV1FactoryAbi,
+    functionName: 'factory',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributionV1FactoryAbi}__ and `functionName` set to `"getDistributionsInfo"`
+ */
+export const useReadDistributionV1FactoryGetDistributionsInfo =
+  /*#__PURE__*/ createUseReadContract({
+    abi: distributionV1FactoryAbi,
+    functionName: 'getDistributionsInfo',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link distributionV1FactoryAbi}__
+ */
+export const useWriteDistributionV1Factory =
+  /*#__PURE__*/ createUseWriteContract({ abi: distributionV1FactoryAbi })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link distributionV1FactoryAbi}__ and `functionName` set to `"createDistributor"`
+ */
+export const useWriteDistributionV1FactoryCreateDistributor =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: distributionV1FactoryAbi,
+    functionName: 'createDistributor',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link distributionV1FactoryAbi}__ and `functionName` set to `"setFactory"`
+ */
+export const useWriteDistributionV1FactorySetFactory =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: distributionV1FactoryAbi,
+    functionName: 'setFactory',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link distributionV1FactoryAbi}__
+ */
+export const useSimulateDistributionV1Factory =
+  /*#__PURE__*/ createUseSimulateContract({ abi: distributionV1FactoryAbi })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link distributionV1FactoryAbi}__ and `functionName` set to `"createDistributor"`
+ */
+export const useSimulateDistributionV1FactoryCreateDistributor =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: distributionV1FactoryAbi,
+    functionName: 'createDistributor',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link distributionV1FactoryAbi}__ and `functionName` set to `"setFactory"`
+ */
+export const useSimulateDistributionV1FactorySetFactory =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: distributionV1FactoryAbi,
+    functionName: 'setFactory',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link distributionV1FactoryAbi}__
+ */
+export const useWatchDistributionV1FactoryEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({ abi: distributionV1FactoryAbi })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link distributionV1FactoryAbi}__ and `eventName` set to `"NewDistributor"`
+ */
+export const useWatchDistributionV1FactoryNewDistributorEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: distributionV1FactoryAbi,
+    eventName: 'NewDistributor',
   })
 
 /**
@@ -1783,6 +2237,15 @@ export const useReadDistributorV1Shares = /*#__PURE__*/ createUseReadContract({
 })
 
 /**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"totalParticipation"`
+ */
+export const useReadDistributorV1TotalParticipation =
+  /*#__PURE__*/ createUseReadContract({
+    abi: distributorV1Abi,
+    functionName: 'totalParticipation',
+  })
+
+/**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"totalUniqueParticipants"`
  */
 export const useReadDistributorV1TotalUniqueParticipants =
@@ -1987,6 +2450,15 @@ export const useReadFactoryV1BuyAndBurnHook =
   })
 
 /**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"DISTRIBUTOR_FACTORY"`
+ */
+export const useReadFactoryV1DistributorFactory =
+  /*#__PURE__*/ createUseReadContract({
+    abi: factoryV1Abi,
+    functionName: 'DISTRIBUTOR_FACTORY',
+  })
+
+/**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"LIQUIDITY_POOL_FEE"`
  */
 export const useReadFactoryV1LiquidityPoolFee =
@@ -2011,6 +2483,13 @@ export const useReadFactoryV1PositionManager =
     abi: factoryV1Abi,
     functionName: 'POSITION_MANAGER',
   })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"TOKEN_FACTORY"`
+ */
+export const useReadFactoryV1TokenFactory = /*#__PURE__*/ createUseReadContract(
+  { abi: factoryV1Abi, functionName: 'TOKEN_FACTORY' },
+)
 
 /**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"TRANSFER_TO_HOOK"`
@@ -2203,24 +2682,6 @@ export const useWatchFactoryV1Event = /*#__PURE__*/ createUseWatchContractEvent(
 )
 
 /**
- * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link factoryV1Abi}__ and `eventName` set to `"NewDistributor"`
- */
-export const useWatchFactoryV1NewDistributorEvent =
-  /*#__PURE__*/ createUseWatchContractEvent({
-    abi: factoryV1Abi,
-    eventName: 'NewDistributor',
-  })
-
-/**
- * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link factoryV1Abi}__ and `eventName` set to `"NewToken"`
- */
-export const useWatchFactoryV1NewTokenEvent =
-  /*#__PURE__*/ createUseWatchContractEvent({
-    abi: factoryV1Abi,
-    eventName: 'NewToken',
-  })
-
-/**
  * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link factoryV1Abi}__ and `eventName` set to `"OwnershipTransferred"`
  */
 export const useWatchFactoryV1OwnershipTransferredEvent =
@@ -2403,6 +2864,111 @@ export const useWatchTokenV1TransferEvent =
   /*#__PURE__*/ createUseWatchContractEvent({
     abi: tokenV1Abi,
     eventName: 'Transfer',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1FactoryAbi}__
+ */
+export const useReadTokenV1Factory = /*#__PURE__*/ createUseReadContract({
+  abi: tokenV1FactoryAbi,
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1FactoryAbi}__ and `functionName` set to `"creatorOf"`
+ */
+export const useReadTokenV1FactoryCreatorOf =
+  /*#__PURE__*/ createUseReadContract({
+    abi: tokenV1FactoryAbi,
+    functionName: 'creatorOf',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1FactoryAbi}__ and `functionName` set to `"factory"`
+ */
+export const useReadTokenV1FactoryFactory = /*#__PURE__*/ createUseReadContract(
+  { abi: tokenV1FactoryAbi, functionName: 'factory' },
+)
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1FactoryAbi}__ and `functionName` set to `"getTokens"`
+ */
+export const useReadTokenV1FactoryGetTokens =
+  /*#__PURE__*/ createUseReadContract({
+    abi: tokenV1FactoryAbi,
+    functionName: 'getTokens',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1FactoryAbi}__ and `functionName` set to `"tokenListLength"`
+ */
+export const useReadTokenV1FactoryTokenListLength =
+  /*#__PURE__*/ createUseReadContract({
+    abi: tokenV1FactoryAbi,
+    functionName: 'tokenListLength',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link tokenV1FactoryAbi}__
+ */
+export const useWriteTokenV1Factory = /*#__PURE__*/ createUseWriteContract({
+  abi: tokenV1FactoryAbi,
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link tokenV1FactoryAbi}__ and `functionName` set to `"createToken"`
+ */
+export const useWriteTokenV1FactoryCreateToken =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: tokenV1FactoryAbi,
+    functionName: 'createToken',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link tokenV1FactoryAbi}__ and `functionName` set to `"setFactory"`
+ */
+export const useWriteTokenV1FactorySetFactory =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: tokenV1FactoryAbi,
+    functionName: 'setFactory',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link tokenV1FactoryAbi}__
+ */
+export const useSimulateTokenV1Factory =
+  /*#__PURE__*/ createUseSimulateContract({ abi: tokenV1FactoryAbi })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link tokenV1FactoryAbi}__ and `functionName` set to `"createToken"`
+ */
+export const useSimulateTokenV1FactoryCreateToken =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: tokenV1FactoryAbi,
+    functionName: 'createToken',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link tokenV1FactoryAbi}__ and `functionName` set to `"setFactory"`
+ */
+export const useSimulateTokenV1FactorySetFactory =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: tokenV1FactoryAbi,
+    functionName: 'setFactory',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link tokenV1FactoryAbi}__
+ */
+export const useWatchTokenV1FactoryEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({ abi: tokenV1FactoryAbi })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link tokenV1FactoryAbi}__ and `eventName` set to `"NewToken"`
+ */
+export const useWatchTokenV1FactoryNewTokenEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: tokenV1FactoryAbi,
+    eventName: 'NewToken',
   })
 
 /**

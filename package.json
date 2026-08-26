@@ -29,6 +29,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "fancy-canvas": "2.1.0",
+    "shiki": "^4.4.3",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

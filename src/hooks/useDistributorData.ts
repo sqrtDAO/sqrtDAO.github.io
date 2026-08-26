@@ -16,6 +16,7 @@ export type DistributorContractInfo = {
   startingTimestamp: bigint;
   minParticipation: bigint;
   claimDelaySeconds: bigint;
+  totalParticipation: bigint;
   remainingRewards: bigint;
   numberOfEpochs: bigint;
   totalDistributionAmount: bigint;
@@ -45,7 +46,7 @@ export function useDistributorData(contractAddress: Address) {
   const [contractInfo, setContractInfo] = useState<
     DistributorContractInfo | undefined
   >(undefined);
-  const [currentEpoch, setCurrentEpoch] = useState<number | undefined>(
+  const [currentEpoch, setCurrentEpoch] = useState<bigint | undefined>(
     undefined,
   );
 
@@ -61,6 +62,7 @@ export function useDistributorData(contractAddress: Address) {
   const [epochs, setEpochs] = useState<readonly EpochInfo[] | undefined>(
     undefined,
   );
+  const [epochsFrom, setEpochsFrom] = useState<bigint>(0n);
 
   const [claimData, setClaimData] = useState<ClaimData | undefined>(undefined);
 
@@ -84,14 +86,13 @@ export function useDistributorData(contractAddress: Address) {
         );
         const info = await distributor.read.getContractInfo();
         setContractInfo(info);
-        const currentEpoch = Math.floor(
-          (Date.now() / 1000 - Number(info.startingTimestamp)) /
-            Number(info.epochDuration),
-        );
+        const currentEpoch =
+          (BigInt(Math.floor(Date.now() / 1000)) - info.startingTimestamp) /
+          info.epochDuration;
         setCurrentEpoch(currentEpoch);
 
         setDistributionState(
-          currentEpoch < 0
+          currentEpoch < 0n
             ? "waiting"
             : currentEpoch > info.numberOfEpochs
               ? "ended"
@@ -109,16 +110,17 @@ export function useDistributorData(contractAddress: Address) {
         setParticipationTokenSymbol(await pToken.read.symbol());
         setParticipationTokenDecimals(await pToken.read.decimals());
 
-        const fromEpoch = currentEpoch < 100 ? 0 : currentEpoch - 100;
+        const fromEpoch = currentEpoch < 100n ? 0n : currentEpoch - 100n;
         const epochInfos = await distributor.read.getEpochInfo([
           address ?? zeroAddress,
           {
-            from: BigInt(fromEpoch),
-            length: BigInt(currentEpoch + 100),
+            from: fromEpoch,
+            length: currentEpoch + 100n,
           },
         ]);
         console.log("epochInfos", epochInfos);
         setEpochs(epochInfos);
+        setEpochsFrom(fromEpoch);
 
         const ranges: Range[] = [];
         let currentRange: Range | null = null;
@@ -126,7 +128,7 @@ export function useDistributorData(contractAddress: Address) {
 
         for (let i = 0; i < epochInfos.length; i++) {
           const epoch = epochInfos[i];
-          const epochIndex = fromEpoch + i;
+          const epochIndex = fromEpoch + BigInt(i);
 
           const isClaimable =
             !epoch.claimed &&
@@ -137,13 +139,13 @@ export function useDistributorData(contractAddress: Address) {
           if (isClaimable) {
             if (currentRange === null) {
               currentRange = {
-                from: BigInt(epochIndex),
-                to: BigInt(epochIndex),
+                from: epochIndex,
+                to: epochIndex,
               };
             } else {
               currentRange = {
                 from: currentRange.from,
-                to: BigInt(epochIndex),
+                to: epochIndex,
               };
             }
             userRewardSum +=
@@ -177,8 +179,9 @@ export function useDistributorData(contractAddress: Address) {
   return {
     state: distributionState,
     contractInfo: contractInfo as DistributorContractInfo | undefined,
-    currentEpoch: currentEpoch as number | undefined,
+    currentEpoch: currentEpoch as bigint | undefined,
     epochsInfo: epochs,
+    epochsFrom,
     tokenName,
     tokenSymbol,
     claimData,

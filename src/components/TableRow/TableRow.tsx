@@ -1,11 +1,12 @@
-import Link from "next/link";
 import { IconChevronRight } from "@tabler/icons-react";
 import TableCell from "@/components/TableCell/TableCell";
+import TokenAvatar from "@/components/TokenAvatar/TokenAvatar";
+import useTokenAvatar from "@/hooks/useTokenAvatar";
 import type { Distribution } from "@/lib/fixtures/distributions";
 import { formatDate } from "@/utils/formatDate";
+import { roundUnits } from "@/utils/round-units";
 
 export type TableRowProps = {
-  index: number;
   distribution: Distribution;
 };
 
@@ -16,16 +17,29 @@ export type TableRowProps = {
 // (h-16) with align-middle to center each cell's shorter content within it.
 const cellBorder = "h-16 align-middle border-y border-muted group-hover:border-transparent";
 
-export default function TableRow({ index, distribution }: TableRowProps) {
+export default function TableRow({ distribution }: TableRowProps) {
+  const tokenAvatarUrl = useTokenAvatar(distribution.tokenAddress);
+
   return (
-    <tr className="group hover:bg-canvas">
+    <tr
+      className="group relative cursor-pointer hover:bg-canvas"
+      onClick={() =>
+        window.open(
+          `/distribution/?address=${distribution.address}`,
+          "_blank",
+          "noopener,noreferrer",
+        )
+      }
+    >
       <td className={`relative rounded-l-m border-l ${cellBorder}`}>
-        <Link
-          aria-label={`View ${distribution.tokenName} distribution`}
-          className="absolute inset-0"
-          href={`/distribution?address=${distribution.address}`}
-        />
-        <TableCell value={index + 1} variant="index" />
+        <div className="flex w-full items-center justify-center px-2 py-3">
+          <TokenAvatar
+            seed={`${distribution.tokenName} ${distribution.tokenSymbol}`}
+            imageUrl={tokenAvatarUrl ?? undefined}
+            size={40}
+            className="!rounded-full"
+          />
+        </div>
       </td>
       <td className={cellBorder}>
         <TableCell
@@ -40,7 +54,10 @@ export default function TableRow({ index, distribution }: TableRowProps) {
       <td className={cellBorder}>
         <TableCell
           unit={distribution.participationTokenSymbol}
-          value={distribution.totalParticipation.toLocaleString("en-US")}
+          value={roundUnits(
+            distribution.totalParticipation,
+            distribution.participationTokenDecimals,
+          )}
           variant="amount"
         />
       </td>

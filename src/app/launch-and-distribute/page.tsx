@@ -16,15 +16,22 @@ import {
   decodeEventLog,
   encodeFunctionData,
   encodePacked,
+  maxUint256,
   zeroAddress,
 } from "viem";
 import { EMPTY_PERMIT2 } from "@/lib/utils/permit2";
 import { getAddresses } from "@/contracts/contract-addresses";
-import { factoryV1Abi, transferToHookAbi } from "@/contracts/abis";
+import {
+  distributionV1FactoryAbi,
+  factoryV1Abi,
+  tokenV1Abi,
+  tokenV1FactoryAbi,
+  transferToHookAbi,
+} from "@/contracts/abis";
 import { quickSqrtPriceX96 } from "@/lib/utils/sqrtPricex96";
 import { showToast } from "@/hooks/useToast";
-import { isUserRejectedError } from "@/utils/wallet-error";
 import { viewTransactionAction as viewTxAction } from "@/utils/explorer-utils";
+import { setupTokenAvatar } from "@/utils/avatar-api";
 
 // Flow steps for the token wizard overlay
 type FlowStep = "launch" | "distribute";
@@ -40,7 +47,9 @@ export default function Page() {
   const onDistributionConfirm = async (dd: DistributionDetails) => {
     // WARNING: Do NOT use try catch here, caller is doing it
 
-    const factory = getFactoryV1Contract(walletClient!);
+    if (!walletClient || !publicClient) throw "wallet not connected";
+
+    const factory = getFactoryV1Contract(walletClient);
     const participationToken = getTokenV1Contract(
       walletClient!,
       dd.participationToken,
@@ -87,70 +96,81 @@ export default function Page() {
     const toastId = "distribution-launch";
     showToast("deploy.pending", { id: toastId });
 
-    let txHash: `0x${string}`;
-    try {
-      txHash = await participationToken.write.approve(
-        [factory.address, dd.initialParticipationLiquidity],
+    const allowance = await participationToken.read.allowance([
+      walletClient!.account.address,
+      factory.address,
+    ]);
+    if (allowance < dd.initialParticipationLiquidity) {
+      await publicClient!.simulateContract({
+        address: dd.participationToken,
+        abi: tokenV1Abi,
+        functionName: "approve",
+        args: [factory.address, maxUint256],
+        account: walletClient!.account.address,
+      });
+      const txHash = await participationToken.write.approve(
+        [factory.address, maxUint256],
         { account: walletClient!.account, chain: walletClient!.chain },
       );
-    } catch (e) {
-      showToast(isUserRejectedError(e) ? "deploy.rejected" : "deploy.failed", { id: toastId });
-      throw e;
+
+      const approveReceipt = await publicClient!.waitForTransactionReceipt({
+        hash: txHash,
+      });
+      if (approveReceipt.status === "reverted") throw "approve failed";
     }
 
-    const approveReceipt = await publicClient!.waitForTransactionReceipt({
-      hash: txHash,
+    const config = {
+      distributionToken: zeroAddress,
+      participationToken: dd.participationToken,
+      epochDuration: dd.epochDuration,
+      startTimestamp: dd.startTime,
+      minParticipation: dd.minimumParticipation,
+      claimDelaySeconds: dd.claimDelay,
+      allowFutureEpochParticipation: true,
+      shares: shares,
+      emissionFunction,
+      allowlistSigner: zeroAddress,
+      allowlistDeadline: BigInt(0),
+      numberOfEpochs: dd.numberOfEpochs,
+      totalDistributionAmount: dd.totalDistributionAmount,
+    };
+    const createTokenParams = [
+      token!.name,
+      token!.symbol,
+      allocation,
+      _sqrtPriceX96,
+      dd.initialParticipationLiquidity,
+      dd.initialDistributionLiquidity,
+      config,
+      buyBackAndBurnShareBps,
+      EMPTY_PERMIT2,
+    ] as const;
+    await publicClient!.simulateContract({
+      address: factory.address,
+      abi: factoryV1Abi,
+      functionName: "createTokenAndLiquidityAndDistribution",
+      args: createTokenParams,
+      account: walletClient!.account.address,
     });
-    if (approveReceipt.status === "reverted") {
-      showToast("approve.failed", { id: toastId, action: viewTxAction(walletClient!.chain.id, txHash) });
-      throw "approve failed";
-    }
 
-    let hash: `0x${string}`;
-    try {
-      hash = await factory.write.createTokenAndLiquidityAndDistribution(
-        [
-          token!.name,
-          token!.symbol,
-          allocation,
-          BigInt(_sqrtPriceX96),
-          dd.initialParticipationLiquidity,
-          dd.initialDistributionLiquidity,
-          {
-            distributionToken: zeroAddress,
-            participationToken: dd.participationToken,
-            epochDuration: dd.epochDuration,
-            startTimestamp: dd.startTime,
-            minParticipation: dd.minimumParticipation,
-            claimDelaySeconds: dd.claimDelay,
-            allowFutureEpochParticipation: true,
-            shares: shares,
-            emissionFunction,
-            allowlistSigner: zeroAddress,
-            allowlistDeadline: BigInt(0),
-            numberOfEpochs: dd.numberOfEpochs,
-            totalDistributionAmount: dd.totalDistributionAmount,
-          },
-          buyBackAndBurnShareBps,
-          EMPTY_PERMIT2,
-        ],
-        {
-          account: walletClient!.account,
-          chain: walletClient!.chain,
-          // for example  in this tx: 0x09783847d8c387114aa8a82f369fe97cd664daaa39e9772fb7426f2c6e9ec6c1
-          // 8,354,157 gas used I set this to 10M
-          gas: BigInt(10_000_000),
-        },
-      );
-    } catch (e) {
-      showToast(isUserRejectedError(e) ? "deploy.rejected" : "deploy.failed", { id: toastId });
-      throw e;
-    }
+    const hash = await factory.write.createTokenAndLiquidityAndDistribution(
+      createTokenParams,
+      {
+        account: walletClient!.account,
+        chain: walletClient!.chain,
+        // for example  in this tx: 0x09783847d8c387114aa8a82f369fe97cd664daaa39e9772fb7426f2c6e9ec6c1
+        // 8,354,157 gas used I set this to 10M
+        gas: BigInt(10_000_000),
+      },
+    );
 
     const receipt = await publicClient!.waitForTransactionReceipt({ hash });
 
     if (receipt.status === "reverted") {
-      showToast("deploy.failed", { id: toastId, action: viewTxAction(walletClient!.chain.id, hash) });
+      showToast("deploy.failed", {
+        id: toastId,
+        action: viewTxAction(walletClient!.chain.id, hash),
+      });
       throw 'transaction "createTokenAndLiquidityAndDistribution" failed ';
     }
 
@@ -159,17 +179,21 @@ export default function Page() {
       params: { symbol: token!.symbol },
       action: viewTxAction(walletClient!.chain.id, hash),
     });
-    showToast("launch.success", { action: viewTxAction(walletClient!.chain.id, hash) });
+    showToast("launch.success", {
+      action: viewTxAction(walletClient!.chain.id, hash),
+    });
 
+    let distributor: `0x${string}` | undefined;
+    let tokenAddress: `0x${string}` | undefined;
     for (const log of receipt.logs) {
       try {
         const event = decodeEventLog({
-          abi: factoryV1Abi,
+          abi: distributionV1FactoryAbi,
           data: log.data,
           topics: log.topics,
         });
         if (event.eventName === "NewDistributor") {
-          const distributor = (event.args as { distributor: `0x${string}` })
+          distributor = (event.args as { distributor: `0x${string}` })
             .distributor;
           // brief pause so the success toasts are visible before the full-page
           // navigation below wipes the (in-memory) toast state
@@ -179,6 +203,26 @@ export default function Page() {
           return;
         }
       } catch {}
+      try {
+        const event = decodeEventLog({
+          abi: tokenV1FactoryAbi,
+          data: log.data,
+          topics: log.topics,
+        });
+        if (event.eventName === "NewToken") {
+          tokenAddress = (event.args as { tokenAddress: `0x${string}` })
+            .tokenAddress;
+        }
+      } catch {}
+    }
+
+    if (distributor) {
+      // Avatar is optional: bind best-effort, never block the launch flow
+      if (token!.avatarCid && tokenAddress) {
+        await setupTokenAvatar(tokenAddress, token!.avatarCid);
+      }
+      document.location.href = `/distribution/?address=${distributor}`;
+      return;
     }
   };
 

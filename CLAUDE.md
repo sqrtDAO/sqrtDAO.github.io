@@ -26,15 +26,19 @@
 
 - Create small, focused functions/components that do one thing well.
 - We don't like classes, just simply use functions.
-- don't use `interface`, use `type`
-- for function syntax don't `function sum(){}` do `const sum=()=>{}`.
+- Don't use `interface`, use `type`
+- For function syntax don't `function sum(){}` do `const sum=()=>{}`.
 - Use composition over inheritance.
 - Extract reusable logic into custom hooks `src/hooks/use*.ts`
 - Extract reusable UI into components `src/components/*.tsx`
 - Extract utility functions into `src/utils/*.ts`
-- for user inputs use `src/hooks/useInput.ts` and `src/components/Input/Input.tsx`
-- for validation use this `src/utils/validator.ts`
-- for modifiers use this `src/utils/modifiers.ts`
+- For user inputs use `src/hooks/useInput.ts` and `src/components/Input/Input.tsx`
+- For validation use this `src/utils/validator.ts`
+- For modifiers use this `src/utils/modifiers.ts`
+- Use `next/image` `<Image />` instead of HTML `<img>` for automatic optimization and lazy loading
+- For links don't do onClick and navigator, Do it with standard <Link> component when possible
+- Keep numbers `bigint` and convert to `string` by `./src/utils/round-units.ts` only when you need to show something to the user
+- Try to not convert `bigint` to `number`, do this only if needed
 
 ## Workflow
 
