@@ -200,12 +200,6 @@ export default function Page() {
         if (event.eventName === "NewDistributor") {
           distributor = (event.args as { distributor: `0x${string}` })
             .distributor;
-          // brief pause so the success toasts are visible before the full-page
-          // navigation below wipes the (in-memory) toast state
-          setTimeout(() => {
-            document.location.href = `/distribution/?address=${distributor}`;
-          }, 1500);
-          return;
         }
       } catch {}
       try {
@@ -250,7 +244,9 @@ export default function Page() {
           );
         }
       }
-      document.location.href = `/distribution/?address=${distributor}`;
+      setTimeout(() => {
+        document.location.href = `/distribution/?address=${distributor}`;
+      }, 1500);
       return;
     }
   };
