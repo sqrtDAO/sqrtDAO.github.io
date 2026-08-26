@@ -1008,21 +1008,6 @@ export default function DistributionDetail({
                     </div>
                   </div>
                 )}
-                  <div className="ddp-stat">
-                    <span className="ddp-stat__label">Total participation</span>
-                    <div className="ddp-stat__value-row">
-                      <span className="ddp-stat__value-primary">
-                        {roundUnits(
-                          stats.totalParticipation,
-                          participationTokenDecimals ?? 18,
-                        )}
-                      </span>
-                      <span className="ddp-stat__unit">
-                        {participationTokenSymbol}
-                      </span>
-                    </div>
-                  </div>
-                </div>
 
                 {state === "waiting" ? (
                   <div className="ddp-countdown-row">
