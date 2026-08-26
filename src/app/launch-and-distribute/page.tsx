@@ -244,6 +244,7 @@ export default function Page() {
             walletClient.chain.id,
           );
         } catch (e) {
+          console.error(e);
           alert(
             "Avatar upload failed — you can set it later from the token page.",
           );

@@ -358,7 +358,7 @@ export default function DistributionDetail({
     refetch,
   } = useDistributorData(contractAddress as Address);
 
-  const tokenAvatarUrl = useTokenAvatar(contractInfo?.distributionToken);
+  const tokenAvatarUrl = useTokenAvatar(contractInfo?.distributionToken, chainId);
 
   const { isConnected: isWalletConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
