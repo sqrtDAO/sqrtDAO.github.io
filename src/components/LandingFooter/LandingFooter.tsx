@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Logo from "@/components/Logo/Logo";
 import { Button } from "@/components/Button/Button";
+import { DISCORD_URL, X_URL, EXPLORE_DISTRIBUTIONS_HREF } from "@/constants/links";
 
 // Narrow (mobile/tablet) layout — Figma clean component "landing footer"
 // (node 7063-28761), which frame "10" (node 7060-28154) instances directly.
@@ -43,7 +44,7 @@ function LandingFooterMobile({
               Try it on testnet
             </Button>
             <Link
-              href="/dev/distributions-v1"
+              href={EXPLORE_DISTRIBUTIONS_HREF}
               className="sqrt-btn sqrt-btn--secondary sqrt-btn--m flex-1"
             >
               <span className="sqrt-btn__label">Distributions</span>
@@ -55,11 +56,7 @@ function LandingFooterMobile({
               size="m"
               className="flex-1"
               onClick={() =>
-                window.open(
-                  "https://discord.gg/hsW64egPRJ",
-                  "_blank",
-                  "noopener,noreferrer",
-                )
+                window.open(DISCORD_URL, "_blank", "noopener,noreferrer")
               }
             >
               Join Discord
@@ -69,11 +66,7 @@ function LandingFooterMobile({
               size="m"
               className="flex-1"
               onClick={() =>
-                window.open(
-                  "https://x.com/sqrtDAO",
-                  "_blank",
-                  "noopener,noreferrer",
-                )
+                window.open(X_URL, "_blank", "noopener,noreferrer")
               }
             >
               Follow on X
@@ -126,7 +119,7 @@ export default function LandingFooter({
             Try it on testnet
           </Button>
           <Link
-            href="/dev/distributions-v1"
+            href={EXPLORE_DISTRIBUTIONS_HREF}
             className="sqrt-btn sqrt-btn--secondary sqrt-btn--m"
           >
             <span className="sqrt-btn__label">Explore distributions</span>
@@ -135,11 +128,7 @@ export default function LandingFooter({
             variant="outline"
             size="m"
             onClick={() =>
-              window.open(
-                "https://discord.gg/hsW64egPRJ",
-                "_blank",
-                "noopener,noreferrer",
-              )
+              window.open(DISCORD_URL, "_blank", "noopener,noreferrer")
             }
           >
             Join Discord
@@ -148,11 +137,7 @@ export default function LandingFooter({
             variant="outline"
             size="m"
             onClick={() =>
-              window.open(
-                "https://x.com/sqrtDAO",
-                "_blank",
-                "noopener,noreferrer",
-              )
+              window.open(X_URL, "_blank", "noopener,noreferrer")
             }
           >
             Follow on X

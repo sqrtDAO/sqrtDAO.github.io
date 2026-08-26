@@ -5,6 +5,7 @@ import {
 } from "@/contracts/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
+import { showToast } from "@/hooks/useToast";
 
 export type DistributionState = "waiting" | "running" | "ended";
 
@@ -164,10 +165,14 @@ export function useDistributorData(contractAddress: Address) {
       } catch (e) {
         setError("Error while loading on-chain data");
         console.error(e);
+        showToast("data.loadFailed", {
+          id: `distributor-data-${contractAddress}`,
+          action: { label: "Retry", onClick: refetch },
+        });
       }
       setIsLoading(false);
     })();
-  }, [contractAddress, publicClient, fetchKey, address]);
+  }, [contractAddress, publicClient, fetchKey, address, refetch]);
 
   return {
     state: distributionState,

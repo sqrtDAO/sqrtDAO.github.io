@@ -362,7 +362,7 @@ export default function DistributionWizard(props: {
         );
       }
       const pTokenDecimals = await participationToken.read.decimals();
-      props.onFinish({
+      await props.onFinish({
         totalDistributionAmount: totalDistributionAmountN,
         participationToken: participationToken.address,
         initialParticipationLiquidity: parseUnits(

@@ -7,6 +7,7 @@ import TableRow from "@/components/TableRow/TableRow";
 import Pagination from "@/components/Pagination/Pagination";
 import DistributionCard from "@/components/DistributionCard/DistributionCard";
 import { mockDistributions } from "@/lib/fixtures/distributions";
+import { showToast } from "@/hooks/useToast";
 
 const STATUSES: DistributionStatus[] = ["live", "upcoming", "ended"];
 
@@ -80,6 +81,58 @@ export default function ComponentsV1PreviewPage() {
           {cards.map((distribution) => (
             <DistributionCard distribution={distribution} key={distribution.address} />
           ))}
+        </div>
+      </Section>
+
+      <Section title="Toast">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            className="rounded-s border border-muted px-3 py-2 text-body-s text-primary"
+            onClick={() => showToast("wallet.connected")}
+          >
+            success
+          </button>
+          <button
+            type="button"
+            className="rounded-s border border-muted px-3 py-2 text-body-s text-primary"
+            onClick={() => showToast("deploy.failed")}
+          >
+            error
+          </button>
+          <button
+            type="button"
+            className="rounded-s border border-muted px-3 py-2 text-body-s text-primary"
+            onClick={() => showToast("claim.nothing")}
+          >
+            info
+          </button>
+          <button
+            type="button"
+            className="rounded-s border border-muted px-3 py-2 text-body-s text-primary"
+            onClick={() => {
+              showToast("deploy.pending", { id: "demo-deploy" });
+              setTimeout(
+                () =>
+                  showToast("deploy.success", {
+                    params: { symbol: "SQRT" },
+                    id: "demo-deploy",
+                  }),
+                2500,
+              );
+            }}
+          >
+            pending → success (same toast)
+          </button>
+          <button
+            type="button"
+            className="rounded-s border border-muted px-3 py-2 text-body-s text-primary"
+            onClick={() =>
+              showToast("data.loadFailed", { action: { label: "Retry", onClick: () => showToast("data.loadFailed") } })
+            }
+          >
+            with action link
+          </button>
         </div>
       </Section>
     </main>
