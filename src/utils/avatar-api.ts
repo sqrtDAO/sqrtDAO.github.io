@@ -42,19 +42,26 @@ export const uploadToIpfs = async (
 export const setupTokenAvatar = async (
   address: Address,
   cid: string,
+  signature: string,
+  chainId: number,
 ): Promise<void> => {
   const res = await fetch(`${AVATAR_API_BASE}/setup-avatar/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ address, cid }),
+    body: JSON.stringify({ address, cid, signature, chain_id: chainId }),
   });
   if (!res.ok) throw await toError(res);
 };
 
 export const getTokenAvatar = async (
   address: Address,
+  chainId?: number,
 ): Promise<string | null> => {
-  const res = await fetch(`${AVATAR_API_BASE}/get-avatar/?address=${address}`);
+  const params = new URLSearchParams({ address });
+  if (chainId) params.set("chain_id", String(chainId));
+  const res = await fetch(
+    `${AVATAR_API_BASE}/get-avatar/?${params.toString()}`,
+  );
   if (res.status === 404) return null;
   if (!res.ok) throw await toError(res);
   const { avatar } = await res.json();

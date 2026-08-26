@@ -31,7 +31,12 @@ import {
 import { quickSqrtPriceX96 } from "@/lib/utils/sqrtPricex96";
 import { showToast } from "@/hooks/useToast";
 import { viewTransactionAction as viewTxAction } from "@/utils/explorer-utils";
-import { setupTokenAvatar } from "@/utils/avatar-api";
+import {
+  requestUploadLink,
+  setupTokenAvatar,
+  uploadToIpfs,
+} from "@/utils/avatar-api";
+import { AVATAR_SIGN_DOMAIN, AVATAR_SIGN_TYPES } from "@/constants/avatar";
 
 // Flow steps for the token wizard overlay
 type FlowStep = "launch" | "distribute";
@@ -217,9 +222,32 @@ export default function Page() {
     }
 
     if (distributor) {
-      // Avatar is optional: bind best-effort, never block the launch flow
-      if (token!.avatarCid && tokenAddress) {
-        await setupTokenAvatar(tokenAddress, token!.avatarCid);
+      // Avatar: upload to IPFS, sign, bind — best-effort, warn user on failure
+      if (token!.avatarFile && tokenAddress) {
+        try {
+          const { upload_url } = await requestUploadLink();
+          const cid = await uploadToIpfs(token!.avatarFile, upload_url);
+          const signature = await walletClient.signTypedData({
+            domain: {
+              ...AVATAR_SIGN_DOMAIN,
+              chainId: walletClient.chain.id,
+              verifyingContract: addresses.tokenFactory,
+            },
+            types: AVATAR_SIGN_TYPES,
+            primaryType: "SetupAvatar",
+            message: { token: tokenAddress, cid },
+          });
+          await setupTokenAvatar(
+            tokenAddress,
+            cid,
+            signature,
+            walletClient.chain.id,
+          );
+        } catch (e) {
+          alert(
+            "Avatar upload failed — you can set it later from the token page.",
+          );
+        }
       }
       document.location.href = `/distribution/?address=${distributor}`;
       return;
