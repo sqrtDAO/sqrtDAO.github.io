@@ -5,7 +5,7 @@ import {
   DISCORD_URL,
   X_URL,
   DOCS_URL,
-  EXPLORE_DISTRIBUTIONS_HREF,
+  DISTRIBUTION_LIST,
   TRY_TESTNET_HREF,
 } from "@/constants/links";
 
@@ -26,7 +26,7 @@ function InsideFooterMobile() {
           <span className="sqrt-btn__label">Try it on testnet</span>
         </Link>
         <Link
-          href={EXPLORE_DISTRIBUTIONS_HREF}
+          href={DISTRIBUTION_LIST}
           className="sqrt-btn sqrt-btn--ghost sqrt-btn--m w-full"
         >
           <span className="sqrt-btn__label">Explore distributions</span>
@@ -35,7 +35,9 @@ function InsideFooterMobile() {
           variant="ghost"
           size="m"
           fullWidth
-          onClick={() => window.open(DISCORD_URL, "_blank", "noopener,noreferrer")}
+          onClick={() =>
+            window.open(DISCORD_URL, "_blank", "noopener,noreferrer")
+          }
         >
           Join Discord
         </Button>
@@ -56,7 +58,9 @@ function InsideFooterMobile() {
           <span className="sqrt-btn__label">Documentation</span>
         </a>
       </nav>
-      <p className="w-full text-center text-body-s text-tertiary">{COPYRIGHT}</p>
+      <p className="w-full text-center text-body-s text-tertiary">
+        {COPYRIGHT}
+      </p>
     </div>
   );
 }
@@ -64,18 +68,21 @@ function InsideFooterMobile() {
 export default function InsideFooter() {
   return (
     <footer className="w-full bg-canvas">
-      <div className="mx-auto hidden w-full max-w-[1320px] items-center justify-between border-t border-muted px-12 py-8 md:flex">
+      <div className="mx-auto hidden w-full max-w-330 items-center justify-between border-t border-muted px-12 py-8 md:flex">
         <div className="flex items-center gap-6">
           <Logo variant="complete" width={110} height={48} />
           <span className="h-4 w-px bg-muted" aria-hidden="true" />
           <p className="text-body-s text-tertiary">{COPYRIGHT}</p>
         </div>
         <nav className="flex items-center gap-4">
-          <Link href={TRY_TESTNET_HREF} className="sqrt-btn sqrt-btn--ghost sqrt-btn--m">
+          <Link
+            href={TRY_TESTNET_HREF}
+            className="sqrt-btn sqrt-btn--ghost sqrt-btn--m"
+          >
             <span className="sqrt-btn__label">Try it on testnet</span>
           </Link>
           <Link
-            href={EXPLORE_DISTRIBUTIONS_HREF}
+            href={DISTRIBUTION_LIST}
             className="sqrt-btn sqrt-btn--ghost sqrt-btn--m"
           >
             <span className="sqrt-btn__label">Explore distributions</span>
@@ -91,7 +98,9 @@ export default function InsideFooter() {
           <Button
             variant="ghost"
             size="m"
-            onClick={() => window.open(DISCORD_URL, "_blank", "noopener,noreferrer")}
+            onClick={() =>
+              window.open(DISCORD_URL, "_blank", "noopener,noreferrer")
+            }
           >
             Join Discord
           </Button>

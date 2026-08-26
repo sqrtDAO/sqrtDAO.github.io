@@ -9,7 +9,7 @@ import { Button } from "@/components/Button/Button";
 import { IconButton } from "@/components/IconButton/IconButton";
 import {
   DOCS_URL,
-  EXPLORE_DISTRIBUTIONS_HREF,
+  DISTRIBUTION_LIST,
   TRY_TESTNET_HREF,
 } from "@/constants/links";
 import "./Header.css";
@@ -31,10 +31,16 @@ export default function Header({ onConnectWallet, className }: HeaderProps) {
           <Logo mono width={92} height={40} />
         </Link>
         <nav className="sqrt-header__nav" aria-label="Primary">
-          <Link href={TRY_TESTNET_HREF} className="sqrt-btn sqrt-btn--ghost sqrt-btn--m">
+          <Link
+            href={TRY_TESTNET_HREF}
+            className="sqrt-btn sqrt-btn--ghost sqrt-btn--m"
+          >
             <span className="sqrt-btn__label">Launch and distribute token</span>
           </Link>
-          <Link href={EXPLORE_DISTRIBUTIONS_HREF} className="sqrt-btn sqrt-btn--ghost sqrt-btn--m">
+          <Link
+            href={DISTRIBUTION_LIST}
+            className="sqrt-btn sqrt-btn--ghost sqrt-btn--m"
+          >
             <span className="sqrt-btn__label">Distributions</span>
           </Link>
           <a
@@ -203,10 +209,12 @@ export default function Header({ onConnectWallet, className }: HeaderProps) {
               onClick={closeMobileMenu}
               className="sqrt-btn sqrt-btn--ghost sqrt-btn--l sqrt-btn--full"
             >
-              <span className="sqrt-btn__label">Launch and distribute token</span>
+              <span className="sqrt-btn__label">
+                Launch and distribute token
+              </span>
             </Link>
             <Link
-              href={EXPLORE_DISTRIBUTIONS_HREF}
+              href={DISTRIBUTION_LIST}
               onClick={closeMobileMenu}
               className="sqrt-btn sqrt-btn--ghost sqrt-btn--l sqrt-btn--full"
             >
