@@ -24,22 +24,16 @@ import {
   validateAll,
 } from "@/utils/validator";
 import {
-  requestUploadLink,
-  uploadToIpfs,
-} from "@/utils/avatar-api";
-import {
   AVATAR_ALLOWED_MIME_TYPES,
   AVATAR_MAX_FILE_SIZE,
 } from "@/constants/avatar";
 
-type AvatarStatus = "idle" | "uploading" | "ready" | "rejected" | "failed";
+type AvatarStatus = "idle" | "ready" | "rejected";
 
 const AVATAR_HINTS: Record<AvatarStatus, string> = {
   idle: "Optional — click to set an avatar",
-  uploading: "Uploading avatar…",
   ready: "Avatar ready",
   rejected: "PNG, JPEG, GIF or WebP up to 5 MB",
-  failed: "Upload failed — try again",
 };
 
 export default function TokenLaunch(props: {
@@ -55,8 +49,7 @@ export default function TokenLaunch(props: {
   );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cidRef = useRef<string | null>(null);
-  const uploadTaskRef = useRef<Promise<void> | null>(null);
+  const avatarFileRef = useRef<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [avatarStatus, setAvatarStatus] = useState<AvatarStatus>("idle");
 
@@ -73,27 +66,18 @@ export default function TokenLaunch(props: {
       if (old) URL.revokeObjectURL(old);
       return URL.createObjectURL(file);
     });
-    setAvatarStatus("uploading");
-    uploadTaskRef.current = (async () => {
-      try {
-        const { upload_url } = await requestUploadLink();
-        cidRef.current = await uploadToIpfs(file, upload_url);
-        setAvatarStatus("ready");
-      } catch {
-        setAvatarStatus("failed");
-      }
-    })();
+    avatarFileRef.current = file;
+    setAvatarStatus("ready");
   };
 
   const onContinueClick = async () => {
     if (!validateAll(name, symbol, totalSupply)) return;
-    await uploadTaskRef.current;
     props.onFinish({
       name: name.value,
       symbol: symbol.value,
       decimals: 18,
       totalSupply: parseUnits(totalSupply.value.replace(/,/g, ""), 18),
-      avatarCid: cidRef.current ?? undefined,
+      avatarFile: avatarFileRef.current ?? undefined,
     });
   };
 
@@ -140,7 +124,7 @@ export default function TokenLaunch(props: {
                   )}
                 </button>
                 <p
-                  className={`tl-avatar-hint${avatarStatus === "rejected" || avatarStatus === "failed" ? " is-error" : ""}`}
+                  className={`tl-avatar-hint${avatarStatus === "rejected" ? " is-error" : ""}`}
                 >
                   {AVATAR_HINTS[avatarStatus]}
                 </p>
@@ -194,5 +178,5 @@ export type TokenDetails = {
   symbol: string;
   decimals: number;
   totalSupply: bigint;
-  avatarCid?: string;
+  avatarFile?: File;
 };

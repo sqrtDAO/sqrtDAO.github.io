@@ -35,7 +35,7 @@ const addresses: Record<ChainId, ContractAddresses> = {
     exponentialEmission: "0xc131817C3B02048762AD2D8D04Cd608966ef8482",
     transferToHook: "0xfea9055f9A0E963D9e7d1a0AC2D7B19aC42793b4",
     buyAndBurnHook: "0x50C1EcD6B79731DE92Ee9BAcD1b87d6298b414aD",
-    tokenFactory: "0x533ee7D342F2258b0d6E8f537DdE99f2aBe2701d",
+    tokenFactory: "0x533ee7D342F2258b0d6E8f537DdE99f2aBe27v01d",
     distributorFactory: "0x533E7f8e7B4a741D0B0142b5aE97C5649E3f39f0",
   },
   [base.id]: {
