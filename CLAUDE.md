@@ -42,6 +42,8 @@
 
 ## Workflow
 
+- **Sync as first step.** Before any task, always run: `git fetch origin dev && git rebase origin/dev` to ensure your feature branch has the latest dev changes. If rebase fails due to conflicts, resolve them immediately.
+- **Sync mid-task too.** If your ongoing task takes more than ~10 minutes or spans multiple file edits, run `git fetch origin dev && git rebase origin/dev` again to catch any new dev commits and avoid merge conflicts later.
 - Ask question about task before start.
 - After you finished the task, simplify your code.
 - After you finished the task, find repetitive code and make reusable function for it.
@@ -53,5 +55,5 @@
 - `dev` don't commit on it, but always get this branch updates before you start something
 - `feat/<something>` this is our naming convention for feature branch
 
-Note: Always pull the `dev` latest changes before starting new work and merge it to your feature branch.
+Note: Always pull the `dev` latest changes before starting new work and merge it to your feature branch. Re-sync dev into your feature branch periodically during long-lived tasks.
 Note: when ever a feature is done you can make a PR to `dev` (not main)
