@@ -86,13 +86,14 @@ export function useDistributorData(contractAddress: Address) {
         );
         const info = await distributor.read.getContractInfo();
         setContractInfo(info);
+        const now = BigInt(Math.floor(Date.now() / 1000));
         const currentEpoch =
-          (BigInt(Math.floor(Date.now() / 1000)) - info.startingTimestamp) /
+          (now - info.startingTimestamp) /
           info.epochDuration;
         setCurrentEpoch(currentEpoch);
 
         setDistributionState(
-          currentEpoch < 0n
+          now < info.startingTimestamp
             ? "waiting"
             : currentEpoch > info.numberOfEpochs
               ? "ended"
