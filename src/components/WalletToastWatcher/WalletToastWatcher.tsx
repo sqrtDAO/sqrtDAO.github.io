@@ -10,13 +10,18 @@ export default function WalletToastWatcher() {
   const { isConnected, status } = useAccount();
   const { error: connectError } = useConnect();
   const wasConnected = useRef(isConnected);
-  const wasReconnecting = useRef(status === "reconnecting" || status === "connecting");
+  const wasReconnecting = useRef(
+    status === "reconnecting" || status === "connecting",
+  );
   const lastConnectError = useRef(connectError);
 
   useEffect(() => {
     // On page load wagmi auto-reconnects; the transient "reconnecting" →
     // "connected" transition is not a user action, so suppress the toast.
-    if (wasReconnecting.current && (status === "connected" || status === "disconnected")) {
+    if (
+      wasReconnecting.current &&
+      (status === "connected" || status === "disconnected")
+    ) {
       wasReconnecting.current = false;
       wasConnected.current = isConnected;
       return;
@@ -28,7 +33,7 @@ export default function WalletToastWatcher() {
     }
 
     if (isConnected && !wasConnected.current) {
-      showToast("wallet.connected");
+      // showToast("wallet.connected");
     } else if (!isConnected && wasConnected.current) {
       showToast("wallet.disconnected");
     }
