@@ -22,8 +22,10 @@
   /* Fixed 24px gutter, not fluidly scaled — .ddp-columns below caps at
      max-width:1320px and centers, so this only matters as the minimum
      side margin on viewports narrower than 1320 + 48. Matches the
-     header's fixed 1320px content container exactly. */
-  padding: 0 24px 96px;
+     header's fixed 1320px content container exactly. No bottom padding —
+     <InsideFooter> follows .ddp-body as its own page-width closing
+     section, so it provides the page's bottom edge instead. */
+  padding: 0 24px;
 }
 
 .ddp-columns {
@@ -151,6 +153,12 @@
   color: var(--sqrt-text-secondary);
 }
 
+/* desktop-only per Figma — the mobile token header drops the status pill
+   entirely rather than fitting it into the stacked name/ticker column. */
+.ddp-token-header__status {
+  align-self: center;
+}
+
 .ddp-token-header__creator {
   display: flex;
   align-items: center;
@@ -189,6 +197,17 @@
    block) — desktop's form is always inline in .ddp-right, no trigger. */
 .ddp-summary__participate {
   display: none;
+}
+
+/* waiting / ended states: visually matches the disabled Button look
+   (text-disabled bg, text-on-amber label) without a native `disabled`
+   attribute — it still opens the dialogue so a connected wallet can reach
+   "Ready to claim" there, the only claim path on mobile. */
+.ddp-summary__participate--muted,
+.ddp-summary__participate--muted:hover,
+.ddp-summary__participate--muted:active {
+  background-color: var(--sqrt-text-disabled);
+  color: var(--sqrt-text-on-amber);
 }
 
 .ddp-stat__label {
@@ -296,6 +315,17 @@
   background: var(--sqrt-border-default);
 }
 
+/* ── ended state: replaces the D/H/M/S clock ──────────────── */
+.ddp-countdown-finished {
+  flex: 1;
+  margin: 0;
+  font-family: var(--font-family-display), system-ui, sans-serif;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-h2);
+  letter-spacing: -0.01em;
+  color: var(--sqrt-state-danger);
+}
+
 /* ── epochs data (block chart + epoch/combo chart, one Figma frame) ──────
    Outer shell is a plain bg-surface/8px-padding box (0 radius — same
    pattern as the FAQ card); the block-chart section sits directly on it
@@ -347,26 +377,8 @@
   color: var(--sqrt-text-primary);
 }
 
-.ddp-block-card__legend {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.ddp-block-card__legend-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--font-size-body-s);
-  color: var(--sqrt-text-secondary);
-}
-
-.ddp-block-card__legend-swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  flex-shrink: 0;
+.ddp-inline-stat__value--danger {
+  color: var(--sqrt-state-danger);
 }
 
 /* ── epoch (combo chart) card ───────────────────────────── */
@@ -397,6 +409,12 @@
 .ddp-epoch-card__data > span:first-child {
   font-size: var(--font-size-body-l);
   color: var(--sqrt-text-secondary);
+}
+
+/* ended state: "Last epoch" flag next to the "Current epoch" label */
+.ddp-epoch-card__tag {
+  font-size: var(--font-size-body-s);
+  color: var(--sqrt-state-danger);
 }
 
 .ddp-epoch-card__data-row {
@@ -703,6 +721,19 @@
   margin: 0;
 }
 
+/* waiting / ended states: the whole form is inert — title, labels and
+   entered values dim to text-disabled. The unit suffixes (USDT/Epochs)
+   stay tertiary either way, matching Figma. */
+.ddp-participation--disabled h2,
+.ddp-participation--disabled .ddp-participation__field label,
+.ddp-participation--disabled .ddp-participation__input input {
+  color: var(--sqrt-text-disabled);
+}
+
+.ddp-participation__input input:disabled::placeholder {
+  color: var(--sqrt-text-disabled);
+}
+
 .ddp-participation__row {
   display: flex;
   align-items: flex-start;
@@ -778,6 +809,37 @@
   display: flex;
   gap: 8px;
   flex-shrink: 0;
+}
+
+/* ── claim delay + submit row ───────────────────────────────
+   Replaces the old fullWidth-only submit button — the claim delay is now
+   shown alongside it, each taking half the row. */
+.ddp-participation__action {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.ddp-participation__delay {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: var(--font-size-body-s);
+  line-height: 20px;
+}
+
+.ddp-participation__delay span:first-child {
+  color: var(--sqrt-text-secondary);
+}
+
+.ddp-participation__delay span:last-child {
+  color: var(--sqrt-text-primary);
+}
+
+.ddp-participation__submit {
+  flex: 1;
 }
 
 @media (max-width: 960px) {
@@ -877,6 +939,12 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
+  }
+
+  /* mobile drops the status pill entirely — no status instance in the
+     Figma mobile header (node 7654:68741 and siblings), unlike desktop. */
+  .ddp-token-header__status {
+    display: none;
   }
 
   .ddp-token-header__creator--mobile {

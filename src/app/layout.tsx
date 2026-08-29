@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Oxanium, IBM_Plex_Sans_Condensed } from "next/font/google";
 import RainbowKitRoot from "@/components/RainbowKitRoot/RainbowKitRoot";
+import ToastContainer from "@/components/ToastContainer/ToastContainer";
 import "./theme.css";
 import "./globals.css";
 
@@ -71,7 +72,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <meta name="theme-color" content="#0B0D12" />
       </head>
-      <body><RainbowKitRoot>{children}</RainbowKitRoot></body>
+      <body>
+        <RainbowKitRoot>{children}</RainbowKitRoot>
+        <ToastContainer />
+      </body>
     </html>
   );
 }

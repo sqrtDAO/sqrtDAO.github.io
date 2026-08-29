@@ -273,12 +273,7 @@ export default function DistributionWizard(props: {
         epochCount,
         EPOCH_DURATION_MS[epochDurationInput.value] / 1000,
       ),
-    [
-      startDate.value,
-      startTime.value,
-      epochCount,
-      epochDurationInput.value,
-    ],
+    [startDate.value, startTime.value, epochCount, epochDurationInput.value],
   );
 
   // Rules: founder share % + resulting split

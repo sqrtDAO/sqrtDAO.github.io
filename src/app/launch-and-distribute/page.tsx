@@ -29,7 +29,14 @@ import {
   transferToHookAbi,
 } from "@/contracts/abis";
 import { quickSqrtPriceX96 } from "@/lib/utils/sqrtPricex96";
-import { setupTokenAvatar } from "@/utils/avatar-api";
+import { showToast } from "@/hooks/useToast";
+import { viewTransactionAction as viewTxAction } from "@/utils/explorer-utils";
+import {
+  requestUploadLink,
+  setupTokenAvatar,
+  uploadToIpfs,
+} from "@/utils/avatar-api";
+import { AVATAR_SIGN_DOMAIN, AVATAR_SIGN_TYPES } from "@/constants/avatar";
 
 // Flow steps for the token wizard overlay
 type FlowStep = "launch" | "distribute";
@@ -90,6 +97,9 @@ export default function Page() {
     }
     const buyBackAndBurnShareBps =
       BigInt(10000) - (dd.founderShareBps + dd.protocolFeeBps);
+
+    const toastId = "distribution-launch";
+    showToast("deploy.pending", { id: toastId });
 
     const allowance = await participationToken.read.allowance([
       walletClient!.account.address,
@@ -161,8 +171,22 @@ export default function Page() {
 
     const receipt = await publicClient!.waitForTransactionReceipt({ hash });
 
-    if (receipt.status === "reverted")
+    if (receipt.status === "reverted") {
+      showToast("deploy.failed", {
+        id: toastId,
+        action: viewTxAction(walletClient!.chain.id, hash),
+      });
       throw 'transaction "createTokenAndLiquidityAndDistribution" failed ';
+    }
+
+    showToast("deploy.success", {
+      id: toastId,
+      params: { symbol: token!.symbol },
+      action: viewTxAction(walletClient!.chain.id, hash),
+    });
+    showToast("launch.success", {
+      action: viewTxAction(walletClient!.chain.id, hash),
+    });
 
     let distributor: `0x${string}` | undefined;
     let tokenAddress: `0x${string}` | undefined;
@@ -192,11 +216,37 @@ export default function Page() {
     }
 
     if (distributor) {
-      // Avatar is optional: bind best-effort, never block the launch flow
-      if (token!.avatarCid && tokenAddress) {
-        await setupTokenAvatar(tokenAddress, token!.avatarCid);
+      // Avatar: upload to IPFS, sign, bind — best-effort, warn user on failure
+      if (token!.avatarFile && tokenAddress) {
+        try {
+          const { upload_url } = await requestUploadLink();
+          const cid = await uploadToIpfs(token!.avatarFile, upload_url);
+          const signature = await walletClient.signTypedData({
+            domain: {
+              ...AVATAR_SIGN_DOMAIN,
+              chainId: walletClient.chain.id,
+              verifyingContract: addresses.tokenFactory,
+            },
+            types: AVATAR_SIGN_TYPES,
+            primaryType: "SetupAvatar",
+            message: { token: tokenAddress, cid },
+          });
+          await setupTokenAvatar(
+            tokenAddress,
+            cid,
+            signature,
+            walletClient.chain.id,
+          );
+        } catch (e) {
+          console.error(e);
+          alert(
+            "Avatar upload failed — you can set it later from the token page.",
+          );
+        }
       }
-      document.location.href = `/distribution/?address=${distributor}`;
+      setTimeout(() => {
+        document.location.href = `/distribution/?address=${distributor}`;
+      }, 1500);
       return;
     }
   };

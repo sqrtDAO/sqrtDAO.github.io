@@ -5,6 +5,7 @@ import useTokenAvatar from "@/hooks/useTokenAvatar";
 import type { Distribution } from "@/lib/fixtures/distributions";
 import { formatDate } from "@/utils/formatDate";
 import { roundUnits } from "@/utils/round-units";
+import { useChainId } from "wagmi";
 
 export type TableRowProps = {
   distribution: Distribution;
@@ -18,7 +19,8 @@ export type TableRowProps = {
 const cellBorder = "h-16 align-middle border-y border-muted group-hover:border-transparent";
 
 export default function TableRow({ distribution }: TableRowProps) {
-  const tokenAvatarUrl = useTokenAvatar(distribution.tokenAddress);
+  const chainId = useChainId();
+  const tokenAvatarUrl = useTokenAvatar(distribution.tokenAddress, chainId);
 
   return (
     <tr

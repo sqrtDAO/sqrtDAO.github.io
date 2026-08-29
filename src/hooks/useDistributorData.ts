@@ -5,6 +5,7 @@ import {
 } from "@/contracts/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
+import { showToast } from "@/hooks/useToast";
 
 export type DistributionState = "waiting" | "running" | "ended";
 
@@ -85,13 +86,14 @@ export function useDistributorData(contractAddress: Address) {
         );
         const info = await distributor.read.getContractInfo();
         setContractInfo(info);
+        const now = BigInt(Math.floor(Date.now() / 1000));
         const currentEpoch =
-          (BigInt(Math.floor(Date.now() / 1000)) - info.startingTimestamp) /
+          (now - info.startingTimestamp) /
           info.epochDuration;
         setCurrentEpoch(currentEpoch);
 
         setDistributionState(
-          currentEpoch < 0n
+          now < info.startingTimestamp
             ? "waiting"
             : currentEpoch > info.numberOfEpochs
               ? "ended"
@@ -166,10 +168,14 @@ export function useDistributorData(contractAddress: Address) {
       } catch (e) {
         setError("Error while loading on-chain data");
         console.error(e);
+        showToast("data.loadFailed", {
+          id: `distributor-data-${contractAddress}`,
+          action: { label: "Retry", onClick: refetch },
+        });
       }
       setIsLoading(false);
     })();
-  }, [contractAddress, publicClient, fetchKey, address]);
+  }, [contractAddress, publicClient, fetchKey, address, refetch]);
 
   return {
     state: distributionState,

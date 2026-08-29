@@ -4,13 +4,16 @@ import { useEffect, useState } from "react";
 import type { Address } from "viem";
 import { getTokenAvatar } from "@/utils/avatar-api";
 
-const useTokenAvatar = (address: Address | undefined): string | null => {
+const useTokenAvatar = (
+  address: Address | undefined,
+  chainId?: number,
+): string | null => {
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!address) return;
     let active = true;
-    getTokenAvatar(address)
+    getTokenAvatar(address, chainId)
       .then((avatar) => {
         if (active) setUrl(avatar);
       })
@@ -18,7 +21,7 @@ const useTokenAvatar = (address: Address | undefined): string | null => {
     return () => {
       active = false;
     };
-  }, [address]);
+  }, [address, chainId]);
 
   return url;
 };

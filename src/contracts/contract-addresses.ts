@@ -39,6 +39,7 @@ const addresses: Record<ChainId, ContractAddresses> = {
     distributorFactory: "0x533E7f8e7B4a741D0B0142b5aE97C5649E3f39f0",
   },
   [base.id]: {
+    // WARNING: when you deployed on base make sure you update .env file of server
     factoryV1: zeroAddress,
     rootToken: zeroAddress,
     fixedEmission: zeroAddress,
