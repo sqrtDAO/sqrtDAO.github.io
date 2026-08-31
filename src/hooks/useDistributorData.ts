@@ -135,7 +135,10 @@ export function useDistributorData(contractAddress: Address) {
             !epoch.claimed &&
             epoch.rewardAmount > ZERO_N &&
             epoch.userParticipationAmount > ZERO_N &&
-            epochIndex < currentEpoch;
+            now >=
+              info.startingTimestamp +
+                (epochIndex + 1n) * info.epochDuration +
+                info.claimDelaySeconds;
 
           if (isClaimable) {
             if (currentRange === null) {

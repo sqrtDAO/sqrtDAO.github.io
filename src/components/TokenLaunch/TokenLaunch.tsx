@@ -5,6 +5,7 @@ import { IconChevronLeft, IconPhotoPlus } from "@tabler/icons-react";
 import Input from "@/components/Input/Input";
 import { useInput } from "@/hooks/useInput";
 import TokenAvatar from "@/components/TokenAvatar/TokenAvatar";
+import AvatarCropDialog from "@/components/AvatarCropDialog/AvatarCropDialog";
 import Header from "@/components/Header/Header";
 import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
 import { IconButton } from "@/components/IconButton/IconButton";
@@ -51,6 +52,7 @@ export default function TokenLaunch(props: {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const avatarFileRef = useRef<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [avatarStatus, setAvatarStatus] = useState<AvatarStatus>("idle");
 
   const onPickFile = (file: File | undefined) => {
@@ -62,6 +64,16 @@ export default function TokenLaunch(props: {
       setAvatarStatus("rejected");
       return;
     }
+    setCropSrc(URL.createObjectURL(file));
+  };
+
+  const onCropCancel = () => {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+  };
+
+  const onCropped = (file: File) => {
+    onCropCancel();
     setPreviewUrl((old) => {
       if (old) URL.revokeObjectURL(old);
       return URL.createObjectURL(file);
@@ -169,6 +181,9 @@ export default function TokenLaunch(props: {
           </div>
         </div>
       </div>
+      {cropSrc && (
+        <AvatarCropDialog src={cropSrc} onClose={onCropCancel} onCropped={onCropped} />
+      )}
     </div>
   );
 }

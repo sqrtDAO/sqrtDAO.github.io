@@ -316,7 +316,7 @@ export default function EpochComboChart({
       epochs.map((e) => [timeOf(e) as unknown as number, e]),
     );
     intro.run();
-    skipFirstSyncRef.current = true;
+    skipFirstSyncRef.current = epochs.length > 0;
 
     return () => {
       chartEl.removeEventListener("pointerdown", cancelIntro);
