@@ -284,7 +284,9 @@ function buildEpochs(
     const timestamp = (startingTimestampSec + i * epochDurationSec) * 1000;
     const info = i >= fromIdx && epochInfo ? epochInfo[i - fromIdx] : undefined;
     const participationVolume = info
-      ? Number(formatUnits(info.totalParticipationAmount, participationDecimals))
+      ? Number(
+          formatUnits(info.totalParticipationAmount, participationDecimals),
+        )
       : 0;
     const rewardAmount = info
       ? Number(formatUnits(info.rewardAmount, distributionDecimals))
@@ -359,7 +361,10 @@ export default function DistributionDetail({
     refetch,
   } = useDistributorData(contractAddress as Address);
 
-  const tokenAvatarUrl = useTokenAvatar(contractInfo?.distributionToken, chainId);
+  const tokenAvatarUrl = useTokenAvatar(
+    contractInfo?.distributionToken,
+    chainId,
+  );
 
   const { isConnected: isWalletConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -432,7 +437,14 @@ export default function DistributionDetail({
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setEpochs(built);
     }
-  }, [isLoading, contractInfo, currentEpoch, epochsInfo, epochsFrom, participationTokenDecimals]);
+  }, [
+    isLoading,
+    contractInfo,
+    currentEpoch,
+    epochsInfo,
+    epochsFrom,
+    participationTokenDecimals,
+  ]);
 
   const [endTimestampMs, setEndTimestampMs] = useState(0);
   useEffect(() => {
@@ -564,7 +576,10 @@ export default function DistributionDetail({
 
     const toastId = `claim-${contractAddress}`;
     setClaimState("claiming");
-    showToast("claim.pending", { id: toastId, params: { symbol: tokenSymbol ?? "" } });
+    showToast("claim.pending", {
+      id: toastId,
+      params: { symbol: tokenSymbol ?? "" },
+    });
     try {
       const claimParams = claimData!.ranges.map((r) => {
         return {
@@ -584,9 +599,14 @@ export default function DistributionDetail({
         account: walletClient.account,
         chain: walletClient.chain,
       });
-      const claimReceipt = await publicClient.waitForTransactionReceipt({ hash: claimTx });
+      const claimReceipt = await publicClient.waitForTransactionReceipt({
+        hash: claimTx,
+      });
       if (claimReceipt.status === "reverted") {
-        showToast("claim.failed", { id: toastId, action: viewTransactionAction(chainId, claimTx) });
+        showToast("claim.failed", {
+          id: toastId,
+          action: viewTransactionAction(chainId, claimTx),
+        });
         setClaimState("error");
         return;
       }
@@ -604,7 +624,9 @@ export default function DistributionDetail({
       refetch();
     } catch (e) {
       console.error("Claim failed:", e);
-      showToast(isUserRejectedError(e) ? "claim.rejected" : "claim.failed", { id: toastId });
+      showToast(isUserRejectedError(e) ? "claim.rejected" : "claim.failed", {
+        id: toastId,
+      });
       setClaimState("error");
     }
   }, [
@@ -649,7 +671,10 @@ export default function DistributionDetail({
 
     try {
       setParticipateState("approving");
-      showToast("participate.pending", { id: toastId, params: { epoch: Number(currentEpoch) } });
+      showToast("participate.pending", {
+        id: toastId,
+        params: { epoch: Number(currentEpoch) },
+      });
 
       const totalAmount = parseUnits(amount, participationTokenDecimals!);
       const amountPerEpoch = totalAmount / BigInt(epochCountNum);
@@ -674,12 +699,18 @@ export default function DistributionDetail({
           [contractAddress as Address, maxUint256],
           { account: walletClient.account, chain: walletClient.chain },
         );
-        const approveReceipt = await publicClient!.waitForTransactionReceipt({ hash: approveTx });
+        const approveReceipt = await publicClient!.waitForTransactionReceipt({
+          hash: approveTx,
+        });
 
-      if (approveReceipt.status === "reverted") {
-        showToast("approve.failed", { id: toastId, action: viewTransactionAction(chainId, approveTx) });
-        setParticipateState("error");
-        return;}
+        if (approveReceipt.status === "reverted") {
+          showToast("approve.failed", {
+            id: toastId,
+            action: viewTransactionAction(chainId, approveTx),
+          });
+          setParticipateState("error");
+          return;
+        }
       }
 
       setParticipateState("participating");
@@ -705,9 +736,14 @@ export default function DistributionDetail({
         account: walletClient.account,
         chain: walletClient.chain,
       });
-      const participateReceipt = await publicClient!.waitForTransactionReceipt({ hash: participateTx });
+      const participateReceipt = await publicClient!.waitForTransactionReceipt({
+        hash: participateTx,
+      });
       if (participateReceipt.status === "reverted") {
-        showToast("participate.failed", { id: toastId, action: viewTransactionAction(chainId, participateTx) });
+        showToast("participate.failed", {
+          id: toastId,
+          action: viewTransactionAction(chainId, participateTx),
+        });
         setParticipateState("error");
         return;
       }
@@ -715,11 +751,19 @@ export default function DistributionDetail({
       if (epochCountNum > 1) {
         showToast("participate.multiSuccess", {
           id: toastId,
-          params: { n: epochCountNum, first: Number(currentEpoch), last: Number(currentEpoch) + epochCountNum - 1 },
+          params: {
+            n: epochCountNum,
+            first: Number(currentEpoch),
+            last: Number(currentEpoch) + epochCountNum - 1,
+          },
           action,
         });
       } else {
-        showToast("participate.success", { id: toastId, params: { epoch: Number(currentEpoch) }, action });
+        showToast("participate.success", {
+          id: toastId,
+          params: { epoch: Number(currentEpoch) },
+          action,
+        });
       }
 
       setParticipateState("idle");
@@ -727,7 +771,10 @@ export default function DistributionDetail({
       refetch();
     } catch (e) {
       console.error("Participate failed:", e);
-      showToast(isUserRejectedError(e) ? "participate.rejected" : "participate.failed", { id: toastId });
+      showToast(
+        isUserRejectedError(e) ? "participate.rejected" : "participate.failed",
+        { id: toastId },
+      );
       setParticipateState("error");
     }
   };
@@ -837,7 +884,11 @@ export default function DistributionDetail({
                   autoComplete="off"
                   value={epochCount.value}
                   disabled={!isInteractive}
-                  onChange={(e) => epochCount.onChange(e.target.value)}
+                  onChange={(e) =>
+                    epochCount.onChange(
+                      String(Math.min(maxEpochs, parseInt(e.target.value))),
+                    )
+                  }
                 />
                 <span>Epochs</span>
               </div>
@@ -879,7 +930,9 @@ export default function DistributionDetail({
               variant="primary"
               size="m"
               className="ddp-participation__submit"
-              disabled={!isInteractive || (isWalletConnected && !canParticipate)}
+              disabled={
+                !isInteractive || (isWalletConnected && !canParticipate)
+              }
               onClick={handleParticipateClick}
             >
               {submitLabel}
@@ -985,7 +1038,9 @@ export default function DistributionDetail({
                 {state !== "waiting" && (
                   <div className="ddp-summary-row">
                     <div className="ddp-stat">
-                      <span className="ddp-stat__label">Distributed supply</span>
+                      <span className="ddp-stat__label">
+                        Distributed supply
+                      </span>
                       <div className="ddp-stat__value-row">
                         <span className="ddp-stat__value-primary">
                           {fmtInt(stats.distributedSupply)}
@@ -998,10 +1053,15 @@ export default function DistributionDetail({
                       </div>
                     </div>
                     <div className="ddp-stat">
-                      <span className="ddp-stat__label">Total participation</span>
+                      <span className="ddp-stat__label">
+                        Total participation
+                      </span>
                       <div className="ddp-stat__value-row">
                         <span className="ddp-stat__value-primary">
-                          {roundUnits(stats.totalParticipation,participationTokenDecimals??18)}
+                          {roundUnits(
+                            stats.totalParticipation,
+                            participationTokenDecimals ?? 18,
+                          )}
                         </span>
                         <span className="ddp-stat__unit">
                           {participationTokenSymbol}
@@ -1136,7 +1196,10 @@ export default function DistributionDetail({
                           </strong>
                           <time className={isHovering ? "is-accent" : ""}>
                             {displayEpoch
-                              ? fmtEpochDate(displayEpoch.timestamp, !isHovering)
+                              ? fmtEpochDate(
+                                  displayEpoch.timestamp,
+                                  !isHovering,
+                                )
                               : "—"}
                           </time>
                         </div>
@@ -1167,12 +1230,14 @@ export default function DistributionDetail({
                           <strong className={isHovering ? "is-accent" : ""}>
                             {displayParticipants}
                           </strong>
-                          <span className="ddp-epoch-card__by">participants</span>
+                          <span className="ddp-epoch-card__by">
+                            participants
+                          </span>
                         </div>
                       </div>
                       <p className="ddp-epoch-card__note">
-                        The clear price is set when the epoch closes, everyone in
-                        the epoch gets the same price.
+                        The clear price is set when the epoch closes, everyone
+                        in the epoch gets the same price.
                       </p>
                     </div>
                     <div className="ddp-epoch-card__chart">
