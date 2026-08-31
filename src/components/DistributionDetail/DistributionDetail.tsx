@@ -263,13 +263,14 @@ function buildEpochs(
   currentEpoch: bigint,
   epochInfo: readonly EpochInfo[] | undefined,
   epochsFrom: bigint,
-  decimals: number,
+  distributionDecimals: number,
+  participationDecimals: number,
 ): EpochData[] {
   const numberOfEpochs = Number(contractInfo.numberOfEpochs);
   const epochDurationSec = Number(contractInfo.epochDuration);
   const startingTimestampSec = Number(contractInfo.startingTimestamp);
   const totalDistribution = Number(
-    formatUnits(contractInfo.totalDistributionAmount, decimals),
+    formatUnits(contractInfo.totalDistributionAmount, distributionDecimals),
   );
   const supplyPerEpoch =
     numberOfEpochs > 0 ? totalDistribution / numberOfEpochs : 0;
@@ -283,10 +284,10 @@ function buildEpochs(
     const timestamp = (startingTimestampSec + i * epochDurationSec) * 1000;
     const info = i >= fromIdx && epochInfo ? epochInfo[i - fromIdx] : undefined;
     const participationVolume = info
-      ? Number(formatUnits(info.totalParticipationAmount, decimals))
+      ? Number(formatUnits(info.totalParticipationAmount, participationDecimals))
       : 0;
     const rewardAmount = info
-      ? Number(formatUnits(info.rewardAmount, decimals))
+      ? Number(formatUnits(info.rewardAmount, distributionDecimals))
       : 0;
     const supply = rewardAmount > 0 ? rewardAmount : supplyPerEpoch;
     const clearPrice =
@@ -426,11 +427,12 @@ export default function DistributionDetail({
         epochsInfo,
         epochsFrom,
         18,
+        participationTokenDecimals ?? 18,
       );
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setEpochs(built);
     }
-  }, [isLoading, contractInfo, currentEpoch, epochsInfo, epochsFrom]);
+  }, [isLoading, contractInfo, currentEpoch, epochsInfo, epochsFrom, participationTokenDecimals]);
 
   const [endTimestampMs, setEndTimestampMs] = useState(0);
   useEffect(() => {
