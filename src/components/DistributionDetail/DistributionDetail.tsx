@@ -1141,15 +1141,9 @@ export default function DistributionDetail({
                           </time>
                         </div>
                       </div>
-                    </div>
-                    <div className="ddp-epoch-card__data">
-                      <span>Participation this epoch</span>
-                      <div className="ddp-epoch-card__data-row ddp-epoch-card__data-row--participation">
-                        <strong className={isHovering ? "is-accent" : ""}>
-                          {displayParticipation.toFixed(2)}
-                        </strong>
-                        <span className="ddp-epoch-card__unit">
-                          {participationTokenSymbol}
+                      <div className="ddp-epoch-card__data">
+                        <span>
+                          {isHovering ? "Clear price" : "Last clear price"}
                         </span>
                         <div className="ddp-epoch-card__data-row ddp-epoch-card__data-row--price">
                           <strong className={isHovering ? "is-accent" : ""}>
