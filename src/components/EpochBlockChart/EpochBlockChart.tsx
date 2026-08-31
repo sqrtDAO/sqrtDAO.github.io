@@ -92,8 +92,7 @@ export default function EpochBlockChart({
   // Never scrolls — fills the container width with as many columns as fit
   // and renders the full history across however many rows that takes.
   const displayWindow = useMemo(
-    () =>
-      computeBlockDisplayWindow(containerWidth, epochs.length, device),
+    () => computeBlockDisplayWindow(containerWidth, epochs.length, device),
     [containerWidth, epochs.length, device],
   );
   const visibleEpochs = useMemo(

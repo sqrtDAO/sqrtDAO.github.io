@@ -13,7 +13,6 @@ export function getParticipationVolumeRange(epochs: EpochData[]): VolumeRange {
   let min = Infinity;
   let max = -Infinity;
   for (const e of epochs) {
-    if (e.state !== "passed" || e.participationVolume <= 0) continue;
     min = Math.min(min, e.participationVolume);
     max = Math.max(max, e.participationVolume);
   }
@@ -27,7 +26,8 @@ export function getParticipationVolumeRange(epochs: EpochData[]): VolumeRange {
  * lightest (100). All-equal-volume dataset defaults to lightest.
  */
 export function getVolumeBucketVar(vol: number, range: VolumeRange): string {
-  const t = range.max === range.min ? 1 : (vol - range.min) / (range.max - range.min);
+  const t =
+    range.max === range.min ? 1 : (vol - range.min) / (range.max - range.min);
   const bucketIndex = Math.min(8, Math.max(0, Math.floor(t * 9)));
   return `var(--color-charts-epochs-${VIOLET_STOPS[bucketIndex]})`;
 }
