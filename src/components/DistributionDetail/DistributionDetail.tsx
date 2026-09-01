@@ -274,7 +274,7 @@ function buildEpochs(
   );
   const supplyPerEpoch =
     numberOfEpochs > 0 ? totalDistribution / numberOfEpochs : 0;
-  const currentIdx = Number(currentEpoch);
+  const currentIdx = Math.min(Number(currentEpoch), numberOfEpochs - 1);
   const fromIdx = Number(epochsFrom);
 
   const epochs: EpochData[] = [];

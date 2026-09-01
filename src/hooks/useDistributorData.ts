@@ -95,7 +95,7 @@ export function useDistributorData(contractAddress: Address) {
         setDistributionState(
           now < info.startingTimestamp
             ? "waiting"
-            : currentEpoch > info.numberOfEpochs
+            : currentEpoch >= info.numberOfEpochs
               ? "ended"
               : "running",
         );
