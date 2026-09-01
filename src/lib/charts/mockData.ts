@@ -17,7 +17,7 @@ export interface MockEpochOptions {
  * Deterministic-ish fake epoch feed, ported from the two locked prototypes'
  * genData() functions. `participated` ("mine") is independent of whether an
  * epoch had any participation at all — the block chart keys its zero/bucket
- * split off `participationVolume === 0`, not off `participated`.
+ * split off `participationAmount === 0n`, not off `participated`.
  */
 export function generateMockEpochs(options: MockEpochOptions = {}): EpochData[] {
   const {
@@ -64,7 +64,7 @@ export function generateMockEpochs(options: MockEpochOptions = {}): EpochData[] 
     epochs.push({
       epoch: i + 1,
       state,
-      participationVolume,
+      participationAmount: BigInt(participationVolume) * 10n ** 18n,
       clearPrice: state === "passed" ? +price.toFixed(6) : null,
       supply: supplyPerEpoch,
       participated,

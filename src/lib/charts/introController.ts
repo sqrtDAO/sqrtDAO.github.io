@@ -8,6 +8,8 @@ export interface IntroControllerOptions {
   lineSeries: ISeriesApi<"Line">;
   toBarItem: (e: EpochData) => RoundedBarsData;
   toLinePoint: (e: EpochData) => LineData<Time>;
+  /** Plot value of an epoch's participation amount (bigint -> number). */
+  getVolume: (e: EpochData) => number;
   introDurationMs: number;
   reducedMotion: boolean;
 }
@@ -56,7 +58,7 @@ function volMaxOf(vols: number[]): number {
  * invalidates any in-flight rAF loop cleanly.
  */
 export function createIntroController(options: IntroControllerOptions): IntroController {
-  const { chart, barsSeries, lineSeries, toBarItem, toLinePoint } = options;
+  const { chart, barsSeries, lineSeries, toBarItem, toLinePoint, getVolume } = options;
   let epochs: EpochData[] = [];
   let introToken = 0;
   let introRunning = false;
@@ -97,7 +99,7 @@ export function createIntroController(options: IntroControllerOptions): IntroCon
     const slice = epochs.slice(Math.max(0, Math.floor(fr.from)));
     return {
       y: priceRangeOf(slice.map((e) => e.clearPrice)),
-      v: { max: volMaxOf(slice.map((e) => e.participationVolume)) },
+      v: { max: volMaxOf(slice.map(getVolume)) },
     };
   }
 
@@ -130,7 +132,7 @@ export function createIntroController(options: IntroControllerOptions): IntroCon
     const full = { from: -2, to: n + 4 };
 
     lockY = priceRangeOf(epochs.map((e) => e.clearPrice));
-    lockV = { max: volMaxOf(epochs.map((e) => e.participationVolume)) };
+    lockV = { max: volMaxOf(epochs.map(getVolume)) };
     applyLocks();
     barsSeries.setData(barItems(epochs));
     lineSeries.setData(lineAll);
