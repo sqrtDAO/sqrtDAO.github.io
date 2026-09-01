@@ -118,28 +118,32 @@ export function useDistributorData(contractAddress: Address) {
 
         // currentEpoch keeps growing after the distribution ends, so the
         // window must be clamped to the real epochs or claims get skipped
-        const lastRelevant =
+        const total = info.numberOfEpochs;
+        const lastClosed =
           currentEpoch < 0n
             ? -1n
-            : currentEpoch < info.numberOfEpochs
+            : currentEpoch < total
               ? currentEpoch
-              : info.numberOfEpochs - 1n;
-        const count = lastRelevant + 1n;
+              : total - 1n;
+        // future epochs can hold participation (multi-epoch participate),
+        // so the window extends past the current epoch — clamped to the
+        // real epoch count
+        const windowEnd = lastClosed + 101n < total ? lastClosed + 101n : total;
         // once ended, scan all epochs for unclaimed rewards; while running
         // only the recent window can be claimable, so cap it for performance
         const fromEpoch =
-          currentEpoch >= info.numberOfEpochs
+          currentEpoch >= total
             ? 0n
-            : count > 100n
-              ? count - 100n
+            : lastClosed + 1n > 100n
+              ? lastClosed + 1n - 100n
               : 0n;
         const epochInfos =
-          count > 0n
+          windowEnd > fromEpoch
             ? await distributor.read.getEpochInfo([
                 address ?? zeroAddress,
                 {
                   from: fromEpoch,
-                  length: count - fromEpoch,
+                  length: windowEnd - fromEpoch,
                 },
               ])
             : [];
