@@ -10,6 +10,8 @@ export interface EpochData {
   clearPrice: number | null;
   /** Token supply released this epoch. */
   supply: number;
+  /** Unique participants this epoch, when known from the contract. */
+  participants?: number;
   /** Did the connected wallet participate in this epoch. */
   participated: boolean;
   /** Epoch open time, ms since epoch. */

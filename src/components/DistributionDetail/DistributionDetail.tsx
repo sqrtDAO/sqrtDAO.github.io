@@ -205,10 +205,6 @@ function PeriodLabel({
   );
 }
 
-function estimateParticipants(volume: number): number {
-  return volume > 0 ? Math.max(1, Math.round(volume / 870)) : 0;
-}
-
 const MONTHS = [
   "Jan",
   "Feb",
@@ -274,7 +270,9 @@ function buildEpochs(
   );
   const supplyPerEpoch =
     numberOfEpochs > 0 ? totalDistribution / numberOfEpochs : 0;
-  const currentIdx = Math.min(Number(currentEpoch), numberOfEpochs - 1);
+  // when the distribution has ended, currentEpoch >= numberOfEpochs and
+  // every epoch correctly lands on "passed"
+  const currentIdx = Number(currentEpoch);
   const fromIdx = Number(epochsFrom);
 
   const epochs: EpochData[] = [];
@@ -303,6 +301,7 @@ function buildEpochs(
       participationVolume,
       clearPrice,
       supply,
+      participants: info ? Number(info.uniqueParticipants) : 0,
       participated: false,
       timestamp,
     });
@@ -354,6 +353,7 @@ export default function DistributionDetail({
     epochsFrom,
     tokenName,
     tokenSymbol,
+    tokenDecimals,
     claimData,
     participationTokenSymbol,
     participationTokenDecimals,
@@ -431,7 +431,7 @@ export default function DistributionDetail({
         currentEpoch,
         epochsInfo,
         epochsFrom,
-        18,
+        tokenDecimals ?? 18,
         participationTokenDecimals ?? 18,
       );
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -443,6 +443,7 @@ export default function DistributionDetail({
     currentEpoch,
     epochsInfo,
     epochsFrom,
+    tokenDecimals,
     participationTokenDecimals,
   ]);
 
@@ -509,8 +510,11 @@ export default function DistributionDetail({
     if (!contractInfo) return 0;
     const num = Number(contractInfo.numberOfEpochs);
     if (num === 0) return 0;
-    return Number(formatUnits(contractInfo.totalDistributionAmount, 18)) / num;
-  }, [contractInfo]);
+    return (
+      Number(formatUnits(contractInfo.totalDistributionAmount, tokenDecimals ?? 18)) /
+      num
+    );
+  }, [contractInfo, tokenDecimals]);
 
   const stats = useMemo(() => {
     const closed = epochs.filter((e) => e.state === "passed");
@@ -525,8 +529,10 @@ export default function DistributionDetail({
       totalSupply: supplyPerEpoch * Number(contractInfo?.numberOfEpochs ?? 0n),
       totalParticipation: contractInfo?.totalParticipation ?? 0n,
       uniqueParticipants: contractInfo?.totalUniqueParticipants ?? 0n,
-      supplyRemaining: supplyPerEpoch * (future.length + 1), // +1 because we count current epochs as not released yet
+      // closed epochs are released; current + future are not (0 once ended)
+      supplyRemaining: supplyPerEpoch * (epochs.length - closed.length),
       current,
+      last: lastClosed ?? null,
       lastClearPrice: lastClosed?.clearPrice ?? null,
     };
   }, [epochs, supplyPerEpoch, contractInfo]);
@@ -538,12 +544,12 @@ export default function DistributionDetail({
   }, [contractInfo, chainId]);
 
   const isHovering = hoveredEpoch != null;
-  const displayEpoch = hoveredEpoch ?? stats.current ?? null;
+  const displayEpoch = hoveredEpoch ?? stats.current ?? stats.last ?? null;
   const displayClearPrice = isHovering
     ? (displayEpoch?.clearPrice ?? stats.lastClearPrice)
     : stats.lastClearPrice;
   const displayParticipation = displayEpoch?.participationVolume ?? 0;
-  const displayParticipants = estimateParticipants(displayParticipation);
+  const displayParticipants = displayEpoch?.participants ?? 0;
 
   const minParticipationFormatted = useMemo(() => {
     if (!contractInfo || !participationTokenDecimals) return 0;
@@ -559,7 +565,8 @@ export default function DistributionDetail({
     minParticipationFormatted > 0 &&
     amountNum < minParticipationFormatted;
 
-  const hasClaimableShare = stats.closedCount > 0;
+  const hasClaimableShare =
+    claimState === "done" || (claimData?.claimableAmount ?? 0n) > 0n;
 
   const handleClaim = useCallback(async () => {
     if (!walletClient || !publicClient || !contractInfo || !claimData) return;
@@ -587,14 +594,6 @@ export default function DistributionDetail({
           range: { from: r.from, length: r.to - r.from + BigInt(1) },
         };
       });
-      console.log("claim params:", claimParams);
-      await publicClient.simulateContract({
-        address: contractAddress as Address,
-        abi: distributorV1Abi,
-        functionName: "claimMany",
-        args: [claimParams],
-        account: walletClient.account.address,
-      });
       const claimTx = await distributor.write.claimMany([claimParams], {
         account: walletClient.account,
         chain: walletClient.chain,
@@ -614,7 +613,7 @@ export default function DistributionDetail({
       showToast("claim.success", {
         id: toastId,
         params: {
-          amount: formatUnits(claimData.claimableAmount, 18),
+          amount: formatUnits(claimData.claimableAmount, tokenDecimals ?? 18),
           symbol: tokenSymbol ?? "",
         },
         action: viewTransactionAction(chainId, claimTx),
@@ -638,6 +637,7 @@ export default function DistributionDetail({
     claimData,
     chainId,
     tokenSymbol,
+    tokenDecimals,
   ]);
 
   const canParticipate =
@@ -809,7 +809,10 @@ export default function DistributionDetail({
               <>
                 <div className="ddp-claim-card__amount">
                   <span>
-                    {roundUnits(claimData?.claimableAmount ?? BigInt(0), 18)}
+                    {roundUnits(
+                      claimData?.claimableAmount ?? BigInt(0),
+                      tokenDecimals ?? 18,
+                    )}
                   </span>
                   <span className="ddp-claim-card__unit">{tokenSymbol}</span>
                 </div>
@@ -884,11 +887,12 @@ export default function DistributionDetail({
                   autoComplete="off"
                   value={epochCount.value}
                   disabled={!isInteractive}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const n = Number.parseInt(e.target.value, 10);
                     epochCount.onChange(
-                      String(Math.min(maxEpochs, parseInt(e.target.value))),
-                    )
-                  }
+                      Number.isNaN(n) ? "" : String(Math.min(maxEpochs, n)),
+                    );
+                  }}
                 />
                 <span>Epochs</span>
               </div>
@@ -1182,13 +1186,11 @@ export default function DistributionDetail({
                     <div className="ddp-epoch-card__info">
                       <div className="ddp-epoch-card__data">
                         <span>
-                          {isHovering ? "Epoch number" : "Current epoch"}
-                          {!isHovering && state === "ended" && (
-                            <span className="ddp-epoch-card__tag">
-                              {" "}
-                              Last epoch
-                            </span>
-                          )}
+                          {isHovering
+                            ? "Epoch number"
+                            : state === "ended"
+                              ? "Last epoch"
+                              : "Current epoch"}
                         </span>
                         <div className="ddp-epoch-card__data-row ddp-epoch-card__data-row--epoch">
                           <strong className={isHovering ? "is-accent" : ""}>
