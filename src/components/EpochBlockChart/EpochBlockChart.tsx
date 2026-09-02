@@ -58,8 +58,7 @@ export default function EpochBlockChart({
   const [containerWidth, setContainerWidth] = useState(0);
   const bp = useBreakpoint();
   const device: ChartDevice = bp === "mobile" ? "mobile" : "desktop";
-  const { width: BLOCK_W, height: BLOCK_H } = BLOCK_DIMS[device];
-  const CAPSULE_RX = BLOCK_W / 2;
+  const { width: BLOCK_MIN_W, height: BLOCK_H } = BLOCK_DIMS[device];
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -102,18 +101,36 @@ export default function EpochBlockChart({
     () => getParticipationVolumeRange(epochs.map(volumeOf)),
     [epochs, volumeOf],
   );
+  const currentEpochIndex = useMemo(
+    () => epochs.findIndex((e) => e.state === "current"),
+    [epochs],
+  );
   // Never scrolls — fills the container width with as many columns as fit
-  // and renders the full history across however many rows that takes.
+  // (capped per device) and renders at most MAX_ROWS rows; when epochs
+  // exceed the grid, the most recent full window is shown (shifted back
+  // when needed so the current block stays on-grid).
   const displayWindow = useMemo(
-    () => computeBlockDisplayWindow(containerWidth, epochs.length, device),
-    [containerWidth, epochs.length, device],
+    () =>
+      computeBlockDisplayWindow(
+        containerWidth,
+        epochs.length,
+        device,
+        currentEpochIndex,
+      ),
+    [containerWidth, epochs.length, device, currentEpochIndex],
   );
   const visibleEpochs = useMemo(
     () => epochs.slice(displayWindow.startIndex, displayWindow.endIndex),
     [epochs, displayWindow.startIndex, displayWindow.endIndex],
   );
   const gridSize = useMemo(
-    () => gridPixelSize(displayWindow.columns, displayWindow.rows, device),
+    () =>
+      gridPixelSize(
+        displayWindow.columns,
+        displayWindow.rows,
+        device,
+        displayWindow.blockWidth,
+      ),
     [displayWindow, device],
   );
 
@@ -235,16 +252,21 @@ export default function EpochBlockChart({
           </defs>
           {containerWidth > 0 &&
             visibleEpochs.map((epoch, i) => {
-              const { x, y } = blockPosition(i, displayWindow.columns, device);
+              const { x, y } = blockPosition(
+                i,
+                displayWindow.columns,
+                device,
+                displayWindow.blockWidth,
+              );
               return (
                 <rect
                   key={epoch.epoch}
                   data-index={i}
                   x={x}
                   y={y}
-                  width={BLOCK_W}
+                  width={displayWindow.blockWidth}
                   height={BLOCK_H}
-                  rx={CAPSULE_RX}
+                  rx={Math.min(displayWindow.blockWidth / 2, BLOCK_MIN_W / 2)}
                   fill={fillFor(epoch, volumeRange)}
                   filter={
                     epoch.state === "current"

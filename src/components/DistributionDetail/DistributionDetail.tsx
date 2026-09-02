@@ -262,6 +262,7 @@ function buildEpochs(
   distributionDecimals: number,
   participationDecimals: number,
 ): EpochData[] {
+  if (!epochInfo || epochInfo.length === 0) return [];
   const numberOfEpochs = Number(contractInfo.numberOfEpochs);
   const epochDurationSec = Number(contractInfo.epochDuration);
   const startingTimestampSec = Number(contractInfo.startingTimestamp);
@@ -279,34 +280,36 @@ function buildEpochs(
   const currentIdx = Number(currentEpoch);
   const fromIdx = Number(epochsFrom);
 
+  // only the fetched window is built — huge distributions render their
+  // recent slice instead of materializing every epoch
   const epochs: EpochData[] = [];
-  for (let i = 0; i < numberOfEpochs; i++) {
+  for (let i = 0; i < epochInfo.length; i++) {
+    const idx = fromIdx + i;
     const state: "passed" | "current" | "future" =
-      i < currentIdx ? "passed" : i === currentIdx ? "current" : "future";
-    const timestamp = (startingTimestampSec + i * epochDurationSec) * 1000;
-    const info = i >= fromIdx && epochInfo ? epochInfo[i - fromIdx] : undefined;
-    const volume = info
-      ? unitsToNumber(info.totalParticipationAmount, participationDecimals)
-      : 0;
-    const rewardAmount = info
-      ? unitsToNumber(info.rewardAmount, distributionDecimals)
-      : 0;
+      idx < currentIdx ? "passed" : idx === currentIdx ? "current" : "future";
+    const timestamp = (startingTimestampSec + idx * epochDurationSec) * 1000;
+    const info = epochInfo[i];
+    const volume = unitsToNumber(
+      info.totalParticipationAmount,
+      participationDecimals,
+    );
+    const rewardAmount = unitsToNumber(info.rewardAmount, distributionDecimals);
     const supply = rewardAmount > 0 ? rewardAmount : supplyPerEpoch;
     const supplyAmount =
-      info && info.rewardAmount > 0n ? info.rewardAmount : supplyPerEpochAmount;
+      info.rewardAmount > 0n ? info.rewardAmount : supplyPerEpochAmount;
     const clearPrice =
       state === "passed" && volume > 0 && rewardAmount > 0
         ? rewardAmount / volume
         : null;
 
     epochs.push({
-      epoch: i + 1,
+      epoch: idx + 1,
       state,
-      participationAmount: info?.totalParticipationAmount ?? 0n,
+      participationAmount: info.totalParticipationAmount,
       clearPrice,
       supply,
       supplyAmount,
-      participants: info ? Number(info.uniqueParticipants) : 0,
+      participants: Number(info.uniqueParticipants),
       participated: false,
       timestamp,
     });
@@ -517,29 +520,56 @@ export default function DistributionDetail({
   }, [contractInfo]);
 
   const stats = useMemo(() => {
+    // totals are derived arithmetically from contractInfo so they stay
+    // correct even though only a recent epoch window is loaded/rendered
+    const total = contractInfo ? Number(contractInfo.numberOfEpochs) : 0;
+    const currentIdx = currentEpoch !== undefined ? Number(currentEpoch) : 0;
+    const closedCount = Math.min(Math.max(currentIdx, 0), total);
+    const remainingCount = total - closedCount - (state === "running" ? 1 : 0);
+
+    // closed epochs inside the fetched window contribute their actual
+    // reward; anything older falls back to the flat per-epoch supply
+    const closedInWindow = Math.min(
+      Math.max(closedCount - Number(epochsFrom), 0),
+      epochsInfo?.length ?? 0,
+    );
+    let windowClosedSupply = 0n;
+    if (epochsInfo) {
+      for (let i = 0; i < closedInWindow; i++) {
+        windowClosedSupply +=
+          epochsInfo[i].rewardAmount > 0n
+            ? epochsInfo[i].rewardAmount
+            : supplyPerEpochAmount;
+      }
+    }
+
     const closed = epochs.filter((e) => e.state === "passed");
-    const current = epochs.find((e) => e.state === "current");
-    const future = epochs.filter((e) => e.state === "future");
-    const lastClosed = closed[closed.length - 1];
+    const last = closed.length > 0 ? closed[closed.length - 1] : null;
     return {
-      totalEpochs: epochs.length,
-      closedCount: closed.length,
-      epochsLeft: future.length,
-      distributedSupplyAmount: closed.reduce(
-        (sum, e) => sum + (e.supplyAmount ?? 0n),
-        0n,
-      ),
+      totalEpochs: total,
+      closedCount,
+      epochsLeft: remainingCount,
+      distributedSupplyAmount:
+        BigInt(closedCount - closedInWindow) * supplyPerEpochAmount +
+        windowClosedSupply,
       totalSupplyAmount: contractInfo?.totalDistributionAmount ?? 0n,
       totalParticipation: contractInfo?.totalParticipation ?? 0n,
       uniqueParticipants: contractInfo?.totalUniqueParticipants ?? 0n,
-      // closed epochs are released; current + future are not (0 once ended)
-      supplyRemainingAmount:
-        supplyPerEpochAmount * BigInt(epochs.length - closed.length),
-      current,
-      last: lastClosed ?? null,
-      lastClearPrice: lastClosed?.clearPrice ?? null,
+      // released = closed epochs; current + future are not (0 once ended)
+      supplyRemainingAmount: supplyPerEpochAmount * BigInt(remainingCount),
+      current: epochs.find((e) => e.state === "current") ?? null,
+      last,
+      lastClearPrice: last?.clearPrice ?? null,
     };
-  }, [epochs, supplyPerEpochAmount, contractInfo]);
+  }, [
+    epochs,
+    epochsInfo,
+    epochsFrom,
+    supplyPerEpochAmount,
+    contractInfo,
+    currentEpoch,
+    state,
+  ]);
 
   const sharesPct = useMemo(() => {
     if (!contractInfo)
@@ -870,14 +900,14 @@ export default function DistributionDetail({
               <span>{participationTokenSymbol}</span>
             </div>
             {belowMin && (
-                <p className="ddp-participation__error">
-                  Minimum participation is{" "}
-                  {roundUnits(
-                    contractInfo?.minParticipation ?? 0n,
-                    participationTokenDecimals ?? 18,
-                  )}{" "}
-                  {participationTokenSymbol}
-                </p>
+              <p className="ddp-participation__error">
+                Minimum participation is{" "}
+                {roundUnits(
+                  contractInfo?.minParticipation ?? 0n,
+                  participationTokenDecimals ?? 18,
+                )}{" "}
+                {participationTokenSymbol}
+              </p>
             )}
           </div>
           <div className="ddp-participation__row">
