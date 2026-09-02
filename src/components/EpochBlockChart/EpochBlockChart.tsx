@@ -102,11 +102,23 @@ export default function EpochBlockChart({
     () => getParticipationVolumeRange(epochs.map(volumeOf)),
     [epochs, volumeOf],
   );
+  const currentEpochIndex = useMemo(
+    () => epochs.findIndex((e) => e.state === "current"),
+    [epochs],
+  );
   // Never scrolls — fills the container width with as many columns as fit
-  // and renders the full history across however many rows that takes.
+  // (capped per device) and renders at most MAX_ROWS rows; when epochs
+  // exceed the grid, the most recent full window is shown (shifted back
+  // when needed so the current block stays on-grid).
   const displayWindow = useMemo(
-    () => computeBlockDisplayWindow(containerWidth, epochs.length, device),
-    [containerWidth, epochs.length, device],
+    () =>
+      computeBlockDisplayWindow(
+        containerWidth,
+        epochs.length,
+        device,
+        currentEpochIndex,
+      ),
+    [containerWidth, epochs.length, device, currentEpochIndex],
   );
   const visibleEpochs = useMemo(
     () => epochs.slice(displayWindow.startIndex, displayWindow.endIndex),
