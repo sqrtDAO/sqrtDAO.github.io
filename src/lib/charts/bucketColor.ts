@@ -1,5 +1,3 @@
-import type { EpochData } from "./types";
-
 /** Dark → light. Lighter = more participation volume. */
 const VIOLET_STOPS = [900, 800, 700, 600, 500, 400, 300, 200, 100] as const;
 
@@ -9,12 +7,12 @@ export interface VolumeRange {
 }
 
 /** Range of nonzero participation volume across passed epochs — the domain the 9-stop scale is fit to. */
-export function getParticipationVolumeRange(epochs: EpochData[]): VolumeRange {
+export function getParticipationVolumeRange(volumes: number[]): VolumeRange {
   let min = Infinity;
   let max = -Infinity;
-  for (const e of epochs) {
-    min = Math.min(min, e.participationVolume);
-    max = Math.max(max, e.participationVolume);
+  for (const vol of volumes) {
+    min = Math.min(min, vol);
+    max = Math.max(max, vol);
   }
   if (min === Infinity) return { min: 0, max: 0 };
   return { min, max };

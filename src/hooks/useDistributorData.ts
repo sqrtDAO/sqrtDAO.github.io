@@ -3,7 +3,7 @@ import {
   getDistributorV1Contract,
   getTokenV1Contract,
 } from "@/contracts/contracts";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
 import { showToast } from "@/hooks/useToast";
 
@@ -52,6 +52,9 @@ export function useDistributorData(contractAddress: Address) {
 
   const [tokenName, setTokenName] = useState<string | undefined>(undefined);
   const [tokenSymbol, setTokenSymbol] = useState<string | undefined>(undefined);
+  const [tokenDecimals, setTokenDecimals] = useState<number | undefined>(
+    undefined,
+  );
   const [participationTokenSymbol, setParticipationTokenSymbol] = useState<
     string | undefined
   >(undefined);
@@ -72,6 +75,7 @@ export function useDistributorData(contractAddress: Address) {
     DistributionState | undefined
   >(undefined);
   const [fetchKey, setFetchKey] = useState(0);
+  const claimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refetch = useCallback(() => setFetchKey((k) => k + 1), []);
 
@@ -95,7 +99,7 @@ export function useDistributorData(contractAddress: Address) {
         setDistributionState(
           now < info.startingTimestamp
             ? "waiting"
-            : currentEpoch > info.numberOfEpochs
+            : currentEpoch >= info.numberOfEpochs
               ? "ended"
               : "running",
         );
@@ -103,6 +107,7 @@ export function useDistributorData(contractAddress: Address) {
         const token = getTokenV1Contract(publicClient, info.distributionToken);
         setTokenName(await token.read.name());
         setTokenSymbol(await token.read.symbol());
+        setTokenDecimals(await token.read.decimals());
 
         const pToken = getTokenV1Contract(
           publicClient,
@@ -111,34 +116,59 @@ export function useDistributorData(contractAddress: Address) {
         setParticipationTokenSymbol(await pToken.read.symbol());
         setParticipationTokenDecimals(await pToken.read.decimals());
 
-        const fromEpoch = currentEpoch < 100n ? 0n : currentEpoch - 100n;
-        const epochInfos = await distributor.read.getEpochInfo([
-          address ?? zeroAddress,
-          {
-            from: fromEpoch,
-            length: currentEpoch + 100n,
-          },
-        ]);
-        console.log("epochInfos", epochInfos);
+        // currentEpoch keeps growing after the distribution ends, so the
+        // window must be clamped to the real epochs or claims get skipped
+        const total = info.numberOfEpochs;
+        const lastClosed =
+          currentEpoch < 0n
+            ? -1n
+            : currentEpoch < total
+              ? currentEpoch
+              : total - 1n;
+        // future epochs can hold participation (multi-epoch participate),
+        // so the window extends past the current epoch — clamped to the
+        // real epoch count
+        const windowEnd = lastClosed + 101n < total ? lastClosed + 101n : total;
+        // once ended, scan all epochs for unclaimed rewards; while running
+        // only the recent window can be claimable, so cap it for performance
+        const fromEpoch =
+          currentEpoch >= total
+            ? 0n
+            : lastClosed + 1n > 100n
+              ? lastClosed + 1n - 100n
+              : 0n;
+        const epochInfos =
+          windowEnd > fromEpoch
+            ? await distributor.read.getEpochInfo([
+                address ?? zeroAddress,
+                {
+                  from: fromEpoch,
+                  length: windowEnd - fromEpoch,
+                },
+              ])
+            : [];
         setEpochs(epochInfos);
         setEpochsFrom(fromEpoch);
 
         const ranges: Range[] = [];
         let currentRange: Range | null = null;
         let userRewardSum = BigInt(0);
+        let nextClaimableAt: bigint | null = null;
 
         for (let i = 0; i < epochInfos.length; i++) {
           const epoch = epochInfos[i];
           const epochIndex = fromEpoch + BigInt(i);
 
+          const claimableAt =
+            info.startingTimestamp +
+            (epochIndex + 1n) * info.epochDuration +
+            info.claimDelaySeconds;
+
           const isClaimable =
             !epoch.claimed &&
             epoch.rewardAmount > ZERO_N &&
             epoch.userParticipationAmount > ZERO_N &&
-            now >=
-              info.startingTimestamp +
-                (epochIndex + 1n) * info.epochDuration +
-                info.claimDelaySeconds;
+            now >= claimableAt;
 
           if (isClaimable) {
             if (currentRange === null) {
@@ -155,19 +185,40 @@ export function useDistributorData(contractAddress: Address) {
             userRewardSum +=
               (epoch.userParticipationAmount * epoch.rewardAmount) /
               epoch.totalParticipationAmount;
-          } else if (currentRange !== null) {
-            ranges.push(currentRange);
-            currentRange = null;
+          } else {
+            if (currentRange !== null) {
+              ranges.push(currentRange);
+              currentRange = null;
+            }
+            if (
+              !epoch.claimed &&
+              epoch.rewardAmount > ZERO_N &&
+              epoch.userParticipationAmount > ZERO_N &&
+              (nextClaimableAt === null || claimableAt < nextClaimableAt)
+            ) {
+              nextClaimableAt = claimableAt;
+            }
           }
         }
 
         if (currentRange !== null) ranges.push(currentRange);
 
-        console.log("claim data:", { ranges, userRewardSum });
         setClaimData({
           ranges,
           claimableAmount: userRewardSum,
         });
+
+        // refetch when the next claim window opens so the UI updates itself
+        if (claimTimerRef.current) clearTimeout(claimTimerRef.current);
+        if (nextClaimableAt !== null) {
+          const delay = Number(nextClaimableAt) * 1000 - Date.now();
+          if (delay > 0) {
+            claimTimerRef.current = setTimeout(
+              refetch,
+              Math.min(delay, 2147483647),
+            );
+          }
+        }
       } catch (e) {
         setError("Error while loading on-chain data");
         console.error(e);
@@ -188,6 +239,7 @@ export function useDistributorData(contractAddress: Address) {
     epochsFrom,
     tokenName,
     tokenSymbol,
+    tokenDecimals,
     claimData,
     participationTokenSymbol,
     participationTokenDecimals,

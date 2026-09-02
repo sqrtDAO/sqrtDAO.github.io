@@ -27,6 +27,7 @@ import {
   type TooltipController,
 } from "@/lib/charts/tooltipController";
 import type { EpochData } from "@/lib/charts/types";
+import { roundUnits, unitsToNumber } from "@/utils/round-units";
 import "@/components/ChartTooltip/ChartTooltip.css";
 import "./EpochComboChart.css";
 
@@ -35,6 +36,8 @@ export interface EpochComboChartProps {
   epochs: EpochData[];
   quoteSymbol?: string;
   tokenSymbol?: string;
+  quoteDecimals?: number;
+  tokenDecimals?: number;
   className?: string;
   /** Fires with the hovered bar's epoch, or null once the pointer leaves the chart. */
   onHoverEpoch?: (epoch: EpochData | null) => void;
@@ -61,6 +64,8 @@ export default function EpochComboChart({
   epochs,
   quoteSymbol,
   tokenSymbol,
+  quoteDecimals,
+  tokenDecimals,
   className,
   onHoverEpoch,
 }: EpochComboChartProps) {
@@ -75,10 +80,20 @@ export default function EpochComboChart({
   const tooltipRef = useRef<TooltipController | null>(null);
   const byTimeRef = useRef<Map<number, EpochData>>(new Map());
   const hoverTimeRef = useRef<number | null>(null);
-  const fmtRef = useRef({ quoteSymbol, tokenSymbol });
+  const fmtRef = useRef({
+    quoteSymbol,
+    tokenSymbol,
+    quoteDecimals,
+    tokenDecimals,
+  });
   useEffect(() => {
-    fmtRef.current = { quoteSymbol, tokenSymbol };
-  }, [quoteSymbol, tokenSymbol]);
+    fmtRef.current = {
+      quoteSymbol,
+      tokenSymbol,
+      quoteDecimals,
+      tokenDecimals,
+    };
+  }, [quoteSymbol, tokenSymbol, quoteDecimals, tokenDecimals]);
   const onHoverEpochRef = useRef(onHoverEpoch);
   useEffect(() => {
     onHoverEpochRef.current = onHoverEpoch;
@@ -86,7 +101,10 @@ export default function EpochComboChart({
 
   const toBarItem = (e: EpochData): RoundedBarsData => ({
     time: timeOf(e),
-    value: e.participationVolume,
+    value: unitsToNumber(
+      e.participationAmount,
+      fmtRef.current.quoteDecimals ?? 18,
+    ),
     state: e.state,
     mine: e.participated,
   });
@@ -199,8 +217,15 @@ export default function EpochComboChart({
     const hoverPrim = createHoverPrimitive({
       chart,
       barsSeries: bars,
-      getValue: (t) =>
-        byTimeRef.current.get(t as unknown as number)?.participationVolume,
+      getValue: (t) => {
+        const rec = byTimeRef.current.get(t as unknown as number);
+        return rec
+          ? unitsToNumber(
+              rec.participationAmount,
+              fmtRef.current.quoteDecimals ?? 18,
+            )
+          : undefined;
+      },
       getBarWidthFactor: () => LOCKED.barWidthFactor,
       getBarRadius: () => LOCKED.barRadius,
       getHoverColor: () => colors.hover,
@@ -223,14 +248,14 @@ export default function EpochComboChart({
     const tooltip = createTooltipController(wrap);
     tooltipRef.current = tooltip;
 
-    const fmtVol = (v: number) =>
-      `${v.toLocaleString("en-US")} ${fmtRef.current.quoteSymbol}`;
+    const fmtVol = (raw: bigint) =>
+      `${roundUnits(raw, fmtRef.current.quoteDecimals ?? 18)} ${fmtRef.current.quoteSymbol}`;
     const fmtPrice = (p: number | null) =>
       p == null
         ? "—"
         : `${parseFloat(p.toFixed(4)).toString()} ${fmtRef.current.quoteSymbol}`;
-    const fmtSupply = (s: number) =>
-      `${s.toLocaleString("en-US")} ${fmtRef.current.tokenSymbol}`;
+    const fmtSupply = (raw: bigint) =>
+      `${roundUnits(raw, fmtRef.current.tokenDecimals ?? 18)} ${fmtRef.current.tokenSymbol}`;
 
     const onCrosshairMove = (param: MouseEventParams<Time>) => {
       const rec =
@@ -255,11 +280,11 @@ export default function EpochComboChart({
       tooltip.show(
         [
           { label: "Epoch num", value: `#${rec.epoch}` },
-          { label: "Epoch supply", value: fmtSupply(rec.supply) },
+          { label: "Epoch supply", value: fmtSupply(rec.supplyAmount ?? 0n) },
           { label: "Clear price", value: fmtPrice(rec.clearPrice) },
           {
             label: "Participation vol",
-            value: fmtVol(rec.participationVolume),
+            value: fmtVol(rec.participationAmount ?? 0n),
           },
         ],
         param.point.x,
@@ -302,6 +327,11 @@ export default function EpochComboChart({
       lineSeries: line,
       toBarItem,
       toLinePoint,
+      getVolume: (e) =>
+        unitsToNumber(
+          e.participationAmount,
+          fmtRef.current.quoteDecimals ?? 18,
+        ),
       introDurationMs: LOCKED.introMs,
       reducedMotion,
     });

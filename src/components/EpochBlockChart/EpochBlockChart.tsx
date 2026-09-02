@@ -25,6 +25,7 @@ import {
   type TooltipController,
 } from "@/lib/charts/tooltipController";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
+import { roundUnits, unitsToNumber } from "@/utils/round-units";
 import type { EpochData } from "@/lib/charts/types";
 import "@/components/ChartTooltip/ChartTooltip.css";
 import "./EpochBlockChart.css";
@@ -34,24 +35,19 @@ export interface EpochBlockChartProps {
   epochs: EpochData[];
   quoteSymbol?: string;
   tokenSymbol?: string;
+  quoteDecimals?: number;
+  tokenDecimals?: number;
   className?: string;
 }
 
 const GLOW_FILTER_ID = "epoch-block-current-glow";
 
-function fillFor(e: EpochData, volumeRange: VolumeRange): string {
-  if (e.state === "current") return "var(--sqrt-action-primary-rest)";
-  // No separate future/passed treatment — gray means zero participation,
-  // full stop (future epochs naturally have none yet, so they fall in here
-  // too, without needing a state check of their own).
-  if (e.participationVolume <= 0) return "var(--color-alpha-steel-08)";
-  return getVolumeBucketVar(e.participationVolume, volumeRange);
-}
-
 export default function EpochBlockChart({
   epochs,
   quoteSymbol,
   tokenSymbol,
+  quoteDecimals,
+  tokenDecimals,
   className,
 }: EpochBlockChartProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -85,9 +81,26 @@ export default function EpochBlockChart({
     return () => tooltip.destroy();
   }, []);
 
+  const volumeOf = useCallback(
+    (e: EpochData) => unitsToNumber(e.participationAmount, quoteDecimals ?? 18),
+    [quoteDecimals],
+  );
+
+  const fillFor = useCallback(
+    (e: EpochData, volumeRange: VolumeRange): string => {
+      if (e.state === "current") return "var(--sqrt-action-primary-rest)";
+      // No separate future/passed treatment — gray means zero participation,
+      // full stop (future epochs naturally have none yet, so they fall in
+      // here too, without needing a state check of their own).
+      if (e.participationAmount === 0n) return "var(--color-alpha-steel-08)";
+      return getVolumeBucketVar(volumeOf(e), volumeRange);
+    },
+    [volumeOf],
+  );
+
   const volumeRange = useMemo(
-    () => getParticipationVolumeRange(epochs),
-    [epochs],
+    () => getParticipationVolumeRange(epochs.map(volumeOf)),
+    [epochs, volumeOf],
   );
   // Never scrolls — fills the container width with as many columns as fit
   // and renders the full history across however many rows that takes.
@@ -117,7 +130,7 @@ export default function EpochBlockChart({
       hoveredRef.current = null;
     }
     tooltipRef.current?.hide();
-  }, [visibleEpochs, volumeRange]);
+  }, [fillFor, visibleEpochs, volumeRange]);
 
   // Touch has no hover-out — a tap elsewhere on the screen (anywhere except
   // the tooltip itself, so its contents stay readable/selectable) is what
@@ -159,7 +172,7 @@ export default function EpochBlockChart({
         { label: "Epoch num", value: `#${epoch.epoch}` },
         {
           label: "Epoch supply",
-          value: `${epoch.supply.toLocaleString("en-US")} ${tokenSymbol}`,
+          value: `${roundUnits(epoch.supplyAmount ?? 0n, tokenDecimals ?? 18)} ${tokenSymbol}`,
         },
         {
           label: "Clear price",
@@ -170,8 +183,8 @@ export default function EpochBlockChart({
         },
         {
           label: "Participation vol",
-          value: epoch.participationVolume
-            ? `${epoch.participationVolume.toLocaleString("en-US")} ${quoteSymbol}`
+          value: epoch.participationAmount
+            ? `${roundUnits(epoch.participationAmount, quoteDecimals ?? 18)} ${quoteSymbol}`
             : "—",
         },
       ],
