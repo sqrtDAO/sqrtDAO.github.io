@@ -58,8 +58,7 @@ export default function EpochBlockChart({
   const [containerWidth, setContainerWidth] = useState(0);
   const bp = useBreakpoint();
   const device: ChartDevice = bp === "mobile" ? "mobile" : "desktop";
-  const { width: BLOCK_W, height: BLOCK_H } = BLOCK_DIMS[device];
-  const CAPSULE_RX = BLOCK_W / 2;
+  const { width: BLOCK_MIN_W, height: BLOCK_H } = BLOCK_DIMS[device];
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -125,7 +124,13 @@ export default function EpochBlockChart({
     [epochs, displayWindow.startIndex, displayWindow.endIndex],
   );
   const gridSize = useMemo(
-    () => gridPixelSize(displayWindow.columns, displayWindow.rows, device),
+    () =>
+      gridPixelSize(
+        displayWindow.columns,
+        displayWindow.rows,
+        device,
+        displayWindow.blockWidth,
+      ),
     [displayWindow, device],
   );
 
@@ -247,16 +252,21 @@ export default function EpochBlockChart({
           </defs>
           {containerWidth > 0 &&
             visibleEpochs.map((epoch, i) => {
-              const { x, y } = blockPosition(i, displayWindow.columns, device);
+              const { x, y } = blockPosition(
+                i,
+                displayWindow.columns,
+                device,
+                displayWindow.blockWidth,
+              );
               return (
                 <rect
                   key={epoch.epoch}
                   data-index={i}
                   x={x}
                   y={y}
-                  width={BLOCK_W}
+                  width={displayWindow.blockWidth}
                   height={BLOCK_H}
-                  rx={CAPSULE_RX}
+                  rx={Math.min(displayWindow.blockWidth / 2, BLOCK_MIN_W / 2)}
                   fill={fillFor(epoch, volumeRange)}
                   filter={
                     epoch.state === "current"
