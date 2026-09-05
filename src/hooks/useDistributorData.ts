@@ -56,6 +56,9 @@ export function useDistributorData(contractAddress: Address) {
   const [participationTokenDecimals, setParticipationTokenDecimals] = useState<
     number | undefined
   >(undefined);
+  const [participationTokenBalance, setParticipationTokenBalance] = useState<
+    bigint | undefined
+  >(undefined);
 
   const [epochs, setEpochs] = useState<readonly EpochInfo[] | undefined>(
     undefined,
@@ -107,6 +110,9 @@ export function useDistributorData(contractAddress: Address) {
         );
         setParticipationTokenSymbol(await pToken.read.symbol());
         setParticipationTokenDecimals(await pToken.read.decimals());
+        setParticipationTokenBalance(
+          address ? await pToken.read.balanceOf([address]) : BigInt(0),
+        );
 
         const fromEpoch = currentEpoch < 100 ? 0 : currentEpoch - 100;
         const epochInfos = await distributor.read.getEpochInfo([
@@ -179,6 +185,7 @@ export function useDistributorData(contractAddress: Address) {
     claimData,
     participationTokenSymbol,
     participationTokenDecimals,
+    participationTokenBalance,
     isLoading,
     error,
     refetch,

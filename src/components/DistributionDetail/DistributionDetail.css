@@ -685,14 +685,17 @@
   letter-spacing: 0.02em;
 }
 
-/* ── participation ──────────────────────────────────────── */
+/* ── participation V.2 (Figma node 8944:52702) ─────────────
+   Two stacked "input cards" (amount, then the "Spread across" epoch
+   range) inside a canvas-bg shell, and a footer row pairing the claim
+   delay readout with the primary CTA. ─────────────────────────────── */
 .ddp-participation {
   background: var(--sqrt-bg-canvas);
   border-radius: var(--radius-l);
   padding: 20px 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
 }
 
 .ddp-participation h2 {
@@ -703,78 +706,205 @@
   margin: 0;
 }
 
-.ddp-participation__row {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.ddp-participation__field {
-  flex: 1;
-  min-width: 0;
+.ddp-participation__main {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-}
-
-.ddp-participation__field label {
-  font-size: var(--font-size-body);
-  color: var(--sqrt-text-primary);
-}
-
-.ddp-participation__input {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--sqrt-bg-surface);
-  border: var(--border-width-hairline) solid transparent;
-  border-radius: var(--radius-m);
-  /* Same 40px math as the shared Input component: py-6 (12) + py-4 (8) +
-     20px line-height = 40px. Pinned explicitly since this field doesn't
-     use the shared Input component (no border here, but kept consistent
-     with it for the same crucial cross-component height alignment). */
-  height: 40px;
-  padding: 6px 8px;
-}
-
-/* "typing" (amount field, native focus) / "more epochs" (epoch-count
-   field, once it differs from the default of 1) Figma states — both are
-   the same amber focus border, just driven by different real signals. */
-.ddp-participation__input:focus-within,
-.ddp-participation__input.is-active {
-  border-color: var(--sqrt-border-focus);
-}
-
-.ddp-participation__input input {
-  flex: 1;
-  min-width: 0;
-  background: none;
-  border: none;
-  outline: none;
-  padding: 4px 0;
-  color: var(--sqrt-text-primary);
-  font-family: var(--font-family-body), system-ui, sans-serif;
-  font-size: var(--font-size-body-s);
-  line-height: 20px;
-}
-
-.ddp-participation__input input::placeholder {
-  color: var(--sqrt-text-tertiary);
-}
-
-.ddp-participation__input span {
-  flex-shrink: 0;
-  font-size: var(--font-size-body-s);
-  color: var(--sqrt-text-tertiary);
+  gap: 8px;
 }
 
 .ddp-participation__error {
   font-size: var(--font-size-body-s);
   color: var(--sqrt-state-danger);
-  margin-top: 4px;
+  margin: 0;
 }
 
-.ddp-participation__steppers {
+.ddp-participation__per-epoch {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--sqrt-text-accent);
+  margin: 0;
+}
+
+.ddp-participation__footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.ddp-participation__claim-delay {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: var(--font-size-body-s);
+  line-height: 20px;
+}
+
+.ddp-participation__claim-delay span:first-child {
+  color: var(--sqrt-text-secondary);
+}
+
+.ddp-participation__claim-delay span:last-child {
+  color: var(--sqrt-text-primary);
+}
+
+.ddp-participation__cta {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── input card (shared shell for the amount + spread-across fields) ── */
+.ddp-input-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: var(--border-width-hairline) solid var(--sqrt-border-subtle);
+  border-radius: var(--radius-m);
+}
+
+.ddp-input-card:hover {
+  background: var(--sqrt-bg-surface);
+}
+
+/* Amount card highlights via native focus-within; the epoch card has no
+   focusable element of its own at rest, so its "opened" state is driven
+   by .is-active instead — and, once opened, stays highlighted (it never
+   reverts to a plain border the way a blurred text input does). */
+.ddp-input-card:focus-within,
+.ddp-input-card.is-active {
+  border-color: var(--sqrt-border-focus);
+}
+
+.ddp-input-card__label {
+  font-size: var(--font-size-body);
+  color: var(--sqrt-text-tertiary);
+}
+
+.ddp-input-card__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.ddp-input-card__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.ddp-input-card__placeholder {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-body-l);
+  color: var(--sqrt-text-tertiary);
+}
+
+.ddp-input-card:hover .ddp-input-card__placeholder,
+.ddp-input-card:hover .ddp-input-card__input::placeholder {
+  color: var(--sqrt-text-accent);
+}
+
+.ddp-input-card__value {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-body-l);
+  color: var(--sqrt-text-primary);
+}
+
+.ddp-input-card__unit {
+  flex-shrink: 0;
+  font-size: var(--font-size-body);
+  color: var(--sqrt-text-tertiary);
+}
+
+.ddp-input-card__input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  padding: 0;
+  color: var(--sqrt-text-primary);
+  font-family: var(--font-family-body), system-ui, sans-serif;
+  font-size: var(--font-size-body-l);
+}
+
+.ddp-input-card__input::placeholder {
+  color: var(--sqrt-text-tertiary);
+}
+
+.ddp-input-card__hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: var(--font-size-body-s);
+}
+
+.ddp-input-card__hint span:first-child {
+  color: var(--sqrt-text-secondary);
+}
+
+.ddp-input-card__hint span:last-child {
+  color: var(--sqrt-text-primary);
+}
+
+/* ── epoch range (the "Spread across" card's expanded From/To form) ── */
+.ddp-epoch-range {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.ddp-epoch-range__field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.ddp-epoch-range__field > span:first-child {
+  flex-shrink: 0;
+  width: 89px;
+  font-size: var(--font-size-body);
+  color: var(--sqrt-text-secondary);
+}
+
+.ddp-epoch-range__box {
+  flex: 1;
+  min-width: 0;
+  background: var(--sqrt-bg-surface);
+  border-radius: var(--radius-m);
+  padding: 6px 8px;
+  font-size: var(--font-size-body-s);
+  color: var(--sqrt-text-tertiary);
+}
+
+.ddp-epoch-range__box input {
+  width: 100%;
+  background: none;
+  border: none;
+  outline: none;
+  padding: 0;
+  color: var(--sqrt-text-primary);
+  font-family: var(--font-family-body), system-ui, sans-serif;
+  font-size: var(--font-size-body-s);
+}
+
+.ddp-epoch-range__steppers {
   display: flex;
   gap: 8px;
   flex-shrink: 0;
@@ -1012,4 +1142,132 @@
 .ddp-loading {
   animation: ddp-claim-spin 0.9s linear infinite;
   color: var(--sqrt-text-secondary);
+}
+
+/* ── participation review (confirmation dialogue, desktop & mobile —
+   Figma node 8973:65660) — shown on top of everything else, including
+   the mobile claim/participation dialogue it can be opened from. ──── */
+.ddp-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.ddp-confirm {
+  width: 100%;
+  max-width: 450px;
+  background: var(--sqrt-bg-surface);
+  border-radius: var(--radius-l);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.ddp-confirm__header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ddp-confirm__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ddp-confirm__title-row h2 {
+  font-family: var(--font-family-display), system-ui, sans-serif;
+  font-size: var(--font-size-h3);
+  font-weight: 400;
+  color: var(--sqrt-text-primary);
+  margin: 0;
+}
+
+.ddp-confirm__subtitle {
+  margin: 0;
+  font-size: var(--font-size-body-s);
+  color: var(--sqrt-text-primary);
+}
+
+.ddp-confirm__summary {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ddp-confirm__summary p {
+  margin: 0;
+  font-size: var(--font-size-body-l);
+  line-height: var(--font-line-height-body-l);
+  color: var(--sqrt-text-primary);
+}
+
+.ddp-confirm__summary p strong {
+  color: var(--sqrt-text-accent);
+  font-weight: var(--font-weight-medium);
+}
+
+.ddp-confirm__summary p:last-child {
+  font-size: var(--font-size-body);
+  line-height: var(--font-line-height-body);
+}
+
+.ddp-confirm__alert {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--sqrt-bg-raised);
+  border-left: 2.5px solid var(--sqrt-state-info);
+  border-radius: var(--radius-m);
+}
+
+.ddp-confirm__alert > svg {
+  flex-shrink: 0;
+  color: var(--sqrt-state-info);
+}
+
+.ddp-confirm__alert-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ddp-confirm__alert-text strong {
+  font-size: var(--font-size-body);
+  color: var(--sqrt-state-info);
+}
+
+.ddp-confirm__alert-text p {
+  margin: 0;
+  font-size: var(--font-size-body-s);
+  color: var(--sqrt-text-secondary);
+}
+
+.ddp-confirm__calendar {
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 6px 8px;
+  margin: 0;
+  cursor: pointer;
+  color: var(--sqrt-text-primary);
+  font-family: var(--font-family-body), system-ui, sans-serif;
+  font-size: var(--font-size-body-s);
+}
+
+.ddp-confirm__actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }

@@ -3,12 +3,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import {
+  IconCalendarPlus,
+  IconInfoCircle,
   IconLoader2,
   IconMessageCircleQuestion,
   IconMinus,
   IconPlus,
   IconShare,
   IconSquareRoundedCheckFilled,
+  IconX,
 } from "@tabler/icons-react";
 import { type Address, formatUnits, parseUnits } from "viem";
 import {
@@ -168,6 +171,23 @@ function fmtEpochDate(timestamp: number, withTime: boolean): string {
   return `${day} ${month}, ${d.getFullYear()}`;
 }
 
+function fmtClaimDate(timestampMs: number): string {
+  const d = new Date(timestampMs);
+  const datePart = d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+  const timePart = d.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "UTC",
+  });
+  return `${datePart}, ${timePart} UTC`;
+}
+
 function buildEpochs(
   contractInfo: DistributorContractInfo,
   currentEpoch: bigint,
@@ -261,6 +281,7 @@ export default function DistributionDetail({
     claimData,
     participationTokenSymbol,
     participationTokenDecimals,
+    participationTokenBalance,
     isLoading,
     refetch,
   } = useDistributorData(contractAddress as Address);
@@ -299,6 +320,9 @@ export default function DistributionDetail({
     "idle" | "approving" | "participating" | "error"
   >("idle");
   const [dialogueOpen, setDialogueOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [amountFocused, setAmountFocused] = useState(false);
+  const [epochsExpanded, setEpochsExpanded] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const shareTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -426,6 +450,69 @@ export default function DistributionDetail({
 
   const hasClaimableShare = stats.closedCount > 0;
 
+  const walletBalanceFormatted = useMemo(() => {
+    if (participationTokenBalance === undefined || !participationTokenDecimals)
+      return 0;
+    return Number(
+      formatUnits(participationTokenBalance, participationTokenDecimals),
+    );
+  }, [participationTokenBalance, participationTokenDecimals]);
+  const showAmountBalance = amount !== "" || amountFocused;
+
+  const fromEpochDisplay =
+    currentEpoch !== undefined ? currentEpoch + 1 : null;
+  const toEpochDisplay =
+    currentEpoch !== undefined ? currentEpoch + epochCountNum : null;
+  const perEpochAmount =
+    amountNum > 0 && epochCountNum > 0 ? amountNum / epochCountNum : 0;
+
+  const handleToEpochChange = (raw: string) => {
+    const digits = numberOnlyModifier(raw);
+    if (digits === "" || currentEpoch === undefined) {
+      epochCount.onChange("1");
+      return;
+    }
+    const newCount = parseInt(digits, 10) - currentEpoch;
+    epochCount.onChange(String(Math.min(maxEpochs, Math.max(1, newCount))));
+  };
+
+  const claimDelayDays = contractInfo
+    ? Math.round(Number(contractInfo.claimDelaySeconds) / 86400)
+    : 0;
+
+  const claimAvailableMs = useMemo(() => {
+    if (!contractInfo || currentEpoch === undefined) return 0;
+    const lastEpochEndSec =
+      Number(contractInfo.startingTimestamp) +
+      (currentEpoch + epochCountNum) * Number(contractInfo.epochDuration);
+    return (lastEpochEndSec + Number(contractInfo.claimDelaySeconds)) * 1000;
+  }, [contractInfo, currentEpoch, epochCountNum]);
+
+  const handleAddToCalendar = () => {
+    if (!claimAvailableMs) return;
+    const dt =
+      new Date(claimAvailableMs).toISOString().replace(/[-:]/g, "").split(".")[0] +
+      "Z";
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "BEGIN:VEVENT",
+      `DTSTAMP:${dt}`,
+      `DTSTART:${dt}`,
+      `SUMMARY:Claim your ${tokenSymbol} share`,
+      `DESCRIPTION:Your ${tokenSymbol} share from this participation becomes claimable.`,
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+    const blob = new Blob([ics], { type: "text/calendar" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "claim-reminder.ics";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleClaim = useCallback(async () => {
     if (!walletClient || !publicClient || !contractInfo || !claimData) return;
 
@@ -530,11 +617,23 @@ export default function DistributionDetail({
 
       setParticipateState("idle");
       setAmount("");
+      epochCount.reset();
+      setEpochsExpanded(false);
+      setConfirmOpen(false);
       refetch();
     } catch (e) {
       console.error("Participate failed:", e);
       setParticipateState("error");
     }
+  };
+
+  const handleParticipateReview = () => {
+    if (!isWalletConnected) {
+      openConnectModal?.();
+      return;
+    }
+    if (!epochCount.validate()) return;
+    setConfirmOpen(true);
   };
 
   const handleMobileParticipateClick = () => {
@@ -594,21 +693,39 @@ export default function DistributionDetail({
 
         <div className="ddp-participation">
           <h2>Participation</h2>
-          <div className="ddp-participation__field">
-            <label htmlFor={`${idPrefix}-amount`}>
-              Total participation amount
-            </label>
-            <div className="ddp-participation__input">
-              <input
-                id={`${idPrefix}-amount`}
-                type="text"
-                inputMode="decimal"
-                placeholder="e.g. 50"
-                autoComplete="off"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-              <span>{participationTokenSymbol}</span>
+          <div className="ddp-participation__main">
+            <div className="ddp-input-card">
+              <label
+                className="ddp-input-card__label"
+                htmlFor={`${idPrefix}-amount`}
+              >
+                Total participation amount
+              </label>
+              <div className="ddp-input-card__row">
+                <input
+                  id={`${idPrefix}-amount`}
+                  className="ddp-input-card__input"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="Enter participation amount"
+                  autoComplete="off"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  onFocus={() => setAmountFocused(true)}
+                  onBlur={() => setAmountFocused(false)}
+                />
+                <span className="ddp-input-card__unit">
+                  {participationTokenSymbol}
+                </span>
+              </div>
+              {showAmountBalance && isWalletConnected && (
+                <div className="ddp-input-card__hint">
+                  <span>Wallet balance</span>
+                  <span>
+                    {fmtInt(walletBalanceFormatted)} {participationTokenSymbol}
+                  </span>
+                </div>
+              )}
             </div>
             {belowMin && (
               <p className="ddp-participation__error">
@@ -616,62 +733,106 @@ export default function DistributionDetail({
                 {participationTokenSymbol}
               </p>
             )}
-          </div>
-          <div className="ddp-participation__row">
-            <div className="ddp-participation__field">
-              <label htmlFor={`${idPrefix}-epochs`}>
-                Participation epoch counts
-              </label>
-              <div
-                className={`ddp-participation__input${epochCountNum > 1 ? " is-active" : ""}`}
-              >
-                <input
-                  id={`${idPrefix}-epochs`}
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  value={epochCount.value}
-                  onChange={(e) => epochCount.onChange(e.target.value)}
-                />
-                <span>Epochs</span>
-              </div>
+
+            <div
+              className={`ddp-input-card${epochsExpanded ? " is-active" : ""}`}
+            >
+              <span className="ddp-input-card__label">Spread across</span>
+              {epochsExpanded ? (
+                <div className="ddp-input-card__row">
+                  <span className="ddp-input-card__value">
+                    {epochCountNum}
+                  </span>
+                  <span className="ddp-input-card__unit">Epochs</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="ddp-input-card__toggle"
+                  onClick={() => setEpochsExpanded(true)}
+                >
+                  <span className="ddp-input-card__placeholder">
+                    Number of epochs to participate
+                  </span>
+                  <span className="ddp-input-card__unit">Epochs</span>
+                </button>
+              )}
+              {epochsExpanded && (
+                <div className="ddp-epoch-range">
+                  <div className="ddp-epoch-range__field">
+                    <span>From #epoch</span>
+                    <div className="ddp-epoch-range__box">
+                      {fromEpochDisplay}
+                    </div>
+                  </div>
+                  <div className="ddp-epoch-range__field">
+                    <span>To #epoch</span>
+                    <div className="ddp-epoch-range__box">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        value={toEpochDisplay ?? ""}
+                        onChange={(e) => handleToEpochChange(e.target.value)}
+                      />
+                    </div>
+                    <div className="ddp-epoch-range__steppers">
+                      <IconButton
+                        icon={<IconMinus size={16} strokeWidth={1.75} />}
+                        variant="outline"
+                        size="s"
+                        aria-label="Decrease epoch count"
+                        disabled={epochCountNum <= 1}
+                        onClick={() =>
+                          epochCount.onChange(
+                            String(Math.max(1, epochCountNum - 1)),
+                          )
+                        }
+                      />
+                      <IconButton
+                        icon={<IconPlus size={16} strokeWidth={1.75} />}
+                        variant="secondary"
+                        size="s"
+                        aria-label="Increase epoch count"
+                        onClick={() =>
+                          epochCount.onChange(
+                            String(Math.min(maxEpochs, epochCountNum + 1)),
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
               {epochCount.error && (
                 <p className="ddp-participation__error">{epochCount.error}</p>
               )}
             </div>
-            <div className="ddp-participation__steppers mt-7">
-              <IconButton
-                icon={<IconMinus size={20} strokeWidth={1.75} />}
-                variant="outline"
-                size="m"
-                aria-label="Decrease epoch count"
-                disabled={epochCountNum <= 1}
-                onClick={() =>
-                  epochCount.onChange(String(Math.max(1, epochCountNum - 1)))
-                }
-              />
-              <IconButton
-                icon={<IconPlus size={20} strokeWidth={1.75} />}
-                variant="secondary"
-                size="m"
-                aria-label="Increase epoch count"
-                onClick={() =>
-                  epochCount.onChange(
-                    String(Math.min(maxEpochs, epochCountNum + 1)),
-                  )
-                }
-              />
-            </div>
+            {epochsExpanded && amountNum > 0 && (
+              <p className="ddp-participation__per-epoch">
+                ≈{" "}
+                {perEpochAmount.toLocaleString("en-US", {
+                  maximumFractionDigits: 2,
+                })}{" "}
+                {participationTokenSymbol} per epoch
+              </p>
+            )}
           </div>
-          <Button
-            variant="primary"
-            size="m"
-            fullWidth
-            disabled={isWalletConnected && !canParticipate}
-            onClick={handleParticipateClick}
-          >
-            {participateLabel}
-          </Button>
+          <div className="ddp-participation__footer">
+            <div className="ddp-participation__claim-delay">
+              <span>Claim delay</span>
+              <span>{claimDelayDays} days</span>
+            </div>
+            <Button
+              variant="primary"
+              size="m"
+              className="ddp-participation__cta"
+              disabled={isWalletConnected && !canParticipate}
+              onClick={handleParticipateReview}
+            >
+              {participateLabel}
+            </Button>
+          </div>
         </div>
       </>
     );
@@ -1041,6 +1202,102 @@ export default function DistributionDetail({
           <div className="ddp-dialogue" onClick={(e) => e.stopPropagation()}>
             <div className="ddp-claim-participation">
               {renderClaimAndParticipation("ddp-dialogue")}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmOpen && (
+        <div
+          className="ddp-confirm-backdrop"
+          onClick={() => setConfirmOpen(false)}
+        >
+          <div className="ddp-confirm" onClick={(e) => e.stopPropagation()}>
+            <div className="ddp-confirm__header">
+              <div className="ddp-confirm__title-row">
+                <h2>Participation review</h2>
+                <IconButton
+                  icon={<IconX size={24} strokeWidth={1.75} />}
+                  variant="ghost"
+                  size="m"
+                  aria-label="Close"
+                  disabled={isParticipating}
+                  onClick={() => setConfirmOpen(false)}
+                />
+              </div>
+              <p className="ddp-confirm__subtitle">One last look!</p>
+            </div>
+
+            <div className="ddp-confirm__summary">
+              <p>
+                You&apos;re participating with{" "}
+                <strong>
+                  {fmtInt(amountNum)} {participationTokenSymbol}
+                </strong>
+                , From epoch <strong>#{fromEpochDisplay}</strong> to{" "}
+                <strong>#{toEpochDisplay}.</strong>{" "}
+                <strong>
+                  {epochCountNum} epoch{epochCountNum > 1 ? "s" : ""}
+                </strong>{" "}
+                in total.
+              </p>
+              <p>
+                Each epoch settles at one clear price when it closes, the
+                same for everyone who took part.
+              </p>
+            </div>
+
+            <div className="ddp-confirm__alert">
+              <IconInfoCircle size={24} strokeWidth={1.75} />
+              <div className="ddp-confirm__alert-text">
+                <strong>Claim delay is {claimDelayDays} days</strong>
+                <p>
+                  You can claim your {tokenSymbol} share after{" "}
+                  {fmtClaimDate(claimAvailableMs)}.
+                </p>
+                <button
+                  type="button"
+                  className="ddp-confirm__calendar"
+                  onClick={handleAddToCalendar}
+                >
+                  <IconCalendarPlus size={14} strokeWidth={1.75} />
+                  Add to calendar
+                </button>
+              </div>
+            </div>
+
+            {participateState === "error" && (
+              <p className="ddp-participation__error">
+                Participation failed. Please try again.
+              </p>
+            )}
+
+            <div className="ddp-confirm__actions">
+              <Button
+                variant="outline"
+                size="m"
+                fullWidth
+                disabled={isParticipating}
+                onClick={() => setConfirmOpen(false)}
+              >
+                Back &amp; Edit
+              </Button>
+              <Button
+                variant="primary"
+                size="m"
+                fullWidth
+                disabled={isParticipating}
+                leadingIcon={
+                  isParticipating ? <IconLoader2 size={18} /> : undefined
+                }
+                onClick={handleParticipateClick}
+              >
+                {participateState === "approving"
+                  ? "Approving..."
+                  : participateState === "participating"
+                    ? "Participating..."
+                    : "Confirm & sign"}
+              </Button>
             </div>
           </div>
         </div>
