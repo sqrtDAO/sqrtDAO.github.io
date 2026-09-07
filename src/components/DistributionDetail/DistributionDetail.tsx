@@ -48,7 +48,11 @@ import {
 import { distributorV1Abi, tokenV1Abi } from "@/contracts/abis";
 import { getAddresses } from "@/contracts/contract-addresses";
 import { useInput } from "@/hooks/useInput";
-import { decimalOnlyModifier, numberOnlyModifier } from "@/utils/modifier";
+import {
+  decimalOnlyModifier,
+  numberOnlyModifier,
+  type InputModifier,
+} from "@/utils/modifier";
 import { validateAll, type InputValidator } from "@/utils/validator";
 import { formatDate } from "@/utils/formatDate";
 import { formatDuration } from "@/utils/formatDuration";
@@ -399,55 +403,58 @@ export default function DistributionDetail({
   const shareTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // epoch numbers are 1-based in the UI; the contract's participate() takes
-  // the 0-based index, so fromEpochNum - 1 is passed on-chain
+  // the 0-based index, so fromEpochNum - 1 is passed on-chain.
+  // Modifiers cap the upper bound as the user types (typing stays intact);
+  // lower bounds are enforced in the derived values and normalized on blur
+  // — clamping up mid-typing would corrupt multi-digit entry ("1" → "10").
   const currentEpochDisplay =
     currentEpoch !== undefined ? Number(currentEpoch) + 1 : null;
   const lastEpoch = contractInfo ? Number(contractInfo.numberOfEpochs) : 0;
 
-  const validateFromEpoch = useMemo<InputValidator>(
+  const fromEpochModifier = useMemo<InputModifier>(
     () => (v) => {
-      if (currentEpochDisplay === null || lastEpoch === 0) return null;
-      if (v.trim() === "") return "Required";
-      const n = parseInt(v, 10);
-      if (isNaN(n)) return "Invalid epoch";
-      if (n < currentEpochDisplay)
-        return `Cannot be before epoch #${currentEpochDisplay}`;
-      if (n > lastEpoch) return `Max epoch is #${lastEpoch}`;
-      return null;
+      const digits = numberOnlyModifier(v);
+      if (digits === "" || lastEpoch === 0) return digits;
+      const n = parseInt(digits, 10);
+      if (isNaN(n)) return "";
+      return String(Math.min(n, lastEpoch));
     },
-    [currentEpochDisplay, lastEpoch],
+    [lastEpoch],
   );
 
-  const fromEpochInput = useInput("", numberOnlyModifier, validateFromEpoch);
+  const fromEpochInput = useInput("", fromEpochModifier);
 
   const fromEpochNum = useMemo(() => {
+    const min = currentEpochDisplay ?? 1;
     const n = parseInt(fromEpochInput.value, 10);
-    if (isNaN(n) || n < 1) return currentEpochDisplay ?? 1;
-    return n;
-  }, [fromEpochInput.value, currentEpochDisplay]);
+    if (isNaN(n) || n < 1) return min;
+    return Math.min(Math.max(n, min), Math.max(lastEpoch, min));
+  }, [fromEpochInput.value, currentEpochDisplay, lastEpoch]);
 
-  const validateToEpoch = useMemo<InputValidator>(
+  const toEpochModifier = useMemo<InputModifier>(
     () => (v) => {
-      if (lastEpoch === 0) return null;
-      if (v.trim() === "") return "Required";
-      const n = parseInt(v, 10);
-      if (isNaN(n)) return "Invalid epoch";
-      if (n < fromEpochNum) return `Cannot be before epoch #${fromEpochNum}`;
-      if (n > lastEpoch) return `Max epoch is #${lastEpoch}`;
-      return null;
+      const digits = numberOnlyModifier(v);
+      if (digits === "" || lastEpoch === 0) return digits;
+      const n = parseInt(digits, 10);
+      if (isNaN(n)) return "";
+      return String(Math.min(n, lastEpoch));
     },
-    [lastEpoch, fromEpochNum],
+    [lastEpoch],
   );
 
-  const toEpochInput = useInput("", numberOnlyModifier, validateToEpoch);
+  const toEpochInput = useInput("", toEpochModifier);
 
   const toEpochNum = useMemo(() => {
     const n = parseInt(toEpochInput.value, 10);
     if (isNaN(n) || n < fromEpochNum) return fromEpochNum;
-    return n;
-  }, [toEpochInput.value, fromEpochNum]);
+    return Math.min(n, Math.max(lastEpoch, fromEpochNum));
+  }, [toEpochInput.value, fromEpochNum, lastEpoch]);
 
   const epochCountNum = toEpochNum - fromEpochNum + 1;
+
+  // snap the displayed text back to the effective (clamped) value
+  const normalizeFromEpoch = () => fromEpochInput.onChange(String(fromEpochNum));
+  const normalizeToEpoch = () => toEpochInput.onChange(String(toEpochNum));
 
   const amountIssues = useCallback(
     (parsed: bigint): string | null => {
@@ -461,6 +468,8 @@ export default function DistributionDetail({
           participationTokenDecimals ?? 18,
         )} ${participationTokenSymbol ?? ""} per epoch`;
       }
+      // safety net for a balance that shrank after the value was typed —
+      // the modifier normally caps the input before this can show
       if (
         isWalletConnected &&
         participationTokenBalance !== undefined &&
@@ -480,6 +489,36 @@ export default function DistributionDetail({
     ],
   );
 
+  // caps the input at the wallet balance as the user types — over-balance
+  // values can't be entered rather than blocked with a validation error
+  const amountModifier = useMemo<InputModifier>(
+    () => (v) => {
+      const cleaned = decimalOnlyModifier(v);
+      if (
+        cleaned === "" ||
+        !isWalletConnected ||
+        participationTokenBalance === undefined
+      ) {
+        return cleaned;
+      }
+      try {
+        const parsed = parseUnits(cleaned, participationTokenDecimals ?? 18);
+        if (parsed > participationTokenBalance) {
+          return participationTokenBalance === 0n
+            ? "0"
+            : formatUnits(
+                participationTokenBalance,
+                participationTokenDecimals ?? 18,
+              );
+        }
+      } catch {
+        // mid-edit values like "1." — pass through unclamped
+      }
+      return cleaned;
+    },
+    [isWalletConnected, participationTokenBalance, participationTokenDecimals],
+  );
+
   const validateAmount = useMemo<InputValidator>(
     () => (v) => {
       const t = v.trim();
@@ -496,7 +535,7 @@ export default function DistributionDetail({
     [amountIssues, participationTokenDecimals],
   );
 
-  const amountInput = useInput("", decimalOnlyModifier, validateAmount);
+  const amountInput = useInput("", amountModifier, validateAmount);
 
   // parse errors surface on submit only; min/balance issues show live
   const amountParsed = useMemo<bigint | null>(() => {
@@ -1024,6 +1063,8 @@ export default function DistributionDetail({
     participationTokenSymbol: participationTokenSymbol ?? "",
     fromEpoch: fromEpochInput,
     toEpoch: toEpochInput,
+    onFromEpochBlur: normalizeFromEpoch,
+    onToEpochBlur: normalizeToEpoch,
     fromEpochNum,
     toEpochNum,
     lastEpoch,

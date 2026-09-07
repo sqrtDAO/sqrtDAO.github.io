@@ -25,6 +25,8 @@ export type ParticipationFlowProps = {
   participationTokenSymbol: string;
   fromEpoch: UseInputReturn;
   toEpoch: UseInputReturn;
+  onFromEpochBlur: () => void;
+  onToEpochBlur: () => void;
   fromEpochNum: number;
   toEpochNum: number;
   lastEpoch: number;
@@ -47,6 +49,8 @@ export default function ParticipationFlow({
   participationTokenSymbol,
   fromEpoch,
   toEpoch,
+  onFromEpochBlur,
+  onToEpochBlur,
   fromEpochNum,
   toEpochNum,
   lastEpoch,
@@ -61,7 +65,6 @@ export default function ParticipationFlow({
 }: ParticipationFlowProps) {
   const epochCountNum = toEpochNum - fromEpochNum + 1;
   const amountError = amount.error ?? amountLiveError;
-  const epochError = fromEpoch.error ?? toEpoch.error;
 
   return (
     <div className="ddp-participation">
@@ -135,6 +138,7 @@ export default function ParticipationFlow({
                     aria-label="From epoch"
                     value={fromEpoch.value}
                     onChange={(e) => fromEpoch.onChange(e.target.value)}
+                    onBlur={onFromEpochBlur}
                   />
                 </div>
               </div>
@@ -148,6 +152,7 @@ export default function ParticipationFlow({
                     aria-label="To epoch"
                     value={toEpoch.value}
                     onChange={(e) => toEpoch.onChange(e.target.value)}
+                    onBlur={onToEpochBlur}
                   />
                 </div>
                 <div className="ddp-epoch-range__steppers">
@@ -178,9 +183,6 @@ export default function ParticipationFlow({
                 </div>
               </div>
             </div>
-          )}
-          {epochError && (
-            <p className="ddp-participation__error">{epochError}</p>
           )}
         </div>
         {epochsExpanded && perEpochAmount > 0 && (
