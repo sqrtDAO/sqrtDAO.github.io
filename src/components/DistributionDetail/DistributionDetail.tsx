@@ -255,6 +255,7 @@ function fmtPeriodDateTime(timestampMs: number): string {
 function fmtShortDate(timestampMs: number): string {
   const d = new Date(timestampMs);
   return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+}
 function fmtClaimDate(timestampMs: number): string {
   const d = new Date(timestampMs);
   const datePart = d.toLocaleDateString("en-GB", {
@@ -338,7 +339,11 @@ function buildEpochs(
 function computeShares(
   contractInfo: DistributorContractInfo,
   chainId: number,
-): { priceAnchorPct: number; founderSharePct: number; protocolFeePct: number } {
+): {
+  priceAnchorPct: number;
+  founderSharePct: number;
+  protocolFeePct: number;
+} {
   const shares = contractInfo.shares;
   const addresses = getAddresses(chainId);
 
@@ -634,9 +639,9 @@ export default function DistributionDetail({
   const showAmountBalance = amount !== "" || amountFocused;
 
   const fromEpochDisplay =
-    currentEpoch !== undefined ? currentEpoch + 1 : null;
+    currentEpoch !== undefined ? currentEpoch + 1n : null;
   const toEpochDisplay =
-    currentEpoch !== undefined ? currentEpoch + epochCountNum : null;
+    currentEpoch !== undefined ? currentEpoch + BigInt(epochCountNum) : null;
   const perEpochAmount =
     amountNum > 0 && epochCountNum > 0 ? amountNum / epochCountNum : 0;
 
@@ -646,7 +651,7 @@ export default function DistributionDetail({
       epochCount.onChange("1");
       return;
     }
-    const newCount = parseInt(digits, 10) - currentEpoch;
+    const newCount = parseInt(digits, 10) - Number(currentEpoch);
     epochCount.onChange(String(Math.min(maxEpochs, Math.max(1, newCount))));
   };
 
@@ -658,15 +663,18 @@ export default function DistributionDetail({
     if (!contractInfo || currentEpoch === undefined) return 0;
     const lastEpochEndSec =
       Number(contractInfo.startingTimestamp) +
-      (currentEpoch + epochCountNum) * Number(contractInfo.epochDuration);
+      (Number(currentEpoch) + epochCountNum) *
+        Number(contractInfo.epochDuration);
     return (lastEpochEndSec + Number(contractInfo.claimDelaySeconds)) * 1000;
   }, [contractInfo, currentEpoch, epochCountNum]);
 
   const handleAddToCalendar = () => {
     if (!claimAvailableMs) return;
     const dt =
-      new Date(claimAvailableMs).toISOString().replace(/[-:]/g, "").split(".")[0] +
-      "Z";
+      new Date(claimAvailableMs)
+        .toISOString()
+        .replace(/[-:]/g, "")
+        .split(".")[0] + "Z";
     const ics = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
@@ -1030,9 +1038,7 @@ export default function DistributionDetail({
               <span className="ddp-input-card__label">Spread across</span>
               {epochsExpanded ? (
                 <div className="ddp-input-card__row">
-                  <span className="ddp-input-card__value">
-                    {epochCountNum}
-                  </span>
+                  <span className="ddp-input-card__value">{epochCountNum}</span>
                   <span className="ddp-input-card__unit">Epochs</span>
                 </div>
               ) : (
@@ -1062,7 +1068,7 @@ export default function DistributionDetail({
                         type="text"
                         inputMode="numeric"
                         autoComplete="off"
-                        value={toEpochDisplay ?? ""}
+                        value={toEpochDisplay?.toString() ?? ""}
                         onChange={(e) => handleToEpochChange(e.target.value)}
                       />
                     </div>
@@ -1588,8 +1594,8 @@ export default function DistributionDetail({
                 in total.
               </p>
               <p>
-                Each epoch settles at one clear price when it closes, the
-                same for everyone who took part.
+                Each epoch settles at one clear price when it closes, the same
+                for everyone who took part.
               </p>
             </div>
 
