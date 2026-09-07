@@ -5,8 +5,6 @@ import dynamic from "next/dynamic";
 import {
   IconLoader2,
   IconMessageCircleQuestion,
-  IconMinus,
-  IconPlus,
   IconShare,
   IconSquareRoundedCheckFilled,
 } from "@tabler/icons-react";
@@ -29,6 +27,10 @@ import EpochBlockChart from "@/components/EpochBlockChart/EpochBlockChart";
 import FaqCard from "@/components/FaqCard/FaqCard";
 import InsideFooter from "@/components/InsideFooter/InsideFooter";
 import Status, { type DistributionStatus } from "@/components/Status/Status";
+import ParticipationFlow, {
+  ParticipationReviewDialog,
+  type ParticipateState,
+} from "@/components/ParticipationFlow/ParticipationFlow";
 import { useDistributorData } from "@/hooks/useDistributorData";
 import useTokenAvatar from "@/hooks/useTokenAvatar";
 import type {
@@ -46,12 +48,18 @@ import {
 import { distributorV1Abi, tokenV1Abi } from "@/contracts/abis";
 import { getAddresses } from "@/contracts/contract-addresses";
 import { useInput } from "@/hooks/useInput";
-import { numberOnlyModifier } from "@/utils/modifier";
+import {
+  decimalOnlyModifier,
+  numberOnlyModifier,
+  type InputModifier,
+} from "@/utils/modifier";
+import { validateAll, type InputValidator } from "@/utils/validator";
 import { formatDate } from "@/utils/formatDate";
 import { formatDuration } from "@/utils/formatDuration";
 import { showToast } from "@/hooks/useToast";
 import { isUserRejectedError } from "@/utils/wallet-error";
 import { viewTransactionAction } from "@/utils/explorer-utils";
+import { fmtInt } from "@/utils/formatInt";
 import { roundUnits, unitsToNumber } from "@/utils/round-units";
 
 const EpochComboChart = dynamic(
@@ -118,10 +126,6 @@ function useCountdown(endTimestamp: number) {
     minutes: Math.floor((totalSeconds % 3600) / 60),
     seconds: totalSeconds % 60,
   };
-}
-
-function fmtInt(n: number): string {
-  return Math.round(n).toLocaleString("en-US");
 }
 
 function InlineStat({
@@ -320,7 +324,11 @@ function buildEpochs(
 function computeShares(
   contractInfo: DistributorContractInfo,
   chainId: number,
-): { priceAnchorPct: number; founderSharePct: number; protocolFeePct: number } {
+): {
+  priceAnchorPct: number;
+  founderSharePct: number;
+  protocolFeePct: number;
+} {
   const shares = contractInfo.shares;
   const addresses = getAddresses(chainId);
 
@@ -365,6 +373,7 @@ export default function DistributionDetail({
     claimData,
     participationTokenSymbol,
     participationTokenDecimals,
+    participationTokenBalance,
     isLoading,
     refetch,
   } = useDistributorData(contractAddress as Address);
@@ -380,36 +389,178 @@ export default function DistributionDetail({
   const { openConnectModal } = useConnectModal();
   const [epochs, setEpochs] = useState<EpochData[]>([]);
   const [activeFaq, setActiveFaq] = useState(0);
-  const [amount, setAmount] = useState("");
-
-  const maxEpochs = useMemo(() => {
-    if (!contractInfo || currentEpoch === undefined) return 1;
-    return Math.max(1, Number(contractInfo.numberOfEpochs - currentEpoch));
-  }, [contractInfo, currentEpoch]);
-
-  const epochCount = useInput("1", numberOnlyModifier, (v) => {
-    if (v.trim() === "") return "Required";
-    const n = parseInt(v, 10);
-    if (isNaN(n) || n < 1) return "Must be at least 1";
-    if (n > maxEpochs)
-      return `Max ${maxEpochs} epoch${maxEpochs > 1 ? "s" : ""} remaining`;
-    return null;
-  });
-
-  const epochCountNum = useMemo(() => {
-    const n = parseInt(epochCount.value, 10);
-    return isNaN(n) || n < 1 ? 1 : n;
-  }, [epochCount.value]);
   const [hoveredEpoch, setHoveredEpoch] = useState<EpochData | null>(null);
   const [claimState, setClaimState] = useState<
     "idle" | "claiming" | "done" | "error"
   >("idle");
-  const [participateState, setParticipateState] = useState<
-    "idle" | "approving" | "participating" | "error"
-  >("idle");
+  const [participateState, setParticipateState] =
+    useState<ParticipateState>("idle");
   const [dialogueOpen, setDialogueOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [amountFocused, setAmountFocused] = useState(false);
+  const [epochsExpanded, setEpochsExpanded] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const shareTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // epoch numbers are 1-based in the UI; the contract's participate() takes
+  // the 0-based index, so fromEpochNum - 1 is passed on-chain.
+  // Modifiers cap the upper bound as the user types (typing stays intact);
+  // lower bounds are enforced in the derived values and normalized on blur
+  // — clamping up mid-typing would corrupt multi-digit entry ("1" → "10").
+  const currentEpochDisplay =
+    currentEpoch !== undefined ? Number(currentEpoch) + 1 : null;
+  const lastEpoch = contractInfo ? Number(contractInfo.numberOfEpochs) : 0;
+
+  const fromEpochModifier = useMemo<InputModifier>(
+    () => (v) => {
+      const digits = numberOnlyModifier(v);
+      if (digits === "" || lastEpoch === 0) return digits;
+      const n = parseInt(digits, 10);
+      if (isNaN(n)) return "";
+      return String(Math.min(n, lastEpoch));
+    },
+    [lastEpoch],
+  );
+
+  const fromEpochInput = useInput("", fromEpochModifier);
+
+  const fromEpochNum = useMemo(() => {
+    const min = currentEpochDisplay ?? 1;
+    const n = parseInt(fromEpochInput.value, 10);
+    if (isNaN(n) || n < 1) return min;
+    return Math.min(Math.max(n, min), Math.max(lastEpoch, min));
+  }, [fromEpochInput.value, currentEpochDisplay, lastEpoch]);
+
+  const toEpochModifier = useMemo<InputModifier>(
+    () => (v) => {
+      const digits = numberOnlyModifier(v);
+      if (digits === "" || lastEpoch === 0) return digits;
+      const n = parseInt(digits, 10);
+      if (isNaN(n)) return "";
+      return String(Math.min(n, lastEpoch));
+    },
+    [lastEpoch],
+  );
+
+  const toEpochInput = useInput("", toEpochModifier);
+
+  const toEpochNum = useMemo(() => {
+    const n = parseInt(toEpochInput.value, 10);
+    if (isNaN(n) || n < fromEpochNum) return fromEpochNum;
+    return Math.min(n, Math.max(lastEpoch, fromEpochNum));
+  }, [toEpochInput.value, fromEpochNum, lastEpoch]);
+
+  const epochCountNum = toEpochNum - fromEpochNum + 1;
+
+  // snap the displayed text back to the effective (clamped) value
+  const normalizeFromEpoch = () => fromEpochInput.onChange(String(fromEpochNum));
+  const normalizeToEpoch = () => toEpochInput.onChange(String(toEpochNum));
+
+  const amountIssues = useCallback(
+    (parsed: bigint): string | null => {
+      if (
+        contractInfo &&
+        contractInfo.minParticipation > 0n &&
+        parsed / BigInt(epochCountNum) < contractInfo.minParticipation
+      ) {
+        return `Minimum participation is ${roundUnits(
+          contractInfo.minParticipation,
+          participationTokenDecimals ?? 18,
+        )} ${participationTokenSymbol ?? ""} per epoch`;
+      }
+      // safety net for a balance that shrank after the value was typed —
+      // the modifier normally caps the input before this can show
+      if (
+        isWalletConnected &&
+        participationTokenBalance !== undefined &&
+        parsed > participationTokenBalance
+      ) {
+        return "Amount exceeds your wallet balance";
+      }
+      return null;
+    },
+    [
+      contractInfo,
+      epochCountNum,
+      participationTokenDecimals,
+      participationTokenSymbol,
+      isWalletConnected,
+      participationTokenBalance,
+    ],
+  );
+
+  // caps the input at the wallet balance as the user types — over-balance
+  // values can't be entered rather than blocked with a validation error
+  const amountModifier = useMemo<InputModifier>(
+    () => (v) => {
+      const cleaned = decimalOnlyModifier(v);
+      if (
+        cleaned === "" ||
+        !isWalletConnected ||
+        participationTokenBalance === undefined
+      ) {
+        return cleaned;
+      }
+      try {
+        const parsed = parseUnits(cleaned, participationTokenDecimals ?? 18);
+        if (parsed > participationTokenBalance) {
+          return participationTokenBalance === 0n
+            ? "0"
+            : formatUnits(
+                participationTokenBalance,
+                participationTokenDecimals ?? 18,
+              );
+        }
+      } catch {
+        // mid-edit values like "1." — pass through unclamped
+      }
+      return cleaned;
+    },
+    [isWalletConnected, participationTokenBalance, participationTokenDecimals],
+  );
+
+  const validateAmount = useMemo<InputValidator>(
+    () => (v) => {
+      const t = v.trim();
+      if (t === "") return "Required";
+      let parsed: bigint;
+      try {
+        parsed = parseUnits(t, participationTokenDecimals ?? 18);
+      } catch {
+        return "Invalid amount";
+      }
+      if (parsed === 0n) return "Must be greater than 0";
+      return amountIssues(parsed);
+    },
+    [amountIssues, participationTokenDecimals],
+  );
+
+  const amountInput = useInput("", amountModifier, validateAmount);
+
+  // parse errors surface on submit only; min/balance issues show live
+  const amountParsed = useMemo<bigint | null>(() => {
+    try {
+      return parseUnits(
+        amountInput.value.trim(),
+        participationTokenDecimals ?? 18,
+      );
+    } catch {
+      return null;
+    }
+  }, [amountInput.value, participationTokenDecimals]);
+  const amountLimitError =
+    amountParsed !== null ? amountIssues(amountParsed) : null;
+
+  // default the range to the current epoch once on-chain data is in —
+  // clamped to the last epoch so ended distributions don't default out
+  // of range
+  useEffect(() => {
+    if (currentEpochDisplay === null || lastEpoch === 0) return;
+    const defaultEpoch = String(Math.min(currentEpochDisplay, lastEpoch));
+    if (fromEpochInput.value === "") fromEpochInput.onChange(defaultEpoch);
+    if (toEpochInput.value === "") toEpochInput.onChange(defaultEpoch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentEpochDisplay, lastEpoch]);
 
   const handleShare = useCallback(() => {
     navigator.clipboard
@@ -477,11 +628,6 @@ export default function DistributionDetail({
   const epochDurationLabel = useMemo(() => {
     if (!contractInfo) return "—";
     return formatDuration(Number(contractInfo.epochDuration));
-  }, [contractInfo]);
-
-  const claimDelayLabel = useMemo(() => {
-    if (!contractInfo) return "—";
-    return formatDuration(Number(contractInfo.claimDelaySeconds));
   }, [contractInfo]);
 
   const currentEpochEndMs = useMemo(() => {
@@ -585,22 +731,34 @@ export default function DistributionDetail({
   const displayParticipationAmount = displayEpoch?.participationAmount ?? 0n;
   const displayParticipants = displayEpoch?.participants ?? 0;
 
-  const minParticipationFormatted = useMemo(() => {
-    if (!contractInfo || !participationTokenDecimals) return 0;
-    return Number(
-      formatUnits(contractInfo.minParticipation, participationTokenDecimals),
-    );
-  }, [contractInfo, participationTokenDecimals]);
-
-  const amountNum = Number(amount);
-  const belowMin =
-    amount !== "" &&
-    amountNum > 0 &&
-    minParticipationFormatted > 0 &&
-    amountNum < minParticipationFormatted;
+  const amountNum = Number(amountInput.value);
+  const perEpochAmount = amountNum > 0 ? amountNum / epochCountNum : 0;
 
   const hasClaimableShare =
     claimState === "done" || (claimData?.claimableAmount ?? 0n) > 0n;
+
+  const walletBalanceFormatted = useMemo(() => {
+    if (participationTokenBalance === undefined || !participationTokenDecimals)
+      return 0;
+    return Number(
+      formatUnits(participationTokenBalance, participationTokenDecimals),
+    );
+  }, [participationTokenBalance, participationTokenDecimals]);
+  const showWalletBalance =
+    (amountInput.value !== "" || amountFocused) && isWalletConnected;
+
+  const claimDelayDays = contractInfo
+    ? Math.round(Number(contractInfo.claimDelaySeconds) / 86400)
+    : 0;
+
+  // end of the last epoch in the selected range, plus the claim delay
+  const claimAvailableMs = useMemo(() => {
+    if (!contractInfo) return 0;
+    const lastEpochEndSec =
+      Number(contractInfo.startingTimestamp) +
+      toEpochNum * Number(contractInfo.epochDuration);
+    return (lastEpochEndSec + Number(contractInfo.claimDelaySeconds)) * 1000;
+  }, [contractInfo, toEpochNum]);
 
   const handleClaim = useCallback(async () => {
     if (!walletClient || !publicClient || !contractInfo || !claimData) return;
@@ -677,8 +835,8 @@ export default function DistributionDetail({
   const canParticipate =
     isWalletConnected &&
     state === "running" &&
-    Number(amount) > 0 &&
-    !belowMin &&
+    amountNum > 0 &&
+    amountLimitError === null &&
     participateState !== "approving" &&
     participateState !== "participating";
   const isParticipating =
@@ -698,8 +856,14 @@ export default function DistributionDetail({
       openConnectModal?.();
       return;
     }
-    if (!epochCount.validate()) return;
-    if (!walletClient || !contractInfo || currentEpoch === undefined) return;
+    if (!validateAll(amountInput, fromEpochInput, toEpochInput)) return;
+    if (
+      !walletClient ||
+      !publicClient ||
+      !contractInfo ||
+      !participationTokenDecimals
+    )
+      return;
 
     const toastId = `participate-${contractAddress}`;
 
@@ -707,10 +871,13 @@ export default function DistributionDetail({
       setParticipateState("approving");
       showToast("participate.pending", {
         id: toastId,
-        params: { epoch: Number(currentEpoch) },
+        params: { epoch: fromEpochNum },
       });
 
-      const totalAmount = parseUnits(amount, participationTokenDecimals!);
+      const totalAmount = parseUnits(
+        amountInput.value,
+        participationTokenDecimals,
+      );
       const amountPerEpoch = totalAmount / BigInt(epochCountNum);
 
       const pToken = getTokenV1Contract(
@@ -755,7 +922,7 @@ export default function DistributionDetail({
       );
       const params = [
         amountPerEpoch,
-        { from: currentEpoch, length: BigInt(epochCountNum) },
+        { from: BigInt(fromEpochNum - 1), length: BigInt(epochCountNum) },
         walletClient.account.address,
         "0x",
       ] as const;
@@ -787,21 +954,26 @@ export default function DistributionDetail({
           id: toastId,
           params: {
             n: epochCountNum,
-            first: Number(currentEpoch),
-            last: Number(currentEpoch) + epochCountNum - 1,
+            first: fromEpochNum,
+            last: toEpochNum,
           },
           action,
         });
       } else {
         showToast("participate.success", {
           id: toastId,
-          params: { epoch: Number(currentEpoch) },
+          params: { epoch: fromEpochNum },
           action,
         });
       }
 
       setParticipateState("idle");
-      setAmount("");
+      amountInput.reset();
+      const nextEpoch = String(toEpochNum + 1);
+      fromEpochInput.onChange(nextEpoch);
+      toEpochInput.onChange(nextEpoch);
+      setEpochsExpanded(false);
+      setConfirmOpen(false);
       refetch();
     } catch (e) {
       console.error("Participate failed:", e);
@@ -811,6 +983,15 @@ export default function DistributionDetail({
       );
       setParticipateState("error");
     }
+  };
+
+  const handleParticipateReview = () => {
+    if (!isWalletConnected) {
+      openConnectModal?.();
+      return;
+    }
+    if (!validateAll(amountInput, fromEpochInput, toEpochInput)) return;
+    setConfirmOpen(true);
   };
 
   const handleMobileParticipateClick = () => {
@@ -828,162 +1009,74 @@ export default function DistributionDetail({
       ? `Starts ${fmtShortDate(startTimestampMs)}!`
       : "Distribution is finished!";
 
-  function renderClaimAndParticipation(idPrefix: string) {
-    return (
-      <>
-        {isWalletConnected && hasClaimableShare && (
-          <div className="ddp-claim-card">
-            <h2>Ready to claim</h2>
-            {claimState === "done" ? (
-              <div className="ddp-claim-card__done">
-                <IconSquareRoundedCheckFilled size={20} />
-                Claim share done successfully.
-              </div>
-            ) : (
-              <>
-                <div className="ddp-claim-card__amount">
-                  <span>
-                    {roundUnits(
-                      claimData?.claimableAmount ?? BigInt(0),
-                      tokenDecimals ?? 18,
-                    )}
-                  </span>
-                  <span className="ddp-claim-card__unit">{tokenSymbol}</span>
-                </div>
-                {claimState === "error" && (
-                  <p className="ddp-claim-card__error">
-                    Claim failed. Please try again.
-                  </p>
-                )}
-                <Button
-                  variant="primary"
-                  size="m"
-                  fullWidth
-                  className="ddp-claim-card__button"
-                  disabled={
-                    claimState === "claiming" ||
-                    (claimData?.claimableAmount ?? 0) === BigInt(0)
-                  }
-                  leadingIcon={
-                    claimState === "claiming" ? (
-                      <IconLoader2 size={18} />
-                    ) : undefined
-                  }
-                  onClick={handleClaim}
-                >
-                  {claimState === "claiming" ? "Processing" : "Claim all"}
-                </Button>
-              </>
-            )}
+  const claimCard =
+    isWalletConnected && hasClaimableShare ? (
+      <div className="ddp-claim-card">
+        <h2>Ready to claim</h2>
+        {claimState === "done" ? (
+          <div className="ddp-claim-card__done">
+            <IconSquareRoundedCheckFilled size={20} />
+            Claim share done successfully.
           </div>
-        )}
-
-        <div
-          className={`ddp-participation${isInteractive ? "" : " ddp-participation--disabled"}`}
-        >
-          <h2>Participation</h2>
-          <div className="ddp-participation__field">
-            <label htmlFor={`${idPrefix}-amount`}>
-              Total participation amount
-            </label>
-            <div className="ddp-participation__input">
-              <input
-                id={`${idPrefix}-amount`}
-                type="text"
-                inputMode="decimal"
-                placeholder="e.g. 50"
-                autoComplete="off"
-                value={amount}
-                disabled={!isInteractive}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-              <span>{participationTokenSymbol}</span>
-            </div>
-            {belowMin && (
-              <p className="ddp-participation__error">
-                Minimum participation is{" "}
+        ) : (
+          <>
+            <div className="ddp-claim-card__amount">
+              <span>
                 {roundUnits(
-                  contractInfo?.minParticipation ?? 0n,
-                  participationTokenDecimals ?? 18,
-                )}{" "}
-                {participationTokenSymbol}
+                  claimData?.claimableAmount ?? BigInt(0),
+                  tokenDecimals ?? 18,
+                )}
+              </span>
+              <span className="ddp-claim-card__unit">{tokenSymbol}</span>
+            </div>
+            {claimState === "error" && (
+              <p className="ddp-claim-card__error">
+                Claim failed. Please try again.
               </p>
             )}
-          </div>
-          <div className="ddp-participation__row">
-            <div className="ddp-participation__field">
-              <label htmlFor={`${idPrefix}-epochs`}>
-                Participation epoch counts
-              </label>
-              <div
-                className={`ddp-participation__input${epochCountNum > 1 ? " is-active" : ""}`}
-              >
-                <input
-                  id={`${idPrefix}-epochs`}
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  value={epochCount.value}
-                  disabled={!isInteractive}
-                  onChange={(e) => {
-                    const n = Number.parseInt(e.target.value, 10);
-                    epochCount.onChange(
-                      Number.isNaN(n) ? "" : String(Math.min(maxEpochs, n)),
-                    );
-                  }}
-                />
-                <span>Epochs</span>
-              </div>
-              {epochCount.error && (
-                <p className="ddp-participation__error">{epochCount.error}</p>
-              )}
-            </div>
-            <div className="ddp-participation__steppers mt-7">
-              <IconButton
-                icon={<IconMinus size={20} strokeWidth={1.75} />}
-                variant="outline"
-                size="m"
-                aria-label="Decrease epoch count"
-                disabled={!isInteractive || epochCountNum <= 1}
-                onClick={() =>
-                  epochCount.onChange(String(Math.max(1, epochCountNum - 1)))
-                }
-              />
-              <IconButton
-                icon={<IconPlus size={20} strokeWidth={1.75} />}
-                variant="secondary"
-                size="m"
-                aria-label="Increase epoch count"
-                disabled={!isInteractive}
-                onClick={() =>
-                  epochCount.onChange(
-                    String(Math.min(maxEpochs, epochCountNum + 1)),
-                  )
-                }
-              />
-            </div>
-          </div>
-          <div className="ddp-participation__action">
-            <div className="ddp-participation__delay">
-              <span>Claim delay</span>
-              <span>{claimDelayLabel}</span>
-            </div>
             <Button
               variant="primary"
               size="m"
-              className="ddp-participation__submit"
+              fullWidth
+              className="ddp-claim-card__button"
               disabled={
-                !isInteractive || (isWalletConnected && !canParticipate)
+                claimState === "claiming" ||
+                (claimData?.claimableAmount ?? 0) === BigInt(0)
               }
-              onClick={handleParticipateClick}
+              leadingIcon={
+                claimState === "claiming" ? <IconLoader2 size={18} /> : undefined
+              }
+              onClick={handleClaim}
             >
-              {submitLabel}
+              {claimState === "claiming" ? "Processing" : "Claim all"}
             </Button>
-          </div>
-        </div>
-      </>
-    );
-  }
+          </>
+        )}
+      </div>
+    ) : null;
+
+  const participationFlowProps = {
+    amount: amountInput,
+    amountLiveError: amountLimitError,
+    showWalletBalance,
+    walletBalanceFormatted,
+    participationTokenSymbol: participationTokenSymbol ?? "",
+    fromEpoch: fromEpochInput,
+    toEpoch: toEpochInput,
+    onFromEpochBlur: normalizeFromEpoch,
+    onToEpochBlur: normalizeToEpoch,
+    fromEpochNum,
+    toEpochNum,
+    lastEpoch,
+    perEpochAmount,
+    claimDelayDays,
+    epochsExpanded,
+    onEpochsExpanded: setEpochsExpanded,
+    onAmountFocus: setAmountFocused,
+    ctaLabel: participateLabel,
+    ctaDisabled: isWalletConnected && !canParticipate,
+    onCtaClick: handleParticipateReview,
+  };
 
   if (isLoading) {
     return (
@@ -1389,7 +1482,8 @@ export default function DistributionDetail({
             </section>
 
             <section className="ddp-claim-participation">
-              {renderClaimAndParticipation("ddp")}
+              {claimCard}
+              <ParticipationFlow idPrefix="ddp" {...participationFlowProps} />
             </section>
           </div>
         </div>
@@ -1404,10 +1498,29 @@ export default function DistributionDetail({
         >
           <div className="ddp-dialogue" onClick={(e) => e.stopPropagation()}>
             <div className="ddp-claim-participation">
-              {renderClaimAndParticipation("ddp-dialogue")}
+              {claimCard}
+              <ParticipationFlow
+                idPrefix="ddp-dialogue"
+                {...participationFlowProps}
+              />
             </div>
           </div>
         </div>
+      )}
+
+      {confirmOpen && (
+        <ParticipationReviewDialog
+          amountText={amountInput.value}
+          amountSymbol={participationTokenSymbol ?? ""}
+          claimSymbol={tokenSymbol ?? ""}
+          fromEpochNum={fromEpochNum}
+          toEpochNum={toEpochNum}
+          claimDelayDays={claimDelayDays}
+          claimAvailableMs={claimAvailableMs}
+          state={participateState}
+          onClose={() => setConfirmOpen(false)}
+          onConfirm={handleParticipateClick}
+        />
       )}
     </div>
   );
