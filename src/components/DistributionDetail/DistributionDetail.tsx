@@ -27,6 +27,7 @@ import EpochBlockChart from "@/components/EpochBlockChart/EpochBlockChart";
 import FaqCard from "@/components/FaqCard/FaqCard";
 import InsideFooter from "@/components/InsideFooter/InsideFooter";
 import Status, { type DistributionStatus } from "@/components/Status/Status";
+import ClaimRootDialog from "@/components/ClaimRootDialog/ClaimRootDialog";
 import ParticipationFlow, {
   ParticipationReviewDialog,
   type ParticipateState,
@@ -397,6 +398,7 @@ export default function DistributionDetail({
     useState<ParticipateState>("idle");
   const [dialogueOpen, setDialogueOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [claimRootOpen, setClaimRootOpen] = useState(true);
   const [amountFocused, setAmountFocused] = useState(false);
   const [epochsExpanded, setEpochsExpanded] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
@@ -1521,6 +1523,10 @@ export default function DistributionDetail({
           onClose={() => setConfirmOpen(false)}
           onConfirm={handleParticipateClick}
         />
+      )}
+
+      {claimRootOpen && (
+        <ClaimRootDialog onClose={() => setClaimRootOpen(false)} />
       )}
     </div>
   );
