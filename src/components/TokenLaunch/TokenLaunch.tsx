@@ -6,6 +6,7 @@ import Input from "@/components/Input/Input";
 import { useInput } from "@/hooks/useInput";
 import TokenAvatar from "@/components/TokenAvatar/TokenAvatar";
 import AvatarCropDialog from "@/components/AvatarCropDialog/AvatarCropDialog";
+import ClaimRootDialog from "@/components/ClaimRootDialog/ClaimRootDialog";
 import Header from "@/components/Header/Header";
 import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
 import { IconButton } from "@/components/IconButton/IconButton";
@@ -54,6 +55,7 @@ export default function TokenLaunch(props: {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [avatarStatus, setAvatarStatus] = useState<AvatarStatus>("idle");
+  const [claimRootOpen, setClaimRootOpen] = useState(true);
 
   const onPickFile = (file: File | undefined) => {
     if (!file) return;
@@ -183,6 +185,9 @@ export default function TokenLaunch(props: {
       </div>
       {cropSrc && (
         <AvatarCropDialog src={cropSrc} onClose={onCropCancel} onCropped={onCropped} />
+      )}
+      {claimRootOpen && (
+        <ClaimRootDialog onClose={() => setClaimRootOpen(false)} />
       )}
     </div>
   );
