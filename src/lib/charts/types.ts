@@ -16,6 +16,10 @@ export interface EpochData {
   participants?: number;
   /** Did the connected wallet participate in this epoch. */
   participated: boolean;
+  /** Raw on-chain participation amount from the connected wallet. */
+  userParticipationAmount: bigint;
+  /** Has the connected wallet already claimed this epoch's reward. */
+  claimed: boolean;
   /** Epoch open time, ms since epoch. */
   timestamp: number;
 }
