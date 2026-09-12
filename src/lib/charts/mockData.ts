@@ -60,6 +60,11 @@ export function generateMockEpochs(options: MockEpochOptions = {}): EpochData[] 
     }
 
     const participated = participationVolume > 0 && Math.random() < 0.15;
+    const userParticipationAmount = participated
+      ? BigInt(Math.max(1, Math.round(participationVolume * (0.05 + Math.random() * 0.25)))) *
+        10n ** 18n
+      : 0n;
+    const claimed = state === "passed" && participated && Math.random() < 0.5;
 
     epochs.push({
       epoch: i + 1,
@@ -68,6 +73,8 @@ export function generateMockEpochs(options: MockEpochOptions = {}): EpochData[] 
       clearPrice: state === "passed" ? +price.toFixed(6) : null,
       supply: supplyPerEpoch,
       participated,
+      userParticipationAmount,
+      claimed,
       timestamp,
     });
   }

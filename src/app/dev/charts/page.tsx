@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import EpochBlockChart from "@/components/EpochBlockChart/EpochBlockChart";
+import EpochDetailDialog from "@/components/EpochDetailDialog/EpochDetailDialog";
 import { generateMockEpochs } from "@/lib/charts/mockData";
 import type { EpochData } from "@/lib/charts/types";
 import "./page.css";
@@ -35,6 +36,7 @@ export default function ChartsDevPreviewPage() {
   // mismatch.
   const [epochs, setEpochs] = useState<EpochData[]>([]);
   const [seed, setSeed] = useState(0);
+  const [selectedEpoch, setSelectedEpoch] = useState<EpochData | null>(null);
   useEffect(() => {
     // Intentional one-time client-only sync, not a cascading-render antipattern:
     // Math.random()-based mock data must never run during SSR.
@@ -45,6 +47,11 @@ export default function ChartsDevPreviewPage() {
   const currentEpochLabel = useMemo(() => {
     const cur = epochs.find((e) => e.state === "current");
     return cur ? `#${cur.epoch}` : "—";
+  }, [epochs]);
+
+  const lastClearPrice = useMemo(() => {
+    const closed = epochs.filter((e) => e.state === "passed");
+    return closed.length > 0 ? closed[closed.length - 1].clearPrice : null;
   }, [epochs]);
 
   const reshuffle = useCallback(() => {
@@ -74,7 +81,13 @@ export default function ChartsDevPreviewPage() {
       <section className="charts-dev__section">
         <h2>Block chart — {epochs.length} epochs</h2>
         <div className="charts-dev__block-card">
-          <EpochBlockChart key={seed} epochs={epochs} />
+          <EpochBlockChart
+            key={seed}
+            epochs={epochs}
+            tokenSymbol="TOKEN"
+            quoteSymbol="USDT"
+            onSelectEpoch={setSelectedEpoch}
+          />
         </div>
       </section>
 
@@ -88,10 +101,32 @@ export default function ChartsDevPreviewPage() {
             </div>
           </div>
           <div className="charts-dev__combo-chart">
-            <EpochComboChart key={seed} epochs={epochs} />
+            <EpochComboChart
+              key={seed}
+              epochs={epochs}
+              tokenSymbol="TOKEN"
+              quoteSymbol="USDT"
+              onSelectEpoch={setSelectedEpoch}
+            />
           </div>
         </div>
       </section>
+
+      {selectedEpoch && (
+        <EpochDetailDialog
+          epoch={selectedEpoch}
+          epochEndMs={selectedEpoch.timestamp + 24 * 60 * 60 * 1000}
+          lastClearPrice={lastClearPrice}
+          tokenSymbol="TOKEN"
+          tokenDecimals={18}
+          quoteSymbol="USDT"
+          quoteDecimals={18}
+          claiming={false}
+          onClose={() => setSelectedEpoch(null)}
+          onParticipateClick={() => setSelectedEpoch(null)}
+          onClaimClick={() => setSelectedEpoch(null)}
+        />
+      )}
     </div>
   );
 }

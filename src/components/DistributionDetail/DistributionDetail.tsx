@@ -28,6 +28,7 @@ import FaqCard from "@/components/FaqCard/FaqCard";
 import InsideFooter from "@/components/InsideFooter/InsideFooter";
 import Status, { type DistributionStatus } from "@/components/Status/Status";
 import ClaimRootDialog from "@/components/ClaimRootDialog/ClaimRootDialog";
+import EpochDetailDialog from "@/components/EpochDetailDialog/EpochDetailDialog";
 import ParticipationFlow, {
   ParticipationReviewDialog,
   type ParticipateState,
@@ -49,13 +50,14 @@ import {
 import { distributorV1Abi, tokenV1Abi } from "@/contracts/abis";
 import { getAddresses } from "@/contracts/contract-addresses";
 import { useInput } from "@/hooks/useInput";
+import { useCountdown } from "@/hooks/useCountdown";
 import {
   decimalOnlyModifier,
   numberOnlyModifier,
   type InputModifier,
 } from "@/utils/modifier";
 import { validateAll, type InputValidator } from "@/utils/validator";
-import { formatDate } from "@/utils/formatDate";
+import { formatDateTime } from "@/utils/formatDate";
 import { formatDuration } from "@/utils/formatDuration";
 import { showToast } from "@/hooks/useToast";
 import { isUserRejectedError } from "@/utils/wallet-error";
@@ -111,23 +113,6 @@ const BLOCK_LEGEND = [
   { swatch: "var(--sqrt-action-primary-rest)", label: "Current" },
   { swatch: "var(--color-alpha-steel-08)", label: "No participation" },
 ];
-
-function useCountdown(endTimestamp: number) {
-  const [remaining, setRemaining] = useState(0);
-  useEffect(() => {
-    const tick = () => setRemaining(Math.max(0, endTimestamp - Date.now()));
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [endTimestamp]);
-  const totalSeconds = Math.floor(remaining / 1000);
-  return {
-    days: Math.floor(totalSeconds / 86400),
-    hours: Math.floor((totalSeconds % 86400) / 3600),
-    minutes: Math.floor((totalSeconds % 3600) / 60),
-    seconds: totalSeconds % 60,
-  };
-}
 
 function InlineStat({
   label,
@@ -241,18 +226,6 @@ function fmtEpochDate(timestamp: number, withTime: boolean): string {
   return `${day} ${month}, ${d.getFullYear()}`;
 }
 
-// "distribution period" / "starts in" label, e.g. "12:45, 21 June, 2026" —
-// reuses the shared formatDate util (full month name + year) for the date
-// half, distinct from fmtEpochDate above which the epoch card still uses.
-function fmtPeriodDateTime(timestampMs: number): string {
-  const time = new Date(timestampMs).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-  return `${time}, ${formatDate(timestampMs)}`;
-}
-
 // Short form for the participation button's "Starts 21 Jun!" label.
 function fmtShortDate(timestampMs: number): string {
   const d = new Date(timestampMs);
@@ -315,7 +288,9 @@ function buildEpochs(
       supply,
       supplyAmount,
       participants: Number(info.uniqueParticipants),
-      participated: false,
+      participated: info.userParticipationAmount > 0n,
+      userParticipationAmount: info.userParticipationAmount,
+      claimed: info.claimed,
       timestamp,
     });
   }
@@ -391,6 +366,7 @@ export default function DistributionDetail({
   const [epochs, setEpochs] = useState<EpochData[]>([]);
   const [activeFaq, setActiveFaq] = useState(0);
   const [hoveredEpoch, setHoveredEpoch] = useState<EpochData | null>(null);
+  const [selectedEpoch, setSelectedEpoch] = useState<EpochData | null>(null);
   const [claimState, setClaimState] = useState<
     "idle" | "claiming" | "done" | "error"
   >("idle");
@@ -1004,6 +980,14 @@ export default function DistributionDetail({
     setDialogueOpen(true);
   };
 
+  const handleEpochParticipateClick = () => {
+    if (!selectedEpoch) return;
+    fromEpochInput.onChange(String(selectedEpoch.epoch));
+    toEpochInput.onChange(String(selectedEpoch.epoch));
+    setSelectedEpoch(null);
+    handleMobileParticipateClick();
+  };
+
   const isInteractive = state === "running";
   const submitLabel = isInteractive
     ? participateLabel
@@ -1219,7 +1203,7 @@ export default function DistributionDetail({
                     <PeriodLabel
                       title="Distribution starts in"
                       prefix="Starts"
-                      value={fmtPeriodDateTime(startTimestampMs)}
+                      value={formatDateTime(startTimestampMs)}
                     />
                     <CountdownClock value={startCountdown} />
                   </div>
@@ -1228,7 +1212,7 @@ export default function DistributionDetail({
                     <PeriodLabel
                       title="Distribution period"
                       prefix="Ends"
-                      value={fmtPeriodDateTime(endTimestampMs)}
+                      value={formatDateTime(endTimestampMs)}
                     />
                     <p className="ddp-countdown-finished">
                       This distribution is finished!
@@ -1239,7 +1223,7 @@ export default function DistributionDetail({
                     <PeriodLabel
                       title="Distribution period"
                       prefix="Ends"
-                      value={fmtPeriodDateTime(endTimestampMs)}
+                      value={formatDateTime(endTimestampMs)}
                     />
                     <CountdownClock value={countdown} />
                   </div>
@@ -1290,6 +1274,7 @@ export default function DistributionDetail({
                     tokenSymbol={tokenSymbol}
                     quoteDecimals={participationTokenDecimals ?? 18}
                     tokenDecimals={tokenDecimals ?? 18}
+                    onSelectEpoch={setSelectedEpoch}
                   />
                   <div className="ddp-block-card__legend">
                     {BLOCK_LEGEND.map((item) => (
@@ -1394,6 +1379,7 @@ export default function DistributionDetail({
                         quoteDecimals={participationTokenDecimals ?? 18}
                         tokenDecimals={tokenDecimals ?? 18}
                         onHoverEpoch={setHoveredEpoch}
+                        onSelectEpoch={setSelectedEpoch}
                       />
                     </div>
                   </div>
@@ -1527,6 +1513,25 @@ export default function DistributionDetail({
 
       {claimRootOpen && (
         <ClaimRootDialog onClose={() => setClaimRootOpen(false)} />
+      )}
+
+      {selectedEpoch && (
+        <EpochDetailDialog
+          epoch={selectedEpoch}
+          epochEndMs={currentEpochEndMs}
+          lastClearPrice={stats.lastClearPrice}
+          tokenSymbol={tokenSymbol}
+          tokenDecimals={tokenDecimals}
+          quoteSymbol={participationTokenSymbol}
+          quoteDecimals={participationTokenDecimals}
+          claiming={claimState === "claiming"}
+          onClose={() => setSelectedEpoch(null)}
+          onParticipateClick={handleEpochParticipateClick}
+          onClaimClick={() => {
+            handleClaim();
+            setSelectedEpoch(null);
+          }}
+        />
       )}
     </div>
   );
