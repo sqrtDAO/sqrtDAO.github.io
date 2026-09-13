@@ -156,7 +156,7 @@ export default function EpochDetailDialog({
       aria-label={`Epoch ${epoch.epoch} details`}
     >
       <div
-        className="flex w-full max-w-[450px] flex-col gap-6 rounded-l bg-surface p-6"
+        className="flex w-full max-w-[450px] flex-col gap-6 overflow-hidden rounded-[var(--radius-l)] bg-surface p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex w-full flex-col gap-2">
