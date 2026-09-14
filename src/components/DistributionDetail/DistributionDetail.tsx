@@ -1519,6 +1519,7 @@ export default function DistributionDetail({
         <EpochDetailDialog
           epoch={selectedEpoch}
           epochEndMs={currentEpochEndMs}
+          epochDurationSec={contractInfo ? Number(contractInfo.epochDuration) : 0}
           lastClearPrice={stats.lastClearPrice}
           tokenSymbol={tokenSymbol}
           tokenDecimals={tokenDecimals}

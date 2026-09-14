@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import {
   IconCircleDot,
   IconInfoCircle,
-  IconInnerShadowBottomLeft,
   IconProgressBolt,
   IconX,
 } from "@tabler/icons-react";
@@ -12,7 +11,7 @@ import { Button } from "@/components/Button/Button";
 import { IconButton } from "@/components/IconButton/IconButton";
 import { useCountdown } from "@/hooks/useCountdown";
 import type { EpochData } from "@/lib/charts/types";
-import { formatDateTime } from "@/utils/formatDate";
+import { formatDuration } from "@/utils/formatDuration";
 import { roundUnits } from "@/utils/round-units";
 import { fmtInt } from "@/utils/formatInt";
 
@@ -20,6 +19,8 @@ export type EpochDetailDialogProps = {
   epoch: EpochData;
   /** Close timestamp (ms) of the current epoch — only used while epoch.state === "current". */
   epochEndMs: number;
+  /** Length of one epoch, in seconds. */
+  epochDurationSec: number;
   /** Most recently closed epoch's clear price — shown as "Last clear price" while this epoch is open. */
   lastClearPrice: number | null;
   tokenSymbol?: string;
@@ -51,14 +52,6 @@ function StatusChip({ state }: { state: EpochData["state"] }) {
       <div className="inline-flex shrink-0 items-center gap-1 bg-live-bg text-live">
         <IconProgressBolt size={18} strokeWidth={1.75} />
         <span className="text-body whitespace-nowrap">Live epoch</span>
-      </div>
-    );
-  }
-  if (state === "future") {
-    return (
-      <div className="inline-flex shrink-0 items-center gap-1 bg-info-bg text-info">
-        <IconInnerShadowBottomLeft size={18} strokeWidth={1.75} />
-        <span className="text-body whitespace-nowrap">Upcoming</span>
       </div>
     );
   }
@@ -111,6 +104,7 @@ function StatRow({ label, value }: { label: string; value: React.ReactNode }) {
 export default function EpochDetailDialog({
   epoch,
   epochEndMs,
+  epochDurationSec,
   lastClearPrice,
   tokenSymbol,
   tokenDecimals,
@@ -147,6 +141,7 @@ export default function EpochDetailDialog({
     : 0n;
 
   const priceValue = isCurrent ? lastClearPrice : isClosed ? epoch.clearPrice : null;
+  const [durationValue, durationUnit] = formatDuration(epochDurationSec).split(" ");
 
   return (
     <div
@@ -172,20 +167,14 @@ export default function EpochDetailDialog({
               onClick={onClose}
             />
           </div>
-          <div className="flex items-center gap-4">
-            <StatusChip state={epoch.state} />
-            {isCurrent && (
-              <TimeSegments hours={hours} minutes={minutes} seconds={seconds} />
-            )}
-            {isFuture && (
-              <div className="flex items-baseline gap-1 whitespace-nowrap">
-                <span className="text-body text-tertiary">Opens in</span>
-                <span className="text-body text-primary">
-                  {formatDateTime(epoch.timestamp)}
-                </span>
-              </div>
-            )}
-          </div>
+          {!isFuture && (
+            <div className="flex items-center gap-4">
+              <StatusChip state={epoch.state} />
+              {isCurrent && (
+                <TimeSegments hours={hours} minutes={minutes} seconds={seconds} />
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex w-full flex-col gap-4">
@@ -295,6 +284,16 @@ export default function EpochDetailDialog({
               }
             />
           )}
+
+          <StatRow
+            label="Epoch duration"
+            value={
+              <>
+                <span className="text-body-l">{durationValue}</span>
+                <span className="text-body-s">{durationUnit}</span>
+              </>
+            }
+          />
 
           {!isClosed && mine && (
             <div className="flex w-full items-start gap-3 rounded-m border-l-[2.5px] border-info bg-info-bg px-4 py-3">

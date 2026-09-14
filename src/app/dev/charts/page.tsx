@@ -116,6 +116,7 @@ export default function ChartsDevPreviewPage() {
         <EpochDetailDialog
           epoch={selectedEpoch}
           epochEndMs={selectedEpoch.timestamp + 24 * 60 * 60 * 1000}
+          epochDurationSec={24 * 60 * 60}
           lastClearPrice={lastClearPrice}
           tokenSymbol="TOKEN"
           tokenDecimals={18}
