@@ -38,6 +38,8 @@ export interface EpochBlockChartProps {
   quoteDecimals?: number;
   tokenDecimals?: number;
   className?: string;
+  /** Fires when an epoch's block is clicked/tapped. */
+  onSelectEpoch?: (epoch: EpochData) => void;
 }
 
 const GLOW_FILTER_ID = "epoch-block-current-glow";
@@ -49,6 +51,7 @@ export default function EpochBlockChart({
   quoteDecimals,
   tokenDecimals,
   className,
+  onSelectEpoch,
 }: EpochBlockChartProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -164,6 +167,14 @@ export default function EpochBlockChart({
       document.removeEventListener("pointerdown", handleDocumentPointerDown);
   }, [handlePointerLeave]);
 
+  function handleClick(e: ReactPointerEvent<SVGSVGElement>) {
+    handlePointerMove(e);
+    const target = e.target as SVGElement;
+    if (target.tagName !== "rect" || !target.dataset.index) return;
+    const epoch = visibleEpochs[Number(target.dataset.index)];
+    if (epoch) onSelectEpoch?.(epoch);
+  }
+
   function handlePointerMove(e: ReactPointerEvent<SVGSVGElement>) {
     const target = e.target as SVGElement;
     if (target.tagName !== "rect" || !target.dataset.index) {
@@ -227,7 +238,7 @@ export default function EpochBlockChart({
           onPointerMove={handlePointerMove}
           onPointerLeave={handlePointerLeave}
           onClick={(e) =>
-            handlePointerMove(e as unknown as ReactPointerEvent<SVGSVGElement>)
+            handleClick(e as unknown as ReactPointerEvent<SVGSVGElement>)
           }
         >
           <defs>
@@ -268,6 +279,7 @@ export default function EpochBlockChart({
                   height={BLOCK_H}
                   rx={Math.min(displayWindow.blockWidth / 2, BLOCK_MIN_W / 2)}
                   fill={fillFor(epoch, volumeRange)}
+                  style={{ cursor: "pointer" }}
                   filter={
                     epoch.state === "current"
                       ? `url(#${GLOW_FILTER_ID})`

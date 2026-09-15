@@ -48,9 +48,12 @@
 
   /* ── States ── */
   --color-live:    var(--sqrt-state-live);    /* text-live / bg-live       #ff9a47 */
+  --color-live-bg: var(--sqrt-state-live-bg); /* bg-live-bg                #332d22 */
   --color-success: var(--sqrt-state-success); /* text-success / bg-success #3fa88a */
   --color-danger:  var(--sqrt-state-danger);  /* text-danger / bg-danger   #d65f54 */
+  --color-danger-bg: var(--sqrt-state-danger-bg); /* bg-danger-bg          #2d1f24 */
   --color-info:    var(--sqrt-state-info);    /* text-info / bg-info       #67739c */
+  --color-info-bg: var(--sqrt-state-info-bg); /* bg-info-bg                #1e222e */
 
   /* ── Distribution status (Status component pill) ── */
   --color-status-live:     var(--sqrt-action-primary-rest);   /* bg-status-live     — same value as bg-action */

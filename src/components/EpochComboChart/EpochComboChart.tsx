@@ -41,6 +41,8 @@ export interface EpochComboChartProps {
   className?: string;
   /** Fires with the hovered bar's epoch, or null once the pointer leaves the chart. */
   onHoverEpoch?: (epoch: EpochData | null) => void;
+  /** Fires when an epoch's bar is clicked/tapped. */
+  onSelectEpoch?: (epoch: EpochData) => void;
 }
 
 /** Locked values — see sqrtdao-epoch-chart-v4-locked.html. Do not retune here. */
@@ -68,6 +70,7 @@ export default function EpochComboChart({
   tokenDecimals,
   className,
   onHoverEpoch,
+  onSelectEpoch,
 }: EpochComboChartProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const chartElRef = useRef<HTMLDivElement | null>(null);
@@ -98,6 +101,10 @@ export default function EpochComboChart({
   useEffect(() => {
     onHoverEpochRef.current = onHoverEpoch;
   }, [onHoverEpoch]);
+  const onSelectEpochRef = useRef(onSelectEpoch);
+  useEffect(() => {
+    onSelectEpochRef.current = onSelectEpoch;
+  }, [onSelectEpoch]);
 
   const toBarItem = (e: EpochData): RoundedBarsData => ({
     time: timeOf(e),
@@ -297,7 +304,16 @@ export default function EpochComboChart({
     // Mobile has no hover — a tap fires subscribeClick (mouse click too,
     // harmlessly redundant with the crosshair move desktop already gets),
     // reusing the same handler so tapping a bar behaves like desktop hover.
-    chart.subscribeClick(onCrosshairMove);
+    // A click additionally opens the epoch detail dialog.
+    const onClick = (param: MouseEventParams<Time>) => {
+      onCrosshairMove(param);
+      const rec =
+        param.time != null
+          ? byTimeRef.current.get(param.time as unknown as number)
+          : null;
+      if (rec) onSelectEpochRef.current?.(rec);
+    };
+    chart.subscribeClick(onClick);
 
     const onMouseLeave = () => {
       tooltip.hide();
