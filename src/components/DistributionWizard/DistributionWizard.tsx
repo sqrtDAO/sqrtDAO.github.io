@@ -24,6 +24,7 @@ import {
 } from "@/utils/modifier";
 import {
   addressValidator,
+  composeValidators,
   positiveNumberValidator,
   validateAll,
 } from "@/utils/validator";
@@ -89,10 +90,28 @@ export default function DistributionWizard(props: {
   };
 
   // Step 2 — Supply and backing
+  const { address, isConnected: isWalletConnected } = useAccount();
+  const [backingBalance, setBackingBalance] = useState<bigint | null>(null);
+  const [backingDecimals, setBackingDecimals] = useState(18);
+
+  const initialLiquidityBalanceValidator: InputValidator = (v) => {
+    if (v === "" || backingBalance === null) return null;
+    try {
+      if (parseUnits(v.replace(/,/g, ""), backingDecimals) > backingBalance)
+        return "Insufficient balance";
+    } catch {
+      return null;
+    }
+    return null;
+  };
+
   const initialParticipationLiquidity = useInput(
     "",
     composeModifiers(decimalOnlyModifier, commaModifier),
-    positiveNumberValidator("Initial liquidity"),
+    composeValidators(
+      positiveNumberValidator("Initial liquidity"),
+      initialLiquidityBalanceValidator,
+    ),
   );
   const initialDistributionLiquidity = useInput(
     "",
@@ -181,7 +200,6 @@ export default function DistributionWizard(props: {
   );
   const founderReceiverInput = useInput("", noModifier, addressValidator);
 
-  const { isConnected: isWalletConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const [confirming, setConfirming] = useState(false);
 
@@ -291,6 +309,25 @@ export default function DistributionWizard(props: {
         setProtocolFeePercent(Number(feeBps) / 100);
       });
   }, [publicClient]);
+
+  useEffect(() => {
+    if (!publicClient || !address) return;
+    const participationToken = getTokenV1Contract(
+      publicClient,
+      getAddresses(publicClient.chain.id).rootToken,
+    );
+    participationToken.read.decimals().then(setBackingDecimals);
+    participationToken.read
+      .balanceOf([address])
+      .then(setBackingBalance)
+      .catch(() => {});
+  }, [publicClient, address]);
+
+  useEffect(() => {
+    if (initialParticipationLiquidity.value === "") return;
+    initialParticipationLiquidity.validate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialParticipationLiquidity.value, backingBalance, backingDecimals]);
 
   // ── Navigation helpers ───────────────────────────────────────────────────
 
@@ -508,7 +545,7 @@ export default function DistributionWizard(props: {
                     <Input
                       state={supply}
                       label="Supply to distribute"
-                      placeholder="e.g. 10,000,000"
+                      placeholder="e.g. 1,000,000"
                       suffix={props.token.symbol}
                     />
 
@@ -599,7 +636,7 @@ export default function DistributionWizard(props: {
                         <Input
                           state={initialParticipationLiquidity}
                           label="Initial liquidity"
-                          placeholder="e.g. 10,000,000"
+                          placeholder="e.g. 1,000"
                           suffix={BACKING_ASSETS[backingAssetIdx]}
                         />
                       </div>
