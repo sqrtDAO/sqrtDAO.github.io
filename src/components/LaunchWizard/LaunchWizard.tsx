@@ -72,7 +72,7 @@ const AvatarUpload = ({ className = "" }: { className?: string }) => {
   const [preview, setPreview] = useState<string | null>(null);
   return (
     <label
-      className={`relative size-41 shrink-0 cursor-pointer flex-col items-center justify-center gap-4 overflow-hidden rounded-l border border-dashed border-subtle bg-surface hover:border-muted ${className}`}
+      className={`relative size-41 shrink-0 cursor-pointer flex-col items-center justify-center gap-4 overflow-hidden rounded-(--radius-l) border border-dashed border-subtle bg-surface hover:border-muted ${className}`}
     >
       <input
         type="file"

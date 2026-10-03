@@ -35,7 +35,7 @@ const WhyLaunchDialog = ({ onClose }: WhyLaunchDialogProps) => (
     aria-labelledby="why-launch-title"
   >
     <div
-      className="flex w-full max-w-112.5 flex-col gap-2 overflow-hidden rounded-l bg-surface p-6"
+      className="flex w-full max-w-112.5 flex-col gap-2 overflow-hidden rounded-(--radius-l) bg-surface p-6"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex items-center justify-between">

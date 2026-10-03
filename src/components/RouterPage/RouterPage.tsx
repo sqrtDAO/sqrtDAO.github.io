@@ -37,7 +37,7 @@ const RouterPage = () => {
             <Link
               key={href}
               href={href}
-              className="group flex flex-col gap-4 rounded-l border border-subtle bg-surface px-5 py-4 transition-colors hover:bg-raised focus-visible:border-focus focus-visible:outline-none xl:h-59 xl:flex-1"
+              className="group flex flex-col gap-4 rounded-(--radius-l) border border-subtle bg-surface px-5 py-4 transition-colors hover:bg-raised focus-visible:border-focus focus-visible:outline-none xl:h-59 xl:flex-1"
             >
               <span className="flex flex-col gap-1">
                 <span className="text-body leading-5.5 tracking-[0.01em] text-primary">{answer}</span>
