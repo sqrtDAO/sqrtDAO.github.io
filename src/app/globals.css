@@ -90,6 +90,10 @@
   /* ── Motion → animate-{name} utilities ── */
   --animate-glitch-in: glitch-burn-in var(--motion-duration-reveal) var(--motion-easing-arrive) both;
   --animate-glitch-out: glitch-dissolve-out var(--motion-duration-slow) var(--motion-easing-arrive) both;
+
+  /* ── Gradients → bg-{name} utilities (Tailwind v4 --background-image-* namespace) ── */
+  --background-image-sumi:   var(--gradient-sumi);   /* bg-sumi   gradient (graphite + amber glow) */
+  --background-image-kasumi: var(--gradient-kasumi); /* bg-kasumi gradient (steel haze) — pair with bg-canvas */
 }
 
 :root { color-scheme: dark; }

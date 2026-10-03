@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180" fill="none">
+  <!-- sqrtDAO squarehead "epoch assembly" loader. Decorative ambient loop; the host page shows the real status. -->
+  <style>
+    .builder { animation: sqrt-float 4.8s ease-in-out infinite; }
+    .eyes { transform-box: fill-box; transform-origin: center; animation: sqrt-blink 4.8s ease-in-out infinite; }
+    .epoch { transform-box: fill-box; transform-origin: center; animation: 4.8s ease-in-out infinite; }
+    .epoch-1 { animation-name: sqrt-slot-1; }
+    .epoch-2 { animation-name: sqrt-slot-2; }
+    .epoch-3 { animation-name: sqrt-slot-3; }
+    .epoch-4 { animation-name: sqrt-slot-4; }
+    @keyframes sqrt-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+    @keyframes sqrt-blink { 0%, 70%, 82%, 100% { transform: scaleY(1); } 75%, 77% { transform: scaleY(.12); } }
+    @keyframes sqrt-slot-1 {
+      0%, 5%, 100% { opacity: 0; transform: translateY(9px); }
+      15% { opacity: 1; transform: translateY(0); }
+      17% { opacity: 1; transform: translateY(1px) scaleY(.94); }
+      20%, 84% { opacity: 1; transform: translateY(0); }
+      96% { opacity: 0; transform: translateY(0); }
+    }
+    @keyframes sqrt-slot-2 {
+      0%, 21%, 100% { opacity: 0; transform: translateY(9px); }
+      31% { opacity: 1; transform: translateY(0); }
+      33% { opacity: 1; transform: translateY(1px) scaleY(.94); }
+      36%, 84% { opacity: 1; transform: translateY(0); }
+      96% { opacity: 0; transform: translateY(0); }
+    }
+    @keyframes sqrt-slot-3 {
+      0%, 37%, 100% { opacity: 0; transform: translateY(9px); }
+      47% { opacity: 1; transform: translateY(0); }
+      49% { opacity: 1; transform: translateY(1px) scaleY(.94); }
+      52%, 84% { opacity: 1; transform: translateY(0); }
+      96% { opacity: 0; transform: translateY(0); }
+    }
+    @keyframes sqrt-slot-4 {
+      0%, 53%, 100% { opacity: 0; transform: translateY(9px); }
+      63% { opacity: 1; transform: translateY(0); }
+      65% { opacity: 1; transform: translateY(1px) scaleY(.94); }
+      68%, 84% { opacity: 1; transform: translateY(0); }
+      96% { opacity: 0; transform: translateY(0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .builder, .eyes, .epoch { animation: none; transform: none; opacity: 1; }
+    }
+  </style>
+  <defs>
+    <filter id="sqrt-amber-glow" x="-70%" y="-70%" width="240%" height="240%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2.5"/>
+      <feComponentTransfer><feFuncA type="linear" slope=".22"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="sqrt-face-inset" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha" dx="1" dy="2" result="shifted"/>
+      <feGaussianBlur in="shifted" stdDeviation="3" result="soft"/>
+      <feComposite in="SourceAlpha" in2="soft" operator="out" result="rim"/>
+      <feFlood flood-color="#20242F" flood-opacity=".85" result="shade"/>
+      <feComposite in="shade" in2="rim" operator="in" result="inset"/>
+      <feComposite in="inset" in2="SourceGraphic" operator="over"/>
+    </filter>
+  </defs>
+  <g class="builder">
+    <path d="M79 48H119C124 48 127 58 127 68V78C127 93 116 104 102 105H88C75 103 66 95 65 83V63Q65 48 79 48Z" fill="#2A2F3C" stroke="#333B49" stroke-width="1" stroke-linejoin="round" filter="url(#sqrt-face-inset)"/>
+    <path d="M78 30H128Q130 30 130 32V42Q130 50 122 50H88Q79 50 79 59V91Q79 98 72 98H70Q63 98 63 91V86Q63 84 61 84H55Q44 84 44 73V67Q44 65 46 65H61Q63 65 63 63V45Q63 30 78 30Z" fill="#333B49"/>
+    <g class="eyes" filter="url(#sqrt-amber-glow)">
+      <g fill="#FF9A47">
+        <path d="M81 65H98V68H101V81H98V84H84V81H81Z"/>
+        <path d="M107 65H124V68H127V81H124V84H110V81H107Z"/>
+      </g>
+      <g fill="#FFC247">
+        <path d="M84 68H88V72H84ZM88 72H92V76H88ZM92 68H96V72H92ZM92 76H96V80H92Z"/>
+        <path d="M110 68H114V72H110ZM114 72H118V76H114ZM118 68H122V72H118ZM118 76H122V80H118Z"/>
+      </g>
+    </g>
+    <path d="M73 104H107Q110 104 113 105L119 107Q121 108 121 110V117Q121 119 119 119H113Q111 119 111 117Q111 124 103 124H77Q69 124 69 117Q69 119 67 119H61Q59 119 59 117V110Q59 108 61 107L67 105Q70 104 73 104Z" fill="#20242F" stroke="#333B49" stroke-width="1" stroke-linejoin="round"/>
+    <path d="M71 104.5L61 108Q59.5 108.5 59.5 110V117Q59.5 118.5 61 118.5H67Q68.5 118.5 68.5 117V112Q68.5 108 71 104.5ZM109 104.5L119 108Q120.5 108.5 120.5 110V117Q120.5 118.5 119 118.5H113Q111.5 118.5 111.5 117V112Q111.5 108 109 104.5Z" fill="#2A2F3C"/>
+  </g>
+  <path d="M49 145H131" stroke="#20242F" stroke-width="2"/>
+  <g fill="#2A2F3C">
+    <rect x="53" y="142" width="14" height="3" rx="1"/>
+    <rect x="73" y="142" width="14" height="3" rx="1"/>
+    <rect x="93" y="142" width="14" height="3" rx="1"/>
+    <rect x="113" y="142" width="14" height="3" rx="1"/>
+  </g>
+  <g fill="#FF9A47" filter="url(#sqrt-amber-glow)">
+    <g class="epoch epoch-1"><rect x="54" y="129" width="12" height="12" rx="1.5"/><path d="M57 131H63" stroke="#FFC247"/></g>
+    <g class="epoch epoch-2"><rect x="74" y="129" width="12" height="12" rx="1.5"/><path d="M77 131H83" stroke="#FFC247"/></g>
+    <g class="epoch epoch-3"><rect x="94" y="129" width="12" height="12" rx="1.5"/><path d="M97 131H103" stroke="#FFC247"/></g>
+    <g class="epoch epoch-4"><rect x="114" y="129" width="12" height="12" rx="1.5"/><path d="M117 131H123" stroke="#FFC247"/></g>
+  </g>
+</svg>

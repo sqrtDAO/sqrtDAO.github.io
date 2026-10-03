@@ -71,11 +71,12 @@ const duration = flatten(primitive.motion["duration-ms"], "motion-duration").map
 );
 const easing = flatten(primitive.motion.easing, "motion-easing");
 const shadow = flatten(primitive.shadow, "shadow");
+const gradient = flatten(primitive.gradient, "gradient");
 
 const primitiveCss = [
   colorPairs, spacePairs, radiusPairs, borderPairs,
   fontFamily, fontWeight, fontSize, lineHeight, letterSpacing,
-  duration, easing, shadow,
+  duration, easing, shadow, gradient,
 ].map(emit).join("\n");
 
 /* ---------- SEMANTIC ---------------------------------------------------- */
