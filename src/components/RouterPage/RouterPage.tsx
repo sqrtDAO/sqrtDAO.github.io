@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import WhyLaunchDialog from "@/components/WhyLaunchDialog/WhyLaunchDialog";
 import { MAINNET_IMPORT_HREF, MAINNET_LAUNCH_HREF } from "@/constants/links";
-import { WizardShell, WizardTitle } from "@/components/WizardShell/WizardShell";
+import { WizardShell } from "@/components/WizardShell/WizardShell";
 
 const CARDS = [
   {
@@ -30,7 +30,14 @@ const RouterPage = () => {
   return (
     <WizardShell closeHref="/" spacious>
       <div className="flex w-full flex-col gap-8">
-        <WizardTitle title="Do you own a token?" description="A token for your project, or one you already own." />
+        {/* Desktop 11318:97203 moved to the new copy at h3; mobile frame still shows the old h2 title. */}
+        <div className="flex w-full flex-col gap-2">
+          <h1 className="font-display text-h2 font-semibold tracking-[-0.01em] text-primary xl:text-h3 xl:font-normal xl:tracking-normal">
+            <span className="xl:hidden">Do you own a token?</span>
+            <span className="hidden xl:inline">Does your project already have a token?</span>
+          </h1>
+          <p className="text-body-l leading-6 tracking-[0.02em] text-secondary">A token for your project, or one you already own.</p>
+        </div>
 
         <div className="flex flex-col gap-6 xl:flex-row">
           {CARDS.map(({ href, answer, title, description, accent }) => (
@@ -39,10 +46,10 @@ const RouterPage = () => {
               href={href}
               className="group flex flex-col gap-4 rounded-(--radius-l) border border-subtle bg-surface px-5 py-4 transition-colors hover:bg-raised focus-visible:border-focus focus-visible:outline-none xl:h-59 xl:flex-1"
             >
-              <span className="flex flex-col gap-1">
-                <span className="text-body leading-5.5 tracking-[0.01em] text-primary">{answer}</span>
+              <span className="flex flex-col gap-1 xl:gap-4">
+                <span className="text-body leading-5.5 tracking-[0.01em] text-primary xl:font-display xl:text-h3 xl:leading-normal xl:tracking-normal">{answer}</span>
                 <span
-                  className={`text-h4 leading-none font-medium group-hover:text-accent ${accent ? "text-accent" : "text-primary"}`}
+                  className={`text-h4 leading-none font-medium group-hover:text-accent ${accent ? "text-accent xl:text-primary xl:group-hover:text-accent" : "text-primary"}`}
                 >
                   {title}
                 </span>

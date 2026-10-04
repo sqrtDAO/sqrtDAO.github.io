@@ -16,8 +16,8 @@ export const MAINNET_IMPORT_HREF = "/dev/mainnet/import";
 export const MAINNET_DISTRIBUTE_WIZARD_HREF = "/dev/mainnet/distribute";
 
 export const MAINNET_NAV = {
-  launch: { label: "Launch token", href: MAINNET_LAUNCH_HREF },
-  distribute: { label: "Distribute token", href: MAINNET_DISTRIBUTE_HREF },
+  // Launch token opens the router, which branches to the launch or distribution wizard.
+  launch: { label: "Launch token", href: MAINNET_DISTRIBUTE_HREF },
   testnet: { label: "Demo testnet", href: TRY_TESTNET_HREF },
   explore: { label: "Explore distributions", href: DISTRIBUTION_LIST },
   blog: { label: "Blog", href: BLOG_HREF },

@@ -11,7 +11,7 @@ import NavLink from "@/components/NavLink/NavLink";
 import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
 import { MAINNET_NAV } from "@/constants/links";
 
-const DESKTOP_NAV = [MAINNET_NAV.launch, MAINNET_NAV.distribute, MAINNET_NAV.explore];
+const DESKTOP_NAV = [MAINNET_NAV.launch, { ...MAINNET_NAV.explore, label: "Explore" }, MAINNET_NAV.blog, MAINNET_NAV.docs];
 
 type NetworkSwitchProps = { mainnet: boolean; onToggle: () => void };
 
@@ -68,23 +68,25 @@ const MainnetHeader = ({ showNetworkSwitch = true }: MainnetHeaderProps) => {
       {/* Testnet view: existing ribbon (reads the wagmi chain, Sepolia in this config) across the top. */}
       {!mainnet && <TestnetRibbon />}
       {/* Desktop — Figma 11289:96189 */}
-      <div className="mx-auto hidden h-18 w-full max-w-325 items-center gap-4 xl:flex">
-        <Link href="/" aria-label="sqrtDAO home">
+      <div className="mx-auto hidden h-18 w-full max-w-325 grid-cols-[1fr_auto_1fr] items-center gap-4 xl:grid">
+        <Link href="/" aria-label="sqrtDAO home" className="justify-self-start">
           <Logo className="h-10 w-auto" />
         </Link>
-        <nav className="flex flex-1 items-center justify-center gap-4">
+        <nav className="flex items-center gap-4">
           {DESKTOP_NAV.map((item) => (
             <NavLink key={item.href} {...item} />
           ))}
         </nav>
-        {showNetworkSwitch && <NetworkSwitch mainnet={mainnet} onToggle={toggleNetwork} />}
-        <WalletConnect>
-          {({ label, onClick }) => (
-            <Button variant="primary" size="m" onClick={onClick}>
-              {label}
-            </Button>
-          )}
-        </WalletConnect>
+        <div className="flex items-center gap-4 justify-self-end">
+          {showNetworkSwitch && <NetworkSwitch mainnet={mainnet} onToggle={toggleNetwork} />}
+          <WalletConnect>
+            {({ label, onClick }) => (
+              <Button variant="primary" size="m" onClick={onClick}>
+                {label}
+              </Button>
+            )}
+          </WalletConnect>
+        </div>
       </div>
 
       {/* Mobile — Figma 11289:96555 */}
@@ -118,7 +120,6 @@ const MainnetHeader = ({ showNetworkSwitch = true }: MainnetHeaderProps) => {
                 </div>
               )}
               <NavLink {...MAINNET_NAV.launch} size="l" className="w-full" onClick={closeMenu} />
-              <NavLink {...MAINNET_NAV.distribute} size="l" className="w-full" onClick={closeMenu} />
               <NavLink {...MAINNET_NAV.testnet} className="w-full" onClick={closeMenu} />
               <NavLink {...MAINNET_NAV.explore} size="l" className="w-full" onClick={closeMenu} />
               <NavLink {...MAINNET_NAV.docs} size="l" className="w-full" onClick={closeMenu} />
