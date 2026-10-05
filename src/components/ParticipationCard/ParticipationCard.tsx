@@ -13,6 +13,11 @@ import {
 } from "@/utils/modifier";
 import { BODY_M, BODY_S } from "@/constants/typography";
 
+export type ParticipationRangeState = {
+  from: UseInputReturn;
+  to: UseInputReturn;
+};
+
 export type ParticipationCardProps = {
   connected?: boolean;
   disabled?: boolean;
@@ -26,6 +31,14 @@ export type ParticipationCardProps = {
   perEpochEstimate: string;
   /** Opens the participation review dialog (connected only). */
   onParticipate?: () => void;
+  /** Controlled inputs (optional). Falls back to internal state when omitted. */
+  amountState?: UseInputReturn;
+  epochsState?: UseInputReturn;
+  rangeState?: ParticipationRangeState;
+  onStepEpochs?: (delta: number) => void;
+  amountError?: string | null;
+  rangeError?: string | null;
+  onConnect?: () => void;
 };
 
 const amountModifier = composeModifiers(decimalOnlyModifier, commaModifier);
@@ -34,23 +47,36 @@ const RangeInput = ({
   state,
   label,
   placeholder,
+  error,
 }: {
   state: UseInputReturn;
   label: string;
   placeholder: string;
+  error?: string | null;
 }) => (
-  <input
-    aria-label={label}
-    value={state.value}
-    onChange={(e) => state.onChange(e.target.value)}
-    placeholder={placeholder}
-    inputMode="numeric"
-    autoComplete="off"
-    className={`h-10 w-full min-w-0 rounded-m bg-surface px-2 ${BODY_S} text-primary outline-none placeholder:text-tertiary focus-visible:ring-1 focus-visible:ring-focus`}
-  />
+  <>
+    <input
+      aria-label={label}
+      value={state.value}
+      onChange={(e) => state.onChange(e.target.value)}
+      placeholder={placeholder}
+      inputMode="numeric"
+      autoComplete="off"
+      className={`h-10 w-full min-w-0 rounded-m bg-surface px-2 ${BODY_S} text-primary outline-none placeholder:text-tertiary focus-visible:ring-1 focus-visible:ring-focus ${
+        error ? "ring-1 ring-danger" : ""
+      }`}
+    />
+    {error && <p className={`${BODY_S} text-danger`}>{error}</p>}
+  </>
 );
 
-const StepButtons = ({ size }: { size: "m" | "s" }) => {
+const StepButtons = ({
+  size,
+  onStep,
+}: {
+  size: "m" | "s";
+  onStep?: (delta: number) => void;
+}) => {
   const icon = size === "m" ? 24 : 16;
   return (
     <div className="flex gap-2">
@@ -59,33 +85,36 @@ const StepButtons = ({ size }: { size: "m" | "s" }) => {
         size={size}
         aria-label="One epoch fewer"
         icon={<IconMinus size={icon} />}
-        onClick={() => {
-          /* TODO: teammate wires onStepEpochs(-1) */
-        }}
+        onClick={() => onStep?.(-1)}
       />
       <IconButton
         variant="secondary"
         size={size}
         aria-label="One epoch more"
         icon={<IconPlus size={icon} />}
-        onClick={() => {
-          /* TODO: teammate wires onStepEpochs(+1) */
-        }}
+        onClick={() => onStep?.(1)}
       />
     </div>
   );
 };
 
-// Figma _cardSlot (epochs): From row spans the input across; To row adds the −/+ steppers (m desktop, s mobile).
 const EpochRange = ({
   fromEpoch,
   toEpoch,
+  rangeState,
+  onStepEpochs,
+  rangeError,
 }: {
   fromEpoch: string;
   toEpoch: string;
+  rangeState?: ParticipationRangeState;
+  onStepEpochs?: (delta: number) => void;
+  rangeError?: string | null;
 }) => {
-  const from = useInput("", numberOnlyModifier);
-  const to = useInput("", numberOnlyModifier);
+  const internalFrom = useInput("", numberOnlyModifier);
+  const internalTo = useInput("", numberOnlyModifier);
+  const from = rangeState?.from ?? internalFrom;
+  const to = rangeState?.to ?? internalTo;
   return (
     <div className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-2">
       <span className={`${BODY_M} whitespace-nowrap text-secondary`}>
@@ -99,14 +128,16 @@ const EpochRange = ({
       </span>
       <RangeInput state={to} label="To epoch" placeholder={toEpoch} />
       <div>
-        {/* Wrappers carry the breakpoint: icon-btn CSS is unlayered and would beat `hidden`. */}
         <span className="hidden xl:block">
-          <StepButtons size="m" />
+          <StepButtons size="m" onStep={onStepEpochs} />
         </span>
         <span className="xl:hidden">
-          <StepButtons size="s" />
+          <StepButtons size="s" onStep={onStepEpochs} />
         </span>
       </div>
+      {rangeError && (
+        <p className={`col-span-3 ${BODY_S} text-danger`}>{rangeError}</p>
+      )}
     </div>
   );
 };
@@ -122,10 +153,18 @@ const ParticipationCard = ({
   toEpoch,
   perEpochEstimate,
   onParticipate,
+  amountState,
+  epochsState,
+  rangeState,
+  onStepEpochs,
+  amountError,
+  rangeError,
+  onConnect,
 }: ParticipationCardProps) => {
-  const amount = useInput("", amountModifier);
-  const epochs = useInput("", numberOnlyModifier);
-  /* TODO: teammate wires onAmountChange / onEpochsChange (validation, balance check, range sync) */
+  const internalAmount = useInput("", amountModifier);
+  const internalEpochs = useInput("", numberOnlyModifier);
+  const amount = amountState ?? internalAmount;
+  const epochs = epochsState ?? internalEpochs;
 
   return (
     <div className="flex w-full flex-col gap-4 rounded-(--radius-l) bg-canvas p-4 xl:gap-6 xl:px-6 xl:py-5">
@@ -145,6 +184,7 @@ const ParticipationCard = ({
             </p>
           }
         />
+        {amountError && <p className={`${BODY_S} text-danger`}>{amountError}</p>}
         <ParticipationInputCard
           state={epochs}
           label="Spread across"
@@ -152,7 +192,15 @@ const ParticipationCard = ({
           placeholder="Number of epochs to participate"
           disabled={disabled}
           slotWhen="filled"
-          slot={<EpochRange fromEpoch={fromEpoch} toEpoch={toEpoch} />}
+          slot={
+            <EpochRange
+              fromEpoch={fromEpoch}
+              toEpoch={toEpoch}
+              rangeState={rangeState}
+              onStepEpochs={onStepEpochs}
+              rangeError={rangeError}
+            />
+          }
         />
         {amount.value && epochs.value && (
           <p className="text-body leading-6 font-medium tracking-[0.02em] text-accent">
@@ -171,8 +219,11 @@ const ParticipationCard = ({
           className="flex-1"
           disabled={disabled}
           onClick={() => {
-            /* TODO: teammate wires onConnect when not connected */
-            if (connected) onParticipate?.();
+            if (!connected) {
+              onConnect?.();
+              return;
+            }
+            onParticipate?.();
           }}
         >
           {connected ? "Participate" : "Connect wallet"}

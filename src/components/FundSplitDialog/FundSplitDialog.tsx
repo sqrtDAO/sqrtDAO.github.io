@@ -15,7 +15,7 @@ const DESCRIPTIONS: Record<keyof FundSplit, string> = {
   founderSharePct:
     "The cut the founder takes to fund their work, paid a little each epoch, not in one upfront lump. A low share signals they're here for the long build; a high one, that they're taking more off the top. It's shown here so you can judge it before you join.",
   protocolFeePct:
-    "The flat fee sqrtDAO takes to run the distribution. Fixed at 5%, the same for every launch, no hidden cuts, no surprises.",
+    "The flat fee sqrtDAO takes to run the distribution. It's set by the protocol and applied to every launch — the exact percentage is shown above, with no hidden cuts.",
 };
 
 // Figma 12047:111926

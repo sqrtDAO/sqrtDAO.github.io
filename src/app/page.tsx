@@ -1,6 +1,7 @@
 "use client";
 
 import "./landing.css";
+import { TOKEN_LAUNCH_HREF } from "@/constants/links";
 import SmokeMeshBackground from "@/components/SmokeMeshBackground/SmokeMeshBackground";
 import LandingHero from "@/components/LandingHero/LandingHero";
 import LandingProblem from "@/components/LandingProblem/LandingProblem";
@@ -10,8 +11,7 @@ import LandingForParticipants from "@/components/LandingForParticipants/LandingF
 import LandingHelpUsBuildIt from "@/components/LandingHelpUsBuildIt/LandingHelpUsBuildIt";
 
 export default function Page() {
-  const onGetStarted = () =>
-    document.location.replace("/launch-and-distribute");
+  const onGetStarted = () => document.location.replace(TOKEN_LAUNCH_HREF);
 
   return (
     <>

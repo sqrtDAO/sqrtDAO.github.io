@@ -32,6 +32,11 @@ export type ToastMessageKey =
   | "claim.rejected"
   | "claim.tooEarly"
   | "claim.nothing"
+  | "release.pending"
+  | "release.success"
+  | "release.failed"
+  | "wrap.pending"
+  | "tx.reverted"
   | "copy.link"
   | "copy.address"
   | "copy.txhash"
@@ -93,6 +98,14 @@ export const TOAST_MESSAGES: Record<ToastMessageKey, ToastMessageDef> = {
   "claim.rejected": { type: "info", copy: "Claim cancelled. Your tokens stay claimable." },
   "claim.tooEarly": { type: "error", copy: "Not claimable yet — available after {date}." },
   "claim.nothing": { type: "info", copy: "You have nothing to claim here." },
+
+  "release.pending": { type: "pending", copy: "Releasing this epoch's funds…" },
+  "release.success": { type: "success", copy: "Epoch funds released to the configured shares." },
+  "release.failed": { type: "error", copy: "Release didn't go through. Please try again." },
+
+  "wrap.pending": { type: "pending", copy: "Wrapping {asset} into WETH…" },
+
+  "tx.reverted": { type: "error", copy: "Can't launch: {reason}" },
 
   "copy.link": { type: "success", copy: "Link copied" },
   "copy.address": { type: "success", copy: "Address copied" },

@@ -7,18 +7,12 @@ import { BODY_S } from "@/constants/typography";
 
 type NativeTokenBannerProps = {
   /** Opens the "About the token" dialog. */
-  onLearnMore?: () => void;
-};
-
-const learnMoreStub = () => {
-  /* TODO: teammate wires onLearnMore (About the token dialog) */
+  onLearnMore: () => void;
 };
 
 // Figma 12549:20970 (desktop, flush in the 872 column) / 14557:105379 (mobile, full-bleed with icon button).
 // bg-kasumi's last stop is transparent, so bg-canvas supplies the dropped #0B0D12 layer.
-const NativeTokenBanner = ({
-  onLearnMore = learnMoreStub,
-}: NativeTokenBannerProps) => (
+const NativeTokenBanner = ({ onLearnMore }: NativeTokenBannerProps) => (
   <div className="flex w-full items-center gap-4 bg-canvas bg-kasumi px-4 py-2 xl:px-0">
     <div className="flex min-w-0 flex-1 flex-col">
       <p className={`${BODY_S} text-accent`}>Created on sqrtDAO</p>

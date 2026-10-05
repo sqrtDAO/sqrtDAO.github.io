@@ -17,6 +17,7 @@ export default function TestnetRibbon({
   className,
 }: TestnetRibbonProps) {
   const chainId = useChainId();
+  if (!chainId || !isTestnet(chainId)) return <></>;
   const chainName = chainToName(chainId);
 
   const item = (
@@ -24,8 +25,6 @@ export default function TestnetRibbon({
       <strong>Testnet</strong> · {chainName} · {message}
     </span>
   );
-
-  if (!isTestnet(chainId)) return <></>;
 
   return (
     <div

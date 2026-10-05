@@ -23,12 +23,12 @@ export const docSearchIndex: DocSearchEntry[] = [
     path: "/docs/",
     anchor: "two-ways-in",
     title: "Getting started — Two ways in",
-    text: "Launch a brand new token with createTokenAndLiquidityAndDistribution, or distribute a token you already own with createDistributor.",
+    text: "Launch a brand new token with createToken, or distribute a token you already own with createLiquidityAndDistribution.",
   },
   {
     path: "/docs/contract-addresses/",
     title: "Contract addresses",
-    text: "Deployed contract addresses per chain, loaded from contract-addresses.ts. Sepolia testnet is live with FactoryV1, root token, emission curves, hooks and factories. Base is not deployed yet.",
+    text: "Deployed contract addresses per chain, loaded from contract-addresses.ts. Base is the mainnet target and Sepolia is supported for testing; contracts are not deployed yet.",
   },
   {
     path: "/docs/epoch-distribution/",
@@ -58,7 +58,7 @@ export const docSearchIndex: DocSearchEntry[] = [
     path: "/docs/epoch-distribution/",
     anchor: "draining-epoch-funds",
     title: "Epoch-based distribution — Draining epoch funds",
-    text: "callDrainHook releases each ended epoch's participation fund and splits it across configured shares. Shares are percentage cuts in basis points routed to hooks via approveAndCall, e.g. protocol fee or buy back and burn.",
+    text: "releaseEpochFunds releases each ended epoch's participation fund and splits it across configured shares. Shares are percentage cuts in basis points routed to hooks, e.g. protocol fee or buy back and burn.",
   },
   {
     path: "/docs/buy-back-and-burn/",
@@ -131,7 +131,7 @@ export const docSearchIndex: DocSearchEntry[] = [
     path: "/docs/contracts-v1/",
     anchor: "distributorv1",
     title: "Contracts v1 — DistributorV1",
-    text: "The core engine. Holds the epoch mappings, participate, claim, callDrainHook, view helpers getContractInfo, getEpochInfo, discoverRewards, allowlist signature verification and third-party claim fees.",
+    text: "The core engine. Holds the epoch mappings, participate, claim, releaseEpochFunds, view helpers getContractInfo, getEpochInfo, discoverRewards, allowlist signature verification and third-party claim fees.",
   },
   {
     path: "/docs/contracts-v1/",
@@ -143,6 +143,6 @@ export const docSearchIndex: DocSearchEntry[] = [
     path: "/docs/contracts-v1/",
     anchor: "factoryv1",
     title: "Contracts v1 — FactoryV1",
-    text: "Single entry point orchestrating everything: createToken, createDistributor with injected protocol fee share, createPoolAndAddLiquidity with burned LP, Permit2 support, and createTokenAndLiquidityAndDistribution combining all three steps.",
+    text: "Single entry point orchestrating everything: createToken, createDistributor with injected protocol fee share, createPoolAndAddLiquidity with burned LP, Permit2 support, and createLiquidityAndDistribution combining pool + distribution for an existing token.",
   },
 ];

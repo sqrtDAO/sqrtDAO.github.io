@@ -35,9 +35,9 @@ export default function Page() {
 
       <H2 id="how-its-configured">How it&apos;s configured</H2>
       <P>
-        When launching with{" "}
+        When launching a distribution with{" "}
         <Code>
-          createTokenAndLiquidityAndDistribution
+          createLiquidityAndDistribution
         </Code>
         , the creator picks a share in basis points. The factory injects a matching{" "}
         <Code>

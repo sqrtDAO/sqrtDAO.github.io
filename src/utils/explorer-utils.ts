@@ -1,7 +1,8 @@
-import { sepolia, baseSepolia } from "viem/chains";
+import { base, baseSepolia, sepolia } from "viem/chains";
 
 const CHAIN_EXPLORER_URLS: Record<number, string | undefined> = {
   [sepolia.id]: sepolia.blockExplorers?.default.url,
+  [base.id]: base.blockExplorers?.default.url,
   [baseSepolia.id]: baseSepolia.blockExplorers?.default.url,
 };
 

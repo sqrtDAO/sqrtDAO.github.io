@@ -1,8 +1,8 @@
-import { IconBrandDiscord, IconBrandGithub, IconBrandLinkedin, IconBrandX } from "@tabler/icons-react";
+import { IconBrandDiscord, IconBrandGithub, IconBrandX } from "@tabler/icons-react";
 import Image from "next/image";
 import Logo from "@/components/Logo/Logo";
 import NavLink from "@/components/NavLink/NavLink";
-import { DISCORD_URL, GITHUB_URL, LINKEDIN_URL, MAINNET_NAV, X_URL } from "@/constants/links";
+import { DISCORD_URL, GITHUB_URL, MAINNET_NAV, X_URL } from "@/constants/links";
 import "@/components/IconButton/IconButton.css";
 
 type MainnetFooterProps = {
@@ -17,7 +17,6 @@ const SOCIALS = [
   { label: "X", href: X_URL, Icon: IconBrandX },
   { label: "Discord", href: DISCORD_URL, Icon: IconBrandDiscord },
   { label: "GitHub", href: GITHUB_URL, Icon: IconBrandGithub },
-  { label: "LinkedIn", href: LINKEDIN_URL, Icon: IconBrandLinkedin },
 ];
 
 const Socials = ({ className = "" }: { className?: string }) => (

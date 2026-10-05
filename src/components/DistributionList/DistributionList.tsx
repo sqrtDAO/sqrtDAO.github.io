@@ -11,6 +11,7 @@ import LandingFooter from "@/components/LandingFooter/LandingFooter";
 import SmokeMeshBackground from "@/components/SmokeMeshBackground/SmokeMeshBackground";
 import LandingAccentBar from "@/components/LandingAccentBar/LandingAccentBar";
 import LandingFragment from "@/components/LandingFragment/LandingFragment";
+import { TOKEN_LAUNCH_HREF } from "@/constants/links";
 import type { Distribution } from "@/lib/fixtures/distributions";
 
 const COLUMN_HEADERS = [
@@ -165,7 +166,7 @@ export default function DistributionList({
 
         <LandingFooter
           mobileTopMargin="mt-0"
-          onTryItClick={() => router.push("/launch-and-distribute")}
+          onTryItClick={() => router.push(TOKEN_LAUNCH_HREF)}
         />
       </div>
     </>

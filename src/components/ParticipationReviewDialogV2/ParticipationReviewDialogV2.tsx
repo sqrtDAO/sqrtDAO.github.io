@@ -17,13 +17,16 @@ type ParticipationReviewDialogV2Props = {
   /** Pre-formatted, e.g. "21 June 2026, 12:34 UTC". */
   claimDate: string;
   onClose: () => void;
+  /** Resolve true/false to tell the host whether to close the dialog. */
+  onConfirm?: () => void | Promise<boolean | void>;
+  onAddToCalendar?: () => void;
 };
 
-const onConfirm = () => {
-  /* TODO: teammate wires onConfirm (sign + submit participation) */
+const onConfirmFallback = () => {
+  /* no-op until wired */
 };
-const onAddToCalendar = () => {
-  /* TODO: teammate wires onAddToCalendar */
+const onAddToCalendarFallback = () => {
+  /* no-op until wired */
 };
 
 // Figma 12057:114348 (sqrtDAO token) / 12057:114399 (imported token: adds the live-tone alert).
@@ -37,6 +40,8 @@ const ParticipationReviewDialogV2 = ({
   claimDelayDays,
   claimDate,
   onClose,
+  onConfirm = onConfirmFallback,
+  onAddToCalendar = onAddToCalendarFallback,
 }: ParticipationReviewDialogV2Props) => {
   const words: [string, boolean][] = [
     ["You’re participating with", false],
@@ -45,7 +50,7 @@ const ParticipationReviewDialogV2 = ({
     [`#${fromEpoch}`, true],
     ["to", false],
     [`#${toEpoch}.`, true],
-    [`${toEpoch - fromEpoch} epochs`, true],
+    [`${toEpoch - fromEpoch + 1} epochs`, true],
     ["in total", false],
     [".", false],
   ];

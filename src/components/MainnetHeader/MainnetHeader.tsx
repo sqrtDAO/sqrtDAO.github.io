@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { IconBoltFilled, IconBoltOff, IconMenu, IconWallet, IconX } from "@tabler/icons-react";
+import { useAccount, useSwitchChain } from "wagmi";
+import { base } from "wagmi/chains";
 import Logo from "@/components/Logo/Logo";
 import { Button } from "@/components/Button/Button";
 import { IconButton } from "@/components/IconButton/IconButton";
@@ -13,25 +15,31 @@ import { MAINNET_NAV } from "@/constants/links";
 
 const DESKTOP_NAV = [MAINNET_NAV.launch, MAINNET_NAV.distribute, MAINNET_NAV.explore];
 
-type NetworkSwitchProps = { mainnet: boolean; onToggle: () => void };
+type NetworkSwitchProps = { mainnet: boolean; onToggle?: () => void };
 
 // Figma "switch net" (14374:82709). bg via token vars: bg-live-bg / bg-danger-bg utilities aren't emitted by the dev build.
-const NetworkSwitch = ({ mainnet, onToggle }: NetworkSwitchProps) => (
-  <button
-    type="button"
-    onClick={onToggle}
-    className={`flex shrink-0 items-center gap-1 rounded-pill px-2 py-1.5 text-body leading-5.5 tracking-[0.01em] text-primary ${
-      mainnet ? "bg-(--sqrt-state-live-bg)" : "bg-(--sqrt-state-danger-bg)"
-    }`}
-  >
-    {mainnet ? (
-      <IconBoltFilled size={18} className="text-accent" />
-    ) : (
-      <IconBoltOff size={18} className="text-danger" />
-    )}
-    {mainnet ? "Mainnet" : "Testnet"}
-  </button>
-);
+// Renders as a static chip until more than one chain is configured in the wagmi config.
+const NetworkSwitch = ({ mainnet, onToggle }: NetworkSwitchProps) => {
+  const className = `flex shrink-0 items-center gap-1 rounded-pill px-2 py-1.5 text-body leading-5.5 tracking-[0.01em] text-primary ${
+    mainnet ? "bg-(--sqrt-state-live-bg)" : "bg-(--sqrt-state-danger-bg)"
+  }`;
+  const content = (
+    <>
+      {mainnet ? (
+        <IconBoltFilled size={18} className="text-accent" />
+      ) : (
+        <IconBoltOff size={18} className="text-danger" />
+      )}
+      {mainnet ? "Mainnet" : "Testnet"}
+    </>
+  );
+  if (!onToggle) return <span className={className}>{content}</span>;
+  return (
+    <button type="button" onClick={onToggle} className={className}>
+      {content}
+    </button>
+  );
+};
 
 type WalletRenderProps = { label: string; onClick: () => void };
 
@@ -56,17 +64,23 @@ type MainnetHeaderProps = {
 
 const MainnetHeader = ({ showNetworkSwitch = true }: MainnetHeaderProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [mainnet, setMainnet] = useState(true);
   const closeMenu = () => setMenuOpen(false);
+
+  const { chainId } = useAccount();
+  const { chains, switchChain } = useSwitchChain();
+  const connected = chainId !== undefined;
+  const mainnet = !connected || chainId === base.id;
+
   const toggleNetwork = () => {
-    setMainnet((m) => !m);
-    /* TODO: teammate wires network switch */
+    const target = chains.find((c) => c.id !== chainId);
+    if (target) switchChain({ chainId: target.id });
   };
+  const onToggle = chains.length > 1 ? toggleNetwork : undefined;
 
   return (
     <header className="relative z-40 w-full bg-surface">
-      {/* Testnet view: existing ribbon (reads the wagmi chain, Sepolia in this config) across the top. */}
-      {!mainnet && <TestnetRibbon />}
+      {/* Testnet ribbon: driven by the actually connected chain. */}
+      {connected && !mainnet && <TestnetRibbon />}
       {/* Desktop — Figma 11289:96189 */}
       <div className="mx-auto hidden h-18 w-full max-w-325 items-center gap-4 xl:flex">
         <Link href="/" aria-label="sqrtDAO home">
@@ -77,7 +91,7 @@ const MainnetHeader = ({ showNetworkSwitch = true }: MainnetHeaderProps) => {
             <NavLink key={item.href} {...item} />
           ))}
         </nav>
-        {showNetworkSwitch && <NetworkSwitch mainnet={mainnet} onToggle={toggleNetwork} />}
+        {showNetworkSwitch && <NetworkSwitch mainnet={mainnet} onToggle={onToggle} />}
         <WalletConnect>
           {({ label, onClick }) => (
             <Button variant="primary" size="m" onClick={onClick}>
@@ -114,12 +128,11 @@ const MainnetHeader = ({ showNetworkSwitch = true }: MainnetHeaderProps) => {
               {showNetworkSwitch && (
                 <div className="flex h-12 items-center justify-center gap-4 px-4">
                   <span className="text-body leading-5.5 tracking-[0.01em] text-tertiary">Network state is</span>
-                  <NetworkSwitch mainnet={mainnet} onToggle={toggleNetwork} />
+                  <NetworkSwitch mainnet={mainnet} onToggle={onToggle} />
                 </div>
               )}
               <NavLink {...MAINNET_NAV.launch} size="l" className="w-full" onClick={closeMenu} />
               <NavLink {...MAINNET_NAV.distribute} size="l" className="w-full" onClick={closeMenu} />
-              <NavLink {...MAINNET_NAV.testnet} className="w-full" onClick={closeMenu} />
               <NavLink {...MAINNET_NAV.explore} size="l" className="w-full" onClick={closeMenu} />
               <NavLink {...MAINNET_NAV.docs} size="l" className="w-full" onClick={closeMenu} />
             </nav>

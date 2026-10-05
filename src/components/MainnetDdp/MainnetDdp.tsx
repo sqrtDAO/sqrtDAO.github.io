@@ -49,9 +49,13 @@ export type MainnetDdpData = {
   legend: React.ComponentProps<typeof EpochChartLegend>;
   epochs: EpochData[];
   tokenSymbol: string;
+  tokenDecimals: number;
   quoteSymbol: string;
+  quoteDecimals: number;
+  /** A claim is in flight (drives the epoch dialog's loading state). */
+  claiming?: boolean;
   split: FundSplit;
-  claim: ClaimCardProps;
+  claim?: ClaimCardProps;
   participation: Omit<
     ParticipationCardProps,
     "connected" | "disabled" | "onParticipate"
@@ -70,6 +74,10 @@ type MainnetDdpProps = {
   state: DdpState;
   connected: boolean;
   data: MainnetDdpData;
+  epochActions?: {
+    onParticipate?: (epoch: number) => void;
+    onClaim?: (epoch: number) => void;
+  };
 };
 
 type Dialog = "split" | "about" | "review" | "participate" | null;
@@ -81,8 +89,8 @@ const STATUS: Record<DdpState, DistributionStatus> = {
 };
 
 // Figma 10690:87344 / 14640:107403 (imported) and 10690:87464 / 14639:105593 (native).
-// Presentational only: the teammate swaps `data` for contract reads and wires the TODO stubs.
-const MainnetDdp = ({ variant, state, connected, data }: MainnetDdpProps) => {
+// Fully wired: the caller supplies contract-derived `data` plus handlers.
+const MainnetDdp = ({ variant, state, connected, data, epochActions }: MainnetDdpProps) => {
   const [dialog, setDialog] = useState<Dialog>(null);
   const [edd, setEdd] = useState<EpochData | null>(null);
   const countdown = useCountdown(data.countdownTargetMs);
@@ -217,6 +225,10 @@ const MainnetDdp = ({ variant, state, connected, data }: MainnetDdpProps) => {
           {...data.review}
           imported={!native}
           onClose={close}
+          onConfirm={async () => {
+            const result = await data.review.onConfirm?.();
+            if (result !== false) close();
+          }}
         />
       )}
       {edd && (
@@ -226,15 +238,13 @@ const MainnetDdp = ({ variant, state, connected, data }: MainnetDdpProps) => {
           epochDurationSec={data.epochDurationSec}
           lastClearPrice={data.lastClearPrice}
           tokenSymbol={data.tokenSymbol}
+          tokenDecimals={data.tokenDecimals}
           quoteSymbol={data.quoteSymbol}
-          claiming={false}
+          quoteDecimals={data.quoteDecimals}
+          claiming={data.claiming ?? false}
           onClose={() => setEdd(null)}
-          onParticipateClick={() => {
-            /* TODO: teammate wires onParticipateClick (prefill epoch range) */
-          }}
-          onClaimClick={() => {
-            /* TODO: teammate wires onClaimClick */
-          }}
+          onParticipateClick={() => epochActions?.onParticipate?.(edd.epoch)}
+          onClaimClick={() => epochActions?.onClaim?.(edd.epoch)}
         />
       )}
     </div>

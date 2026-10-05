@@ -48,11 +48,12 @@ export default function Page() {
         </P>
       </QA>
 
-      <QA q="Who triggers the epoch drain?">
+      <QA q="Who triggers the epoch release?">
         <P>
-          Anyone. <Code>callDrainHook</Code> is permissionless — after an epoch ends, any wallet or
-          bot can release its fund to the configured shares. There is no keeper dependency and no
-          way for anyone to redirect the funds elsewhere.
+          It depends on the distribution&apos;s <Code>releasePolicy</Code>. The protocol&apos;s
+          launches use <Code>CreatorOrFactory</Code>, so the creator or the factory operator can
+          call <Code>releaseEpochFunds</Code> to release an ended epoch&apos;s fund to the configured
+          shares. There is no way for anyone to redirect the funds elsewhere.
         </P>
       </QA>
 
@@ -91,7 +92,7 @@ export default function Page() {
 
       <QA q="Which networks are supported?">
         <P>
-          Sepolia testnet today, Base coming soon. Addresses live on the{" "}
+          Base mainnet, with Sepolia used for testing. Addresses live on the{" "}
           <DocLink href="/docs/contract-addresses/">contract addresses</DocLink> page.
         </P>
       </QA>

@@ -59,7 +59,7 @@ const DdpComponentsPage = () => {
       <main className="mx-auto flex w-full flex-col gap-12 px-4 py-8 xl:max-w-330 xl:px-0">
         <Section title="Native token banner (bg-kasumi)">
           <div className="-mx-4 xl:mx-0 xl:max-w-218">
-            <NativeTokenBanner />
+            <NativeTokenBanner onLearnMore={() => {}} />
           </div>
         </Section>
 

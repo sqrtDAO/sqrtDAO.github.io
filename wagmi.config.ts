@@ -21,6 +21,7 @@ export default defineConfig({
         "EthParticipationRouter.sol/**",
         "FeeVault.sol/**",
         "Metadata.sol/**",
+        "WETH9.sol/**",
       ],
     }),
     react(),

@@ -110,6 +110,11 @@ export const distributionV1FactoryAbi = [
             type: 'bool',
           },
           {
+            name: 'releasePolicy',
+            internalType: 'enum ReleasePolicy',
+            type: 'uint8',
+          },
+          {
             name: 'shares',
             internalType: 'struct Share[]',
             type: 'tuple[]',
@@ -155,6 +160,16 @@ export const distributionV1FactoryAbi = [
             internalType: 'uint256',
             type: 'uint256',
           },
+          {
+            name: 'initialMetadata',
+            internalType: 'struct MetadataEntry[]',
+            type: 'tuple[]',
+            components: [
+              { name: 'key', internalType: 'string', type: 'string' },
+              { name: 'value', internalType: 'string', type: 'string' },
+            ],
+          },
+          { name: 'metadataEditable', internalType: 'bool', type: 'bool' },
         ],
       },
     ],
@@ -253,7 +268,12 @@ export const distributionV1FactoryAbi = [
                 internalType: 'uint256',
                 type: 'uint256',
               },
-              { name: 'creator', internalType: 'address', type: 'address' },
+              { name: 'owner', internalType: 'address', type: 'address' },
+              {
+                name: 'releasePolicy',
+                internalType: 'enum ReleasePolicy',
+                type: 'uint8',
+              },
               {
                 name: 'shares',
                 internalType: 'struct Share[]',
@@ -288,6 +308,7 @@ export const distributionV1FactoryAbi = [
                 internalType: 'uint256',
                 type: 'uint256',
               },
+              { name: 'metadataLocked', internalType: 'bool', type: 'bool' },
             ],
           },
           { name: 'addr', internalType: 'address', type: 'address' },
@@ -327,6 +348,7 @@ export const distributorV1Abi = [
     type: 'constructor',
     inputs: [
       { name: '_creator', internalType: 'address', type: 'address' },
+      { name: '_factory', internalType: 'address', type: 'address' },
       {
         name: '_config',
         internalType: 'struct DistributorConfig',
@@ -358,6 +380,11 @@ export const distributorV1Abi = [
             name: 'allowFutureEpochParticipation',
             internalType: 'bool',
             type: 'bool',
+          },
+          {
+            name: 'releasePolicy',
+            internalType: 'enum ReleasePolicy',
+            type: 'uint8',
           },
           {
             name: 'shares',
@@ -405,6 +432,16 @@ export const distributorV1Abi = [
             internalType: 'uint256',
             type: 'uint256',
           },
+          {
+            name: 'initialMetadata',
+            internalType: 'struct MetadataEntry[]',
+            type: 'tuple[]',
+            components: [
+              { name: 'key', internalType: 'string', type: 'string' },
+              { name: 'value', internalType: 'string', type: 'string' },
+            ],
+          },
+          { name: 'metadataEditable', internalType: 'bool', type: 'bool' },
         ],
       },
     ],
@@ -441,13 +478,6 @@ export const distributorV1Abi = [
   {
     type: 'function',
     inputs: [],
-    name: 'CREATOR',
-    outputs: [{ name: '', internalType: 'address', type: 'address' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
     name: 'DISTRIBUTION_TOKEN',
     outputs: [{ name: '', internalType: 'contract IERC20', type: 'address' }],
     stateMutability: 'view',
@@ -457,6 +487,13 @@ export const distributorV1Abi = [
     inputs: [],
     name: 'EPOCH_DURATION',
     outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'FACTORY',
+    outputs: [{ name: '', internalType: 'address', type: 'address' }],
     stateMutability: 'view',
   },
   {
@@ -483,6 +520,13 @@ export const distributorV1Abi = [
   {
     type: 'function',
     inputs: [],
+    name: 'RELEASE_POLICY',
+    outputs: [{ name: '', internalType: 'enum ReleasePolicy', type: 'uint8' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
     name: 'STARTING_TIMESTAMP',
     outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
     stateMutability: 'view',
@@ -493,13 +537,6 @@ export const distributorV1Abi = [
     name: 'TOTAL_DISTRIBUTION_AMOUNT',
     outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
     stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
-    name: 'callDrainHook',
-    outputs: [],
-    stateMutability: 'nonpayable',
   },
   {
     type: 'function',
@@ -554,6 +591,13 @@ export const distributorV1Abi = [
       { name: 'totalClaimed', internalType: 'uint256', type: 'uint256' },
     ],
     stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'contractURI',
+    outputs: [{ name: '', internalType: 'string', type: 'string' }],
+    stateMutability: 'view',
   },
   {
     type: 'function',
@@ -628,6 +672,23 @@ export const distributorV1Abi = [
   {
     type: 'function',
     inputs: [],
+    name: 'getAllMetadata',
+    outputs: [
+      {
+        name: '',
+        internalType: 'struct MetadataEntry[]',
+        type: 'tuple[]',
+        components: [
+          { name: 'key', internalType: 'string', type: 'string' },
+          { name: 'value', internalType: 'string', type: 'string' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
     name: 'getContractInfo',
     outputs: [
       {
@@ -677,7 +738,12 @@ export const distributorV1Abi = [
             internalType: 'uint256',
             type: 'uint256',
           },
-          { name: 'creator', internalType: 'address', type: 'address' },
+          { name: 'owner', internalType: 'address', type: 'address' },
+          {
+            name: 'releasePolicy',
+            internalType: 'enum ReleasePolicy',
+            type: 'uint8',
+          },
           {
             name: 'shares',
             internalType: 'struct Share[]',
@@ -704,6 +770,7 @@ export const distributorV1Abi = [
             internalType: 'uint256',
             type: 'uint256',
           },
+          { name: 'metadataLocked', internalType: 'bool', type: 'bool' },
         ],
       },
     ],
@@ -754,9 +821,44 @@ export const distributorV1Abi = [
   },
   {
     type: 'function',
+    inputs: [{ name: '_key', internalType: 'string', type: 'string' }],
+    name: 'getMetadata',
+    outputs: [{ name: '', internalType: 'string', type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'lockMetadata',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'metadata',
+    outputs: [{ name: '', internalType: 'string', type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'metadataLocked',
+    outputs: [{ name: '', internalType: 'bool', type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
     inputs: [],
     name: 'nextEpochToRelease',
     outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'owner',
+    outputs: [{ name: '', internalType: 'address', type: 'address' }],
     stateMutability: 'view',
   },
   {
@@ -808,6 +910,20 @@ export const distributorV1Abi = [
   },
   {
     type: 'function',
+    inputs: [],
+    name: 'releaseEpochFunds',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'renounceOwnership',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
     inputs: [{ name: 'epoch', internalType: 'uint256', type: 'uint256' }],
     name: 'rewardOf',
     outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
@@ -817,6 +933,42 @@ export const distributorV1Abi = [
     type: 'function',
     inputs: [{ name: '_bps', internalType: 'uint256', type: 'uint256' }],
     name: 'setClaimFeeBps',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: '_key', internalType: 'string', type: 'string' },
+      { name: '_value', internalType: 'string', type: 'string' },
+    ],
+    name: 'setMetadata',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      {
+        name: 'params',
+        internalType: 'struct MetadataEntry[]',
+        type: 'tuple[]',
+        components: [
+          { name: 'key', internalType: 'string', type: 'string' },
+          { name: 'value', internalType: 'string', type: 'string' },
+        ],
+      },
+    ],
+    name: 'setMetadataMany',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: '_policy', internalType: 'enum ReleasePolicy', type: 'uint8' },
+    ],
+    name: 'setReleasePolicy',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -853,6 +1005,13 @@ export const distributorV1Abi = [
     stateMutability: 'view',
   },
   {
+    type: 'function',
+    inputs: [{ name: 'newOwner', internalType: 'address', type: 'address' }],
+    name: 'transferOwnership',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
     type: 'event',
     anonymous: false,
     inputs: [
@@ -884,14 +1043,16 @@ export const distributorV1Abi = [
         indexed: false,
       },
       {
-        name: 'totalClaimed',
+        name: 'grossAmount',
         internalType: 'uint256',
         type: 'uint256',
         indexed: false,
       },
+      { name: 'fee', internalType: 'uint256', type: 'uint256', indexed: false },
     ],
     name: 'Claimed',
   },
+  { type: 'event', anonymous: false, inputs: [], name: 'ContractURIUpdated' },
   {
     type: 'event',
     anonymous: false,
@@ -903,13 +1064,54 @@ export const distributorV1Abi = [
         indexed: false,
       },
       {
-        name: 'nextDrainHookToCall',
+        name: 'nextEpochToRelease',
         internalType: 'uint256',
         type: 'uint256',
         indexed: false,
       },
     ],
-    name: 'DrainHookCall',
+    name: 'EpochFundsReleased',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      {
+        name: 'caller',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+    name: 'MetadataLocked',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      { name: 'key', internalType: 'string', type: 'string', indexed: false },
+      { name: 'value', internalType: 'string', type: 'string', indexed: false },
+    ],
+    name: 'MetadataSet',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      {
+        name: 'previousOwner',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'newOwner',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+    name: 'OwnershipTransferred',
   },
   {
     type: 'event',
@@ -949,9 +1151,33 @@ export const distributorV1Abi = [
     name: 'Participated',
   },
   {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      { name: 'user', internalType: 'address', type: 'address', indexed: true },
+      {
+        name: 'policy',
+        internalType: 'enum ReleasePolicy',
+        type: 'uint8',
+        indexed: false,
+      },
+    ],
+    name: 'ReleasePolicySet',
+  },
+  {
     type: 'error',
     inputs: [{ name: 'data', internalType: 'bytes', type: 'bytes' }],
     name: 'HookReverted',
+  },
+  {
+    type: 'error',
+    inputs: [{ name: 'owner', internalType: 'address', type: 'address' }],
+    name: 'OwnableInvalidOwner',
+  },
+  {
+    type: 'error',
+    inputs: [{ name: 'account', internalType: 'address', type: 'address' }],
+    name: 'OwnableUnauthorizedAccount',
   },
   { type: 'error', inputs: [], name: 'ReentrancyGuardReentrantCall' },
   {
@@ -960,6 +1186,154 @@ export const distributorV1Abi = [
     name: 'SafeERC20FailedOperation',
   },
   { type: 'error', inputs: [], name: 'SharesNot100Percent' },
+] as const
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// EthParticipationRouter
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const ethParticipationRouterAbi = [
+  {
+    type: 'constructor',
+    inputs: [{ name: '_weth', internalType: 'address', type: 'address' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'WETH',
+    outputs: [{ name: '', internalType: 'contract IWETH', type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: '_distributor', internalType: 'address', type: 'address' },
+      {
+        name: '_params',
+        internalType: 'struct ParticipateParams[]',
+        type: 'tuple[]',
+        components: [
+          { name: 'amountPerEpoch', internalType: 'uint256', type: 'uint256' },
+          {
+            name: 'range',
+            internalType: 'struct Range',
+            type: 'tuple',
+            components: [
+              { name: 'from', internalType: 'uint256', type: 'uint256' },
+              { name: 'length', internalType: 'uint256', type: 'uint256' },
+            ],
+          },
+          { name: 'recipient', internalType: 'address', type: 'address' },
+          { name: 'allowlistSignature', internalType: 'bytes', type: 'bytes' },
+        ],
+      },
+    ],
+    name: 'participateManyWithETH',
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: '_distributor', internalType: 'address', type: 'address' },
+      { name: '_amountPerEpoch', internalType: 'uint256', type: 'uint256' },
+      {
+        name: '_range',
+        internalType: 'struct Range',
+        type: 'tuple',
+        components: [
+          { name: 'from', internalType: 'uint256', type: 'uint256' },
+          { name: 'length', internalType: 'uint256', type: 'uint256' },
+        ],
+      },
+      { name: '_recipient', internalType: 'address', type: 'address' },
+      { name: '_allowlistSignature', internalType: 'bytes', type: 'bytes' },
+    ],
+    name: 'participateWithETH',
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: '_to', internalType: 'address payable', type: 'address' }],
+    name: 'sweepETH',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      { name: 'to', internalType: 'address', type: 'address', indexed: true },
+      {
+        name: 'amount',
+        internalType: 'uint256',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+    name: 'ETHSwept',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      {
+        name: 'sender',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'distributor',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'recipient',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'fromEpoch',
+        internalType: 'uint256',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'numEpochs',
+        internalType: 'uint256',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'amountPerEpoch',
+        internalType: 'uint256',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+    name: 'ParticipatedWithETH',
+  },
+  { type: 'error', inputs: [], name: 'EmptyParams' },
+  {
+    type: 'error',
+    inputs: [
+      { name: 'expected', internalType: 'uint256', type: 'uint256' },
+      { name: 'sent', internalType: 'uint256', type: 'uint256' },
+    ],
+    name: 'IncorrectMsgValue',
+  },
+  {
+    type: 'error',
+    inputs: [{ name: 'token', internalType: 'address', type: 'address' }],
+    name: 'SafeERC20FailedOperation',
+  },
+  { type: 'error', inputs: [], name: 'ZeroRecipient' },
+  { type: 'error', inputs: [], name: 'ZeroWeth' },
 ] as const
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -975,6 +1349,16 @@ export const exponentialEmissionAbi = [
     ],
     name: 'calculate',
     outputs: [{ name: 'reward', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'pure',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: '_curveConfig', internalType: 'bytes', type: 'bytes' },
+      { name: '_numEpochs', internalType: 'uint256', type: 'uint256' },
+    ],
+    name: 'calculateTotal',
+    outputs: [{ name: 'total', internalType: 'uint256', type: 'uint256' }],
     stateMutability: 'pure',
   },
 ] as const
@@ -1015,6 +1399,7 @@ export const factoryV1Abi = [
         internalType: 'contract DistributionV1Factory',
         type: 'address',
       },
+      { name: '_feeVault', internalType: 'contract FeeVault', type: 'address' },
     ],
     stateMutability: 'nonpayable',
   },
@@ -1038,6 +1423,13 @@ export const factoryV1Abi = [
         type: 'address',
       },
     ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'FEE_VAULT',
+    outputs: [{ name: '', internalType: 'contract FeeVault', type: 'address' }],
     stateMutability: 'view',
   },
   {
@@ -1087,6 +1479,21 @@ export const factoryV1Abi = [
   },
   {
     type: 'function',
+    inputs: [],
+    name: 'config',
+    outputs: [
+      { name: 'protocolFeeBps', internalType: 'uint256', type: 'uint256' },
+      { name: 'releaseOperator', internalType: 'address', type: 'address' },
+      {
+        name: 'buyBackAndBurnMinBps',
+        internalType: 'uint256',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
     inputs: [
       {
         name: '_config',
@@ -1119,6 +1526,11 @@ export const factoryV1Abi = [
             name: 'allowFutureEpochParticipation',
             internalType: 'bool',
             type: 'bool',
+          },
+          {
+            name: 'releasePolicy',
+            internalType: 'enum ReleasePolicy',
+            type: 'uint8',
           },
           {
             name: 'shares',
@@ -1166,12 +1578,206 @@ export const factoryV1Abi = [
             internalType: 'uint256',
             type: 'uint256',
           },
+          {
+            name: 'initialMetadata',
+            internalType: 'struct MetadataEntry[]',
+            type: 'tuple[]',
+            components: [
+              { name: 'key', internalType: 'string', type: 'string' },
+              { name: 'value', internalType: 'string', type: 'string' },
+            ],
+          },
+          { name: 'metadataEditable', internalType: 'bool', type: 'bool' },
         ],
       },
       { name: '_pullIn', internalType: 'bool', type: 'bool' },
     ],
     name: 'createDistributor',
     outputs: [
+      { name: 'distributorAddress', internalType: 'address', type: 'address' },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: '_sqrtPriceX96', internalType: 'uint160', type: 'uint160' },
+      {
+        name: '_participationTokenAmountDesired',
+        internalType: 'uint256',
+        type: 'uint256',
+      },
+      {
+        name: '_distributionTokenAmountDesired',
+        internalType: 'uint256',
+        type: 'uint256',
+      },
+      {
+        name: '_participationTokenAmountMin',
+        internalType: 'uint256',
+        type: 'uint256',
+      },
+      {
+        name: '_distributionTokenAmountMin',
+        internalType: 'uint256',
+        type: 'uint256',
+      },
+      {
+        name: '_config',
+        internalType: 'struct DistributorConfig',
+        type: 'tuple',
+        components: [
+          {
+            name: 'distributionToken',
+            internalType: 'address',
+            type: 'address',
+          },
+          {
+            name: 'participationToken',
+            internalType: 'address',
+            type: 'address',
+          },
+          { name: 'epochDuration', internalType: 'uint256', type: 'uint256' },
+          { name: 'startTimestamp', internalType: 'uint256', type: 'uint256' },
+          {
+            name: 'minParticipation',
+            internalType: 'uint256',
+            type: 'uint256',
+          },
+          {
+            name: 'claimDelaySeconds',
+            internalType: 'uint256',
+            type: 'uint256',
+          },
+          {
+            name: 'allowFutureEpochParticipation',
+            internalType: 'bool',
+            type: 'bool',
+          },
+          {
+            name: 'releasePolicy',
+            internalType: 'enum ReleasePolicy',
+            type: 'uint8',
+          },
+          {
+            name: 'shares',
+            internalType: 'struct Share[]',
+            type: 'tuple[]',
+            components: [
+              { name: 'shareBps', internalType: 'uint256', type: 'uint256' },
+              {
+                name: 'hook',
+                internalType: 'struct Hook',
+                type: 'tuple',
+                components: [
+                  {
+                    name: 'contractAddress',
+                    internalType: 'address',
+                    type: 'address',
+                  },
+                  { name: 'callData', internalType: 'bytes', type: 'bytes' },
+                ],
+              },
+            ],
+          },
+          {
+            name: 'emissionFunction',
+            internalType: 'struct EmissionFunction',
+            type: 'tuple',
+            components: [
+              {
+                name: 'emissionContract',
+                internalType: 'contract IEmissionFunction',
+                type: 'address',
+              },
+              { name: 'curveConfig', internalType: 'bytes', type: 'bytes' },
+            ],
+          },
+          { name: 'allowlistSigner', internalType: 'address', type: 'address' },
+          {
+            name: 'allowlistDeadline',
+            internalType: 'uint256',
+            type: 'uint256',
+          },
+          { name: 'numberOfEpochs', internalType: 'uint256', type: 'uint256' },
+          {
+            name: 'totalDistributionAmount',
+            internalType: 'uint256',
+            type: 'uint256',
+          },
+          {
+            name: 'initialMetadata',
+            internalType: 'struct MetadataEntry[]',
+            type: 'tuple[]',
+            components: [
+              { name: 'key', internalType: 'string', type: 'string' },
+              { name: 'value', internalType: 'string', type: 'string' },
+            ],
+          },
+          { name: 'metadataEditable', internalType: 'bool', type: 'bool' },
+        ],
+      },
+      {
+        name: '_buyBackAndBurnShareBps',
+        internalType: 'uint256',
+        type: 'uint256',
+      },
+      {
+        name: '_participationPermit2',
+        internalType: 'struct Permit2Data',
+        type: 'tuple',
+        components: [
+          {
+            name: 'permit',
+            internalType: 'struct IPermit2.PermitTransferFrom',
+            type: 'tuple',
+            components: [
+              {
+                name: 'permitted',
+                internalType: 'struct IPermit2.TokenPermissions',
+                type: 'tuple',
+                components: [
+                  { name: 'token', internalType: 'address', type: 'address' },
+                  { name: 'amount', internalType: 'uint256', type: 'uint256' },
+                ],
+              },
+              { name: 'nonce', internalType: 'uint256', type: 'uint256' },
+              { name: 'deadline', internalType: 'uint256', type: 'uint256' },
+            ],
+          },
+          { name: 'signature', internalType: 'bytes', type: 'bytes' },
+        ],
+      },
+      {
+        name: '_distributionPermit2',
+        internalType: 'struct Permit2Data',
+        type: 'tuple',
+        components: [
+          {
+            name: 'permit',
+            internalType: 'struct IPermit2.PermitTransferFrom',
+            type: 'tuple',
+            components: [
+              {
+                name: 'permitted',
+                internalType: 'struct IPermit2.TokenPermissions',
+                type: 'tuple',
+                components: [
+                  { name: 'token', internalType: 'address', type: 'address' },
+                  { name: 'amount', internalType: 'uint256', type: 'uint256' },
+                ],
+              },
+              { name: 'nonce', internalType: 'uint256', type: 'uint256' },
+              { name: 'deadline', internalType: 'uint256', type: 'uint256' },
+            ],
+          },
+          { name: 'signature', internalType: 'bytes', type: 'bytes' },
+        ],
+      },
+    ],
+    name: 'createLiquidityAndDistribution',
+    outputs: [
+      { name: 'pool', internalType: 'address', type: 'address' },
       { name: 'distributorAddress', internalType: 'address', type: 'address' },
     ],
     stateMutability: 'nonpayable',
@@ -1192,6 +1798,8 @@ export const factoryV1Abi = [
         internalType: 'uint256',
         type: 'uint256',
       },
+      { name: '_amount0Min', internalType: 'uint256', type: 'uint256' },
+      { name: '_amount1Min', internalType: 'uint256', type: 'uint256' },
       { name: '_pullIn', internalType: 'bool', type: 'bool' },
       {
         name: '_participationPermit2',
@@ -1259,15 +1867,34 @@ export const factoryV1Abi = [
   {
     type: 'function',
     inputs: [
-      { name: '_name', internalType: 'string', type: 'string' },
-      { name: '_symbol', internalType: 'string', type: 'string' },
       {
-        name: '_allocations',
-        internalType: 'struct Allocation[]',
-        type: 'tuple[]',
+        name: '_config',
+        internalType: 'struct TokenConfig',
+        type: 'tuple',
         components: [
-          { name: 'recipient', internalType: 'address', type: 'address' },
-          { name: 'amount', internalType: 'uint256', type: 'uint256' },
+          { name: 'name', internalType: 'string', type: 'string' },
+          { name: 'symbol', internalType: 'string', type: 'string' },
+          {
+            name: 'allocations',
+            internalType: 'struct Allocation[]',
+            type: 'tuple[]',
+            components: [
+              { name: 'recipient', internalType: 'address', type: 'address' },
+              { name: 'amount', internalType: 'uint256', type: 'uint256' },
+              { name: 'startTime', internalType: 'uint256', type: 'uint256' },
+              { name: 'duration', internalType: 'uint256', type: 'uint256' },
+            ],
+          },
+          {
+            name: 'initialMetadata',
+            internalType: 'struct MetadataEntry[]',
+            type: 'tuple[]',
+            components: [
+              { name: 'key', internalType: 'string', type: 'string' },
+              { name: 'value', internalType: 'string', type: 'string' },
+            ],
+          },
+          { name: 'metadataEditable', internalType: 'bool', type: 'bool' },
         ],
       },
     ],
@@ -1280,15 +1907,34 @@ export const factoryV1Abi = [
   {
     type: 'function',
     inputs: [
-      { name: '_tokenName', internalType: 'string', type: 'string' },
-      { name: '_tokenSymbol', internalType: 'string', type: 'string' },
       {
-        name: '_tokenAllocations',
-        internalType: 'struct Allocation[]',
-        type: 'tuple[]',
+        name: '_tokenConfig',
+        internalType: 'struct TokenConfig',
+        type: 'tuple',
         components: [
-          { name: 'recipient', internalType: 'address', type: 'address' },
-          { name: 'amount', internalType: 'uint256', type: 'uint256' },
+          { name: 'name', internalType: 'string', type: 'string' },
+          { name: 'symbol', internalType: 'string', type: 'string' },
+          {
+            name: 'allocations',
+            internalType: 'struct Allocation[]',
+            type: 'tuple[]',
+            components: [
+              { name: 'recipient', internalType: 'address', type: 'address' },
+              { name: 'amount', internalType: 'uint256', type: 'uint256' },
+              { name: 'startTime', internalType: 'uint256', type: 'uint256' },
+              { name: 'duration', internalType: 'uint256', type: 'uint256' },
+            ],
+          },
+          {
+            name: 'initialMetadata',
+            internalType: 'struct MetadataEntry[]',
+            type: 'tuple[]',
+            components: [
+              { name: 'key', internalType: 'string', type: 'string' },
+              { name: 'value', internalType: 'string', type: 'string' },
+            ],
+          },
+          { name: 'metadataEditable', internalType: 'bool', type: 'bool' },
         ],
       },
       { name: '_sqrtPriceX96', internalType: 'uint160', type: 'uint160' },
@@ -1299,6 +1945,16 @@ export const factoryV1Abi = [
       },
       {
         name: '_distributionTokenAmountDesired',
+        internalType: 'uint256',
+        type: 'uint256',
+      },
+      {
+        name: '_participationTokenAmountMin',
+        internalType: 'uint256',
+        type: 'uint256',
+      },
+      {
+        name: '_distributionTokenAmountMin',
         internalType: 'uint256',
         type: 'uint256',
       },
@@ -1333,6 +1989,11 @@ export const factoryV1Abi = [
             name: 'allowFutureEpochParticipation',
             internalType: 'bool',
             type: 'bool',
+          },
+          {
+            name: 'releasePolicy',
+            internalType: 'enum ReleasePolicy',
+            type: 'uint8',
           },
           {
             name: 'shares',
@@ -1380,6 +2041,16 @@ export const factoryV1Abi = [
             internalType: 'uint256',
             type: 'uint256',
           },
+          {
+            name: 'initialMetadata',
+            internalType: 'struct MetadataEntry[]',
+            type: 'tuple[]',
+            components: [
+              { name: 'key', internalType: 'string', type: 'string' },
+              { name: 'value', internalType: 'string', type: 'string' },
+            ],
+          },
+          { name: 'metadataEditable', internalType: 'bool', type: 'bool' },
         ],
       },
       {
@@ -1423,11 +2094,159 @@ export const factoryV1Abi = [
   },
   {
     type: 'function',
+    inputs: [],
+    name: 'owner',
+    outputs: [{ name: '', internalType: 'address', type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'renounceOwnership',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      {
+        name: '_config',
+        internalType: 'struct FactoryConfig',
+        type: 'tuple',
+        components: [
+          { name: 'protocolFeeBps', internalType: 'uint256', type: 'uint256' },
+          { name: 'releaseOperator', internalType: 'address', type: 'address' },
+          {
+            name: 'buyBackAndBurnMinBps',
+            internalType: 'uint256',
+            type: 'uint256',
+          },
+        ],
+      },
+    ],
+    name: 'setConfig',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
     inputs: [
       { name: '_token', internalType: 'address', type: 'address' },
       { name: '_to', internalType: 'address', type: 'address' },
     ],
-    name: 'drain',
+    name: 'sweepToken',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'newOwner', internalType: 'address', type: 'address' }],
+    name: 'transferOwnership',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      { name: 'user', internalType: 'address', type: 'address', indexed: true },
+      {
+        name: 'protocolFeeBps',
+        internalType: 'uint256',
+        type: 'uint256',
+        indexed: false,
+      },
+      {
+        name: 'releaseOperator',
+        internalType: 'address',
+        type: 'address',
+        indexed: false,
+      },
+      {
+        name: 'buyBackAndBurnMinBps',
+        internalType: 'uint256',
+        type: 'uint256',
+        indexed: false,
+      },
+    ],
+    name: 'FactoryConfigSet',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      {
+        name: 'previousOwner',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'newOwner',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+    name: 'OwnershipTransferred',
+  },
+  {
+    type: 'error',
+    inputs: [
+      { name: 'providedBps', internalType: 'uint256', type: 'uint256' },
+      { name: 'minBps', internalType: 'uint256', type: 'uint256' },
+    ],
+    name: 'BuyBackAndBurnShareBelowMinBps',
+  },
+  {
+    type: 'error',
+    inputs: [
+      { name: 'protocolFeeBps', internalType: 'uint256', type: 'uint256' },
+      {
+        name: 'buyBackAndBurnMinBps',
+        internalType: 'uint256',
+        type: 'uint256',
+      },
+    ],
+    name: 'InvalidConfigBps',
+  },
+  {
+    type: 'error',
+    inputs: [{ name: 'owner', internalType: 'address', type: 'address' }],
+    name: 'OwnableInvalidOwner',
+  },
+  {
+    type: 'error',
+    inputs: [{ name: 'account', internalType: 'address', type: 'address' }],
+    name: 'OwnableUnauthorizedAccount',
+  },
+  {
+    type: 'error',
+    inputs: [{ name: 'token', internalType: 'address', type: 'address' }],
+    name: 'SafeERC20FailedOperation',
+  },
+] as const
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// FeeVault
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const feeVaultAbi = [
+  {
+    type: 'constructor',
+    inputs: [
+      { name: '_initialOwner', internalType: 'address', type: 'address' },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: '_token', internalType: 'address', type: 'address' },
+      { name: '_to', internalType: 'address', type: 'address' },
+      { name: '_amount', internalType: 'uint256', type: 'uint256' },
+    ],
+    name: 'cashOut',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -1441,23 +2260,7 @@ export const factoryV1Abi = [
   {
     type: 'function',
     inputs: [],
-    name: 'protocolFeeBps',
-    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    inputs: [],
     name: 'renounceOwnership',
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    inputs: [
-      { name: '_protocolFeeBps', internalType: 'uint256', type: 'uint256' },
-    ],
-    name: 'setProtocolFeeBps',
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -1519,6 +2322,127 @@ export const fixedEmissionAbi = [
     outputs: [{ name: 'reward', internalType: 'uint256', type: 'uint256' }],
     stateMutability: 'pure',
   },
+  {
+    type: 'function',
+    inputs: [
+      { name: '_curveConfig', internalType: 'bytes', type: 'bytes' },
+      { name: '_numEpochs', internalType: 'uint256', type: 'uint256' },
+    ],
+    name: 'calculateTotal',
+    outputs: [{ name: 'total', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'pure',
+  },
+] as const
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// IDistributorV1
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const iDistributorV1Abi = [
+  {
+    type: 'function',
+    inputs: [
+      { name: 'amountPerEpoch', internalType: 'uint256', type: 'uint256' },
+      {
+        name: 'range',
+        internalType: 'struct Range',
+        type: 'tuple',
+        components: [
+          { name: 'from', internalType: 'uint256', type: 'uint256' },
+          { name: 'length', internalType: 'uint256', type: 'uint256' },
+        ],
+      },
+      { name: 'recipient', internalType: 'address', type: 'address' },
+      { name: 'allowlistSignature', internalType: 'bytes', type: 'bytes' },
+    ],
+    name: 'participate',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      {
+        name: 'params',
+        internalType: 'struct ParticipateParams[]',
+        type: 'tuple[]',
+        components: [
+          { name: 'amountPerEpoch', internalType: 'uint256', type: 'uint256' },
+          {
+            name: 'range',
+            internalType: 'struct Range',
+            type: 'tuple',
+            components: [
+              { name: 'from', internalType: 'uint256', type: 'uint256' },
+              { name: 'length', internalType: 'uint256', type: 'uint256' },
+            ],
+          },
+          { name: 'recipient', internalType: 'address', type: 'address' },
+          { name: 'allowlistSignature', internalType: 'bytes', type: 'bytes' },
+        ],
+      },
+    ],
+    name: 'participateMany',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+] as const
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// IERC7729
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const ierc7729Abi = [
+  {
+    type: 'function',
+    inputs: [],
+    name: 'metadata',
+    outputs: [{ name: '', internalType: 'string', type: 'string' }],
+    stateMutability: 'view',
+  },
+] as const
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// IFactoryV1
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const iFactoryV1Abi = [
+  {
+    type: 'function',
+    inputs: [],
+    name: 'config',
+    outputs: [
+      { name: 'protocolFeeBps', internalType: 'uint256', type: 'uint256' },
+      { name: 'releaseOperator', internalType: 'address', type: 'address' },
+      {
+        name: 'buyBackAndBurnMinBps',
+        internalType: 'uint256',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'owner',
+    outputs: [{ name: '', internalType: 'address', type: 'address' }],
+    stateMutability: 'view',
+  },
+] as const
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// IWETH
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const iwethAbi = [
+  {
+    type: 'function',
+    inputs: [],
+    name: 'deposit',
+    outputs: [],
+    stateMutability: 'payable',
+  },
 ] as const
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1536,6 +2460,175 @@ export const linearEmissionAbi = [
     outputs: [{ name: 'reward', internalType: 'uint256', type: 'uint256' }],
     stateMutability: 'pure',
   },
+  {
+    type: 'function',
+    inputs: [
+      { name: '_curveConfig', internalType: 'bytes', type: 'bytes' },
+      { name: '_numEpochs', internalType: 'uint256', type: 'uint256' },
+    ],
+    name: 'calculateTotal',
+    outputs: [{ name: 'total', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'pure',
+  },
+] as const
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// MetadataStore
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const metadataStoreAbi = [
+  {
+    type: 'function',
+    inputs: [],
+    name: 'contractURI',
+    outputs: [{ name: '', internalType: 'string', type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'getAllMetadata',
+    outputs: [
+      {
+        name: '',
+        internalType: 'struct MetadataEntry[]',
+        type: 'tuple[]',
+        components: [
+          { name: 'key', internalType: 'string', type: 'string' },
+          { name: 'value', internalType: 'string', type: 'string' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: '_key', internalType: 'string', type: 'string' }],
+    name: 'getMetadata',
+    outputs: [{ name: '', internalType: 'string', type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'lockMetadata',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'metadata',
+    outputs: [{ name: '', internalType: 'string', type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'metadataLocked',
+    outputs: [{ name: '', internalType: 'bool', type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'owner',
+    outputs: [{ name: '', internalType: 'address', type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'renounceOwnership',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: '_key', internalType: 'string', type: 'string' },
+      { name: '_value', internalType: 'string', type: 'string' },
+    ],
+    name: 'setMetadata',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      {
+        name: 'params',
+        internalType: 'struct MetadataEntry[]',
+        type: 'tuple[]',
+        components: [
+          { name: 'key', internalType: 'string', type: 'string' },
+          { name: 'value', internalType: 'string', type: 'string' },
+        ],
+      },
+    ],
+    name: 'setMetadataMany',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'newOwner', internalType: 'address', type: 'address' }],
+    name: 'transferOwnership',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  { type: 'event', anonymous: false, inputs: [], name: 'ContractURIUpdated' },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      {
+        name: 'caller',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+    name: 'MetadataLocked',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      { name: 'key', internalType: 'string', type: 'string', indexed: false },
+      { name: 'value', internalType: 'string', type: 'string', indexed: false },
+    ],
+    name: 'MetadataSet',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      {
+        name: 'previousOwner',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'newOwner',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+    name: 'OwnershipTransferred',
+  },
+  {
+    type: 'error',
+    inputs: [{ name: 'owner', internalType: 'address', type: 'address' }],
+    name: 'OwnableInvalidOwner',
+  },
+  {
+    type: 'error',
+    inputs: [{ name: 'account', internalType: 'address', type: 'address' }],
+    name: 'OwnableUnauthorizedAccount',
+  },
 ] as const
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1546,17 +2639,37 @@ export const tokenV1Abi = [
   {
     type: 'constructor',
     inputs: [
-      { name: '_name', internalType: 'string', type: 'string' },
-      { name: '_symbol', internalType: 'string', type: 'string' },
       {
-        name: '_allocations',
-        internalType: 'struct Allocation[]',
-        type: 'tuple[]',
+        name: '_config',
+        internalType: 'struct TokenConfig',
+        type: 'tuple',
         components: [
-          { name: 'recipient', internalType: 'address', type: 'address' },
-          { name: 'amount', internalType: 'uint256', type: 'uint256' },
+          { name: 'name', internalType: 'string', type: 'string' },
+          { name: 'symbol', internalType: 'string', type: 'string' },
+          {
+            name: 'allocations',
+            internalType: 'struct Allocation[]',
+            type: 'tuple[]',
+            components: [
+              { name: 'recipient', internalType: 'address', type: 'address' },
+              { name: 'amount', internalType: 'uint256', type: 'uint256' },
+              { name: 'startTime', internalType: 'uint256', type: 'uint256' },
+              { name: 'duration', internalType: 'uint256', type: 'uint256' },
+            ],
+          },
+          {
+            name: 'initialMetadata',
+            internalType: 'struct MetadataEntry[]',
+            type: 'tuple[]',
+            components: [
+              { name: 'key', internalType: 'string', type: 'string' },
+              { name: 'value', internalType: 'string', type: 'string' },
+            ],
+          },
+          { name: 'metadataEditable', internalType: 'bool', type: 'bool' },
         ],
       },
+      { name: '_initialOwner', internalType: 'address', type: 'address' },
     ],
     stateMutability: 'nonpayable',
   },
@@ -1567,6 +2680,13 @@ export const tokenV1Abi = [
       { name: 'spender', internalType: 'address', type: 'address' },
     ],
     name: 'allowance',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: '', internalType: 'address', type: 'address' }],
+    name: 'alreadyClaimed',
     outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
     stateMutability: 'view',
   },
@@ -1590,8 +2710,74 @@ export const tokenV1Abi = [
   {
     type: 'function',
     inputs: [],
+    name: 'claim',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: '_recipient', internalType: 'address', type: 'address' }],
+    name: 'claimableOf',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'contractURI',
+    outputs: [{ name: '', internalType: 'string', type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
     name: 'decimals',
     outputs: [{ name: '', internalType: 'uint8', type: 'uint8' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'getAllMetadata',
+    outputs: [
+      {
+        name: '',
+        internalType: 'struct MetadataEntry[]',
+        type: 'tuple[]',
+        components: [
+          { name: 'key', internalType: 'string', type: 'string' },
+          { name: 'value', internalType: 'string', type: 'string' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: '_key', internalType: 'string', type: 'string' }],
+    name: 'getMetadata',
+    outputs: [{ name: '', internalType: 'string', type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'lockMetadata',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'metadata',
+    outputs: [{ name: '', internalType: 'string', type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'metadataLocked',
+    outputs: [{ name: '', internalType: 'bool', type: 'bool' }],
     stateMutability: 'view',
   },
   {
@@ -1604,7 +2790,74 @@ export const tokenV1Abi = [
   {
     type: 'function',
     inputs: [],
+    name: 'owner',
+    outputs: [{ name: '', internalType: 'address', type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'renounceOwnership',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: '_key', internalType: 'string', type: 'string' },
+      { name: '_value', internalType: 'string', type: 'string' },
+    ],
+    name: 'setMetadata',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      {
+        name: 'params',
+        internalType: 'struct MetadataEntry[]',
+        type: 'tuple[]',
+        components: [
+          { name: 'key', internalType: 'string', type: 'string' },
+          { name: 'value', internalType: 'string', type: 'string' },
+        ],
+      },
+    ],
+    name: 'setMetadataMany',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: '', internalType: 'address', type: 'address' }],
+    name: 'share',
+    outputs: [
+      { name: 'recipient', internalType: 'address', type: 'address' },
+      { name: 'amount', internalType: 'uint256', type: 'uint256' },
+      { name: 'startTime', internalType: 'uint256', type: 'uint256' },
+      { name: 'duration', internalType: 'uint256', type: 'uint256' },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: '_interfaceId', internalType: 'bytes4', type: 'bytes4' }],
+    name: 'supportsInterface',
+    outputs: [{ name: '', internalType: 'bool', type: 'bool' }],
+    stateMutability: 'pure',
+  },
+  {
+    type: 'function',
+    inputs: [],
     name: 'symbol',
+    outputs: [{ name: '', internalType: 'string', type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'tokenURI',
     outputs: [{ name: '', internalType: 'string', type: 'string' }],
     stateMutability: 'view',
   },
@@ -1637,6 +2890,34 @@ export const tokenV1Abi = [
     stateMutability: 'nonpayable',
   },
   {
+    type: 'function',
+    inputs: [{ name: 'newOwner', internalType: 'address', type: 'address' }],
+    name: 'transferOwnership',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: '_recipient', internalType: 'address', type: 'address' }],
+    name: 'vestingInfo',
+    outputs: [
+      {
+        name: 'info',
+        internalType: 'struct VestingInfo',
+        type: 'tuple',
+        components: [
+          { name: 'allocated', internalType: 'uint256', type: 'uint256' },
+          { name: 'claimed', internalType: 'uint256', type: 'uint256' },
+          { name: 'claimable', internalType: 'uint256', type: 'uint256' },
+          { name: 'startTime', internalType: 'uint256', type: 'uint256' },
+          { name: 'duration', internalType: 'uint256', type: 'uint256' },
+          { name: 'fullyVestedAt', internalType: 'uint256', type: 'uint256' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
     type: 'event',
     anonymous: false,
     inputs: [
@@ -1660,6 +2941,48 @@ export const tokenV1Abi = [
       },
     ],
     name: 'Approval',
+  },
+  { type: 'event', anonymous: false, inputs: [], name: 'ContractURIUpdated' },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      {
+        name: 'caller',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+    name: 'MetadataLocked',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      { name: 'key', internalType: 'string', type: 'string', indexed: false },
+      { name: 'value', internalType: 'string', type: 'string', indexed: false },
+    ],
+    name: 'MetadataSet',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      {
+        name: 'previousOwner',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'newOwner',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+    name: 'OwnershipTransferred',
   },
   {
     type: 'event',
@@ -1714,6 +3037,16 @@ export const tokenV1Abi = [
     inputs: [{ name: 'spender', internalType: 'address', type: 'address' }],
     name: 'ERC20InvalidSpender',
   },
+  {
+    type: 'error',
+    inputs: [{ name: 'owner', internalType: 'address', type: 'address' }],
+    name: 'OwnableInvalidOwner',
+  },
+  {
+    type: 'error',
+    inputs: [{ name: 'account', internalType: 'address', type: 'address' }],
+    name: 'OwnableUnauthorizedAccount',
+  },
 ] as const
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1724,15 +3057,34 @@ export const tokenV1FactoryAbi = [
   {
     type: 'function',
     inputs: [
-      { name: '_name', internalType: 'string', type: 'string' },
-      { name: '_symbol', internalType: 'string', type: 'string' },
       {
-        name: '_allocations',
-        internalType: 'struct Allocation[]',
-        type: 'tuple[]',
+        name: '_config',
+        internalType: 'struct TokenConfig',
+        type: 'tuple',
         components: [
-          { name: 'recipient', internalType: 'address', type: 'address' },
-          { name: 'amount', internalType: 'uint256', type: 'uint256' },
+          { name: 'name', internalType: 'string', type: 'string' },
+          { name: 'symbol', internalType: 'string', type: 'string' },
+          {
+            name: 'allocations',
+            internalType: 'struct Allocation[]',
+            type: 'tuple[]',
+            components: [
+              { name: 'recipient', internalType: 'address', type: 'address' },
+              { name: 'amount', internalType: 'uint256', type: 'uint256' },
+              { name: 'startTime', internalType: 'uint256', type: 'uint256' },
+              { name: 'duration', internalType: 'uint256', type: 'uint256' },
+            ],
+          },
+          {
+            name: 'initialMetadata',
+            internalType: 'struct MetadataEntry[]',
+            type: 'tuple[]',
+            components: [
+              { name: 'key', internalType: 'string', type: 'string' },
+              { name: 'value', internalType: 'string', type: 'string' },
+            ],
+          },
+          { name: 'metadataEditable', internalType: 'bool', type: 'bool' },
         ],
       },
       { name: '_creator', internalType: 'address', type: 'address' },
@@ -1824,6 +3176,147 @@ export const transferToHookAbi = [
       },
     ],
     name: 'Transferred',
+  },
+  {
+    type: 'error',
+    inputs: [{ name: 'token', internalType: 'address', type: 'address' }],
+    name: 'SafeERC20FailedOperation',
+  },
+] as const
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// WETH9
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const weth9Abi = [
+  { type: 'receive', stateMutability: 'payable' },
+  {
+    type: 'function',
+    inputs: [
+      { name: '', internalType: 'address', type: 'address' },
+      { name: '', internalType: 'address', type: 'address' },
+    ],
+    name: 'allowance',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'guy', internalType: 'address', type: 'address' },
+      { name: 'wad', internalType: 'uint256', type: 'uint256' },
+    ],
+    name: 'approve',
+    outputs: [{ name: '', internalType: 'bool', type: 'bool' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: '', internalType: 'address', type: 'address' }],
+    name: 'balanceOf',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'decimals',
+    outputs: [{ name: '', internalType: 'uint8', type: 'uint8' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'deposit',
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'name',
+    outputs: [{ name: '', internalType: 'string', type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'symbol',
+    outputs: [{ name: '', internalType: 'string', type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'totalSupply',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'dst', internalType: 'address', type: 'address' },
+      { name: 'wad', internalType: 'uint256', type: 'uint256' },
+    ],
+    name: 'transfer',
+    outputs: [{ name: '', internalType: 'bool', type: 'bool' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'src', internalType: 'address', type: 'address' },
+      { name: 'dst', internalType: 'address', type: 'address' },
+      { name: 'wad', internalType: 'uint256', type: 'uint256' },
+    ],
+    name: 'transferFrom',
+    outputs: [{ name: '', internalType: 'bool', type: 'bool' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'wad', internalType: 'uint256', type: 'uint256' }],
+    name: 'withdraw',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      { name: 'src', internalType: 'address', type: 'address', indexed: true },
+      { name: 'guy', internalType: 'address', type: 'address', indexed: true },
+      { name: 'wad', internalType: 'uint256', type: 'uint256', indexed: false },
+    ],
+    name: 'Approval',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      { name: 'dst', internalType: 'address', type: 'address', indexed: true },
+      { name: 'wad', internalType: 'uint256', type: 'uint256', indexed: false },
+    ],
+    name: 'Deposit',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      { name: 'src', internalType: 'address', type: 'address', indexed: true },
+      { name: 'dst', internalType: 'address', type: 'address', indexed: true },
+      { name: 'wad', internalType: 'uint256', type: 'uint256', indexed: false },
+    ],
+    name: 'Transfer',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      { name: 'src', internalType: 'address', type: 'address', indexed: true },
+      { name: 'wad', internalType: 'uint256', type: 'uint256', indexed: false },
+    ],
+    name: 'Withdrawal',
   },
 ] as const
 
@@ -2052,14 +3545,6 @@ export const useReadDistributorV1ClaimDelaySeconds =
   })
 
 /**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"CREATOR"`
- */
-export const useReadDistributorV1Creator = /*#__PURE__*/ createUseReadContract({
-  abi: distributorV1Abi,
-  functionName: 'CREATOR',
-})
-
-/**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"DISTRIBUTION_TOKEN"`
  */
 export const useReadDistributorV1DistributionToken =
@@ -2076,6 +3561,14 @@ export const useReadDistributorV1EpochDuration =
     abi: distributorV1Abi,
     functionName: 'EPOCH_DURATION',
   })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"FACTORY"`
+ */
+export const useReadDistributorV1Factory = /*#__PURE__*/ createUseReadContract({
+  abi: distributorV1Abi,
+  functionName: 'FACTORY',
+})
 
 /**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"MIN_PARTICIPATION"`
@@ -2105,6 +3598,15 @@ export const useReadDistributorV1ParticipationToken =
   })
 
 /**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"RELEASE_POLICY"`
+ */
+export const useReadDistributorV1ReleasePolicy =
+  /*#__PURE__*/ createUseReadContract({
+    abi: distributorV1Abi,
+    functionName: 'RELEASE_POLICY',
+  })
+
+/**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"STARTING_TIMESTAMP"`
  */
 export const useReadDistributorV1StartingTimestamp =
@@ -2129,6 +3631,15 @@ export const useReadDistributorV1ClaimFeeBps =
   /*#__PURE__*/ createUseReadContract({
     abi: distributorV1Abi,
     functionName: 'claimFeeBps',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"contractURI"`
+ */
+export const useReadDistributorV1ContractUri =
+  /*#__PURE__*/ createUseReadContract({
+    abi: distributorV1Abi,
+    functionName: 'contractURI',
   })
 
 /**
@@ -2195,6 +3706,15 @@ export const useReadDistributorV1EpochUserParticipation =
   })
 
 /**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"getAllMetadata"`
+ */
+export const useReadDistributorV1GetAllMetadata =
+  /*#__PURE__*/ createUseReadContract({
+    abi: distributorV1Abi,
+    functionName: 'getAllMetadata',
+  })
+
+/**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"getContractInfo"`
  */
 export const useReadDistributorV1GetContractInfo =
@@ -2213,6 +3733,31 @@ export const useReadDistributorV1GetEpochInfo =
   })
 
 /**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"getMetadata"`
+ */
+export const useReadDistributorV1GetMetadata =
+  /*#__PURE__*/ createUseReadContract({
+    abi: distributorV1Abi,
+    functionName: 'getMetadata',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"metadata"`
+ */
+export const useReadDistributorV1Metadata = /*#__PURE__*/ createUseReadContract(
+  { abi: distributorV1Abi, functionName: 'metadata' },
+)
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"metadataLocked"`
+ */
+export const useReadDistributorV1MetadataLocked =
+  /*#__PURE__*/ createUseReadContract({
+    abi: distributorV1Abi,
+    functionName: 'metadataLocked',
+  })
+
+/**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"nextEpochToRelease"`
  */
 export const useReadDistributorV1NextEpochToRelease =
@@ -2220,6 +3765,14 @@ export const useReadDistributorV1NextEpochToRelease =
     abi: distributorV1Abi,
     functionName: 'nextEpochToRelease',
   })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"owner"`
+ */
+export const useReadDistributorV1Owner = /*#__PURE__*/ createUseReadContract({
+  abi: distributorV1Abi,
+  functionName: 'owner',
+})
 
 /**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"rewardOf"`
@@ -2262,15 +3815,6 @@ export const useWriteDistributorV1 = /*#__PURE__*/ createUseWriteContract({
 })
 
 /**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"callDrainHook"`
- */
-export const useWriteDistributorV1CallDrainHook =
-  /*#__PURE__*/ createUseWriteContract({
-    abi: distributorV1Abi,
-    functionName: 'callDrainHook',
-  })
-
-/**
  * Wraps __{@link useWriteContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"claim"`
  */
 export const useWriteDistributorV1Claim = /*#__PURE__*/ createUseWriteContract({
@@ -2285,6 +3829,15 @@ export const useWriteDistributorV1ClaimMany =
   /*#__PURE__*/ createUseWriteContract({
     abi: distributorV1Abi,
     functionName: 'claimMany',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"lockMetadata"`
+ */
+export const useWriteDistributorV1LockMetadata =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: distributorV1Abi,
+    functionName: 'lockMetadata',
   })
 
 /**
@@ -2306,6 +3859,24 @@ export const useWriteDistributorV1ParticipateMany =
   })
 
 /**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"releaseEpochFunds"`
+ */
+export const useWriteDistributorV1ReleaseEpochFunds =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: distributorV1Abi,
+    functionName: 'releaseEpochFunds',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"renounceOwnership"`
+ */
+export const useWriteDistributorV1RenounceOwnership =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: distributorV1Abi,
+    functionName: 'renounceOwnership',
+  })
+
+/**
  * Wraps __{@link useWriteContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"setClaimFeeBps"`
  */
 export const useWriteDistributorV1SetClaimFeeBps =
@@ -2315,20 +3886,47 @@ export const useWriteDistributorV1SetClaimFeeBps =
   })
 
 /**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"setMetadata"`
+ */
+export const useWriteDistributorV1SetMetadata =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: distributorV1Abi,
+    functionName: 'setMetadata',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"setMetadataMany"`
+ */
+export const useWriteDistributorV1SetMetadataMany =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: distributorV1Abi,
+    functionName: 'setMetadataMany',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"setReleasePolicy"`
+ */
+export const useWriteDistributorV1SetReleasePolicy =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: distributorV1Abi,
+    functionName: 'setReleasePolicy',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"transferOwnership"`
+ */
+export const useWriteDistributorV1TransferOwnership =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: distributorV1Abi,
+    functionName: 'transferOwnership',
+  })
+
+/**
  * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link distributorV1Abi}__
  */
 export const useSimulateDistributorV1 = /*#__PURE__*/ createUseSimulateContract(
   { abi: distributorV1Abi },
 )
-
-/**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"callDrainHook"`
- */
-export const useSimulateDistributorV1CallDrainHook =
-  /*#__PURE__*/ createUseSimulateContract({
-    abi: distributorV1Abi,
-    functionName: 'callDrainHook',
-  })
 
 /**
  * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"claim"`
@@ -2346,6 +3944,15 @@ export const useSimulateDistributorV1ClaimMany =
   /*#__PURE__*/ createUseSimulateContract({
     abi: distributorV1Abi,
     functionName: 'claimMany',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"lockMetadata"`
+ */
+export const useSimulateDistributorV1LockMetadata =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: distributorV1Abi,
+    functionName: 'lockMetadata',
   })
 
 /**
@@ -2367,12 +3974,66 @@ export const useSimulateDistributorV1ParticipateMany =
   })
 
 /**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"releaseEpochFunds"`
+ */
+export const useSimulateDistributorV1ReleaseEpochFunds =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: distributorV1Abi,
+    functionName: 'releaseEpochFunds',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"renounceOwnership"`
+ */
+export const useSimulateDistributorV1RenounceOwnership =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: distributorV1Abi,
+    functionName: 'renounceOwnership',
+  })
+
+/**
  * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"setClaimFeeBps"`
  */
 export const useSimulateDistributorV1SetClaimFeeBps =
   /*#__PURE__*/ createUseSimulateContract({
     abi: distributorV1Abi,
     functionName: 'setClaimFeeBps',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"setMetadata"`
+ */
+export const useSimulateDistributorV1SetMetadata =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: distributorV1Abi,
+    functionName: 'setMetadata',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"setMetadataMany"`
+ */
+export const useSimulateDistributorV1SetMetadataMany =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: distributorV1Abi,
+    functionName: 'setMetadataMany',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"setReleasePolicy"`
+ */
+export const useSimulateDistributorV1SetReleasePolicy =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: distributorV1Abi,
+    functionName: 'setReleasePolicy',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link distributorV1Abi}__ and `functionName` set to `"transferOwnership"`
+ */
+export const useSimulateDistributorV1TransferOwnership =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: distributorV1Abi,
+    functionName: 'transferOwnership',
   })
 
 /**
@@ -2400,12 +4061,48 @@ export const useWatchDistributorV1ClaimedEvent =
   })
 
 /**
- * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link distributorV1Abi}__ and `eventName` set to `"DrainHookCall"`
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link distributorV1Abi}__ and `eventName` set to `"ContractURIUpdated"`
  */
-export const useWatchDistributorV1DrainHookCallEvent =
+export const useWatchDistributorV1ContractUriUpdatedEvent =
   /*#__PURE__*/ createUseWatchContractEvent({
     abi: distributorV1Abi,
-    eventName: 'DrainHookCall',
+    eventName: 'ContractURIUpdated',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link distributorV1Abi}__ and `eventName` set to `"EpochFundsReleased"`
+ */
+export const useWatchDistributorV1EpochFundsReleasedEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: distributorV1Abi,
+    eventName: 'EpochFundsReleased',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link distributorV1Abi}__ and `eventName` set to `"MetadataLocked"`
+ */
+export const useWatchDistributorV1MetadataLockedEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: distributorV1Abi,
+    eventName: 'MetadataLocked',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link distributorV1Abi}__ and `eventName` set to `"MetadataSet"`
+ */
+export const useWatchDistributorV1MetadataSetEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: distributorV1Abi,
+    eventName: 'MetadataSet',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link distributorV1Abi}__ and `eventName` set to `"OwnershipTransferred"`
+ */
+export const useWatchDistributorV1OwnershipTransferredEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: distributorV1Abi,
+    eventName: 'OwnershipTransferred',
   })
 
 /**
@@ -2415,6 +4112,120 @@ export const useWatchDistributorV1ParticipatedEvent =
   /*#__PURE__*/ createUseWatchContractEvent({
     abi: distributorV1Abi,
     eventName: 'Participated',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link distributorV1Abi}__ and `eventName` set to `"ReleasePolicySet"`
+ */
+export const useWatchDistributorV1ReleasePolicySetEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: distributorV1Abi,
+    eventName: 'ReleasePolicySet',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link ethParticipationRouterAbi}__
+ */
+export const useReadEthParticipationRouter =
+  /*#__PURE__*/ createUseReadContract({ abi: ethParticipationRouterAbi })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link ethParticipationRouterAbi}__ and `functionName` set to `"WETH"`
+ */
+export const useReadEthParticipationRouterWeth =
+  /*#__PURE__*/ createUseReadContract({
+    abi: ethParticipationRouterAbi,
+    functionName: 'WETH',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link ethParticipationRouterAbi}__
+ */
+export const useWriteEthParticipationRouter =
+  /*#__PURE__*/ createUseWriteContract({ abi: ethParticipationRouterAbi })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link ethParticipationRouterAbi}__ and `functionName` set to `"participateManyWithETH"`
+ */
+export const useWriteEthParticipationRouterParticipateManyWithEth =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: ethParticipationRouterAbi,
+    functionName: 'participateManyWithETH',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link ethParticipationRouterAbi}__ and `functionName` set to `"participateWithETH"`
+ */
+export const useWriteEthParticipationRouterParticipateWithEth =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: ethParticipationRouterAbi,
+    functionName: 'participateWithETH',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link ethParticipationRouterAbi}__ and `functionName` set to `"sweepETH"`
+ */
+export const useWriteEthParticipationRouterSweepEth =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: ethParticipationRouterAbi,
+    functionName: 'sweepETH',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link ethParticipationRouterAbi}__
+ */
+export const useSimulateEthParticipationRouter =
+  /*#__PURE__*/ createUseSimulateContract({ abi: ethParticipationRouterAbi })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link ethParticipationRouterAbi}__ and `functionName` set to `"participateManyWithETH"`
+ */
+export const useSimulateEthParticipationRouterParticipateManyWithEth =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: ethParticipationRouterAbi,
+    functionName: 'participateManyWithETH',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link ethParticipationRouterAbi}__ and `functionName` set to `"participateWithETH"`
+ */
+export const useSimulateEthParticipationRouterParticipateWithEth =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: ethParticipationRouterAbi,
+    functionName: 'participateWithETH',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link ethParticipationRouterAbi}__ and `functionName` set to `"sweepETH"`
+ */
+export const useSimulateEthParticipationRouterSweepEth =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: ethParticipationRouterAbi,
+    functionName: 'sweepETH',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link ethParticipationRouterAbi}__
+ */
+export const useWatchEthParticipationRouterEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({ abi: ethParticipationRouterAbi })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link ethParticipationRouterAbi}__ and `eventName` set to `"ETHSwept"`
+ */
+export const useWatchEthParticipationRouterEthSweptEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: ethParticipationRouterAbi,
+    eventName: 'ETHSwept',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link ethParticipationRouterAbi}__ and `eventName` set to `"ParticipatedWithETH"`
+ */
+export const useWatchEthParticipationRouterParticipatedWithEthEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: ethParticipationRouterAbi,
+    eventName: 'ParticipatedWithETH',
   })
 
 /**
@@ -2431,6 +4242,15 @@ export const useReadExponentialEmissionCalculate =
   /*#__PURE__*/ createUseReadContract({
     abi: exponentialEmissionAbi,
     functionName: 'calculate',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link exponentialEmissionAbi}__ and `functionName` set to `"calculateTotal"`
+ */
+export const useReadExponentialEmissionCalculateTotal =
+  /*#__PURE__*/ createUseReadContract({
+    abi: exponentialEmissionAbi,
+    functionName: 'calculateTotal',
   })
 
 /**
@@ -2457,6 +4277,14 @@ export const useReadFactoryV1DistributorFactory =
     abi: factoryV1Abi,
     functionName: 'DISTRIBUTOR_FACTORY',
   })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"FEE_VAULT"`
+ */
+export const useReadFactoryV1FeeVault = /*#__PURE__*/ createUseReadContract({
+  abi: factoryV1Abi,
+  functionName: 'FEE_VAULT',
+})
 
 /**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"LIQUIDITY_POOL_FEE"`
@@ -2501,21 +4329,20 @@ export const useReadFactoryV1TransferToHook =
   })
 
 /**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"config"`
+ */
+export const useReadFactoryV1Config = /*#__PURE__*/ createUseReadContract({
+  abi: factoryV1Abi,
+  functionName: 'config',
+})
+
+/**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"owner"`
  */
 export const useReadFactoryV1Owner = /*#__PURE__*/ createUseReadContract({
   abi: factoryV1Abi,
   functionName: 'owner',
 })
-
-/**
- * Wraps __{@link useReadContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"protocolFeeBps"`
- */
-export const useReadFactoryV1ProtocolFeeBps =
-  /*#__PURE__*/ createUseReadContract({
-    abi: factoryV1Abi,
-    functionName: 'protocolFeeBps',
-  })
 
 /**
  * Wraps __{@link useWriteContract}__ with `abi` set to __{@link factoryV1Abi}__
@@ -2531,6 +4358,15 @@ export const useWriteFactoryV1CreateDistributor =
   /*#__PURE__*/ createUseWriteContract({
     abi: factoryV1Abi,
     functionName: 'createDistributor',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"createLiquidityAndDistribution"`
+ */
+export const useWriteFactoryV1CreateLiquidityAndDistribution =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: factoryV1Abi,
+    functionName: 'createLiquidityAndDistribution',
   })
 
 /**
@@ -2561,14 +4397,6 @@ export const useWriteFactoryV1CreateTokenAndLiquidityAndDistribution =
   })
 
 /**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"drain"`
- */
-export const useWriteFactoryV1Drain = /*#__PURE__*/ createUseWriteContract({
-  abi: factoryV1Abi,
-  functionName: 'drain',
-})
-
-/**
  * Wraps __{@link useWriteContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"renounceOwnership"`
  */
 export const useWriteFactoryV1RenounceOwnership =
@@ -2578,13 +4406,19 @@ export const useWriteFactoryV1RenounceOwnership =
   })
 
 /**
- * Wraps __{@link useWriteContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"setProtocolFeeBps"`
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"setConfig"`
  */
-export const useWriteFactoryV1SetProtocolFeeBps =
-  /*#__PURE__*/ createUseWriteContract({
-    abi: factoryV1Abi,
-    functionName: 'setProtocolFeeBps',
-  })
+export const useWriteFactoryV1SetConfig = /*#__PURE__*/ createUseWriteContract({
+  abi: factoryV1Abi,
+  functionName: 'setConfig',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"sweepToken"`
+ */
+export const useWriteFactoryV1SweepToken = /*#__PURE__*/ createUseWriteContract(
+  { abi: factoryV1Abi, functionName: 'sweepToken' },
+)
 
 /**
  * Wraps __{@link useWriteContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"transferOwnership"`
@@ -2609,6 +4443,15 @@ export const useSimulateFactoryV1CreateDistributor =
   /*#__PURE__*/ createUseSimulateContract({
     abi: factoryV1Abi,
     functionName: 'createDistributor',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"createLiquidityAndDistribution"`
+ */
+export const useSimulateFactoryV1CreateLiquidityAndDistribution =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: factoryV1Abi,
+    functionName: 'createLiquidityAndDistribution',
   })
 
 /**
@@ -2639,15 +4482,6 @@ export const useSimulateFactoryV1CreateTokenAndLiquidityAndDistribution =
   })
 
 /**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"drain"`
- */
-export const useSimulateFactoryV1Drain =
-  /*#__PURE__*/ createUseSimulateContract({
-    abi: factoryV1Abi,
-    functionName: 'drain',
-  })
-
-/**
  * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"renounceOwnership"`
  */
 export const useSimulateFactoryV1RenounceOwnership =
@@ -2657,12 +4491,21 @@ export const useSimulateFactoryV1RenounceOwnership =
   })
 
 /**
- * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"setProtocolFeeBps"`
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"setConfig"`
  */
-export const useSimulateFactoryV1SetProtocolFeeBps =
+export const useSimulateFactoryV1SetConfig =
   /*#__PURE__*/ createUseSimulateContract({
     abi: factoryV1Abi,
-    functionName: 'setProtocolFeeBps',
+    functionName: 'setConfig',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link factoryV1Abi}__ and `functionName` set to `"sweepToken"`
+ */
+export const useSimulateFactoryV1SweepToken =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: factoryV1Abi,
+    functionName: 'sweepToken',
   })
 
 /**
@@ -2682,11 +4525,118 @@ export const useWatchFactoryV1Event = /*#__PURE__*/ createUseWatchContractEvent(
 )
 
 /**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link factoryV1Abi}__ and `eventName` set to `"FactoryConfigSet"`
+ */
+export const useWatchFactoryV1FactoryConfigSetEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: factoryV1Abi,
+    eventName: 'FactoryConfigSet',
+  })
+
+/**
  * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link factoryV1Abi}__ and `eventName` set to `"OwnershipTransferred"`
  */
 export const useWatchFactoryV1OwnershipTransferredEvent =
   /*#__PURE__*/ createUseWatchContractEvent({
     abi: factoryV1Abi,
+    eventName: 'OwnershipTransferred',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link feeVaultAbi}__
+ */
+export const useReadFeeVault = /*#__PURE__*/ createUseReadContract({
+  abi: feeVaultAbi,
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link feeVaultAbi}__ and `functionName` set to `"owner"`
+ */
+export const useReadFeeVaultOwner = /*#__PURE__*/ createUseReadContract({
+  abi: feeVaultAbi,
+  functionName: 'owner',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link feeVaultAbi}__
+ */
+export const useWriteFeeVault = /*#__PURE__*/ createUseWriteContract({
+  abi: feeVaultAbi,
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link feeVaultAbi}__ and `functionName` set to `"cashOut"`
+ */
+export const useWriteFeeVaultCashOut = /*#__PURE__*/ createUseWriteContract({
+  abi: feeVaultAbi,
+  functionName: 'cashOut',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link feeVaultAbi}__ and `functionName` set to `"renounceOwnership"`
+ */
+export const useWriteFeeVaultRenounceOwnership =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: feeVaultAbi,
+    functionName: 'renounceOwnership',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link feeVaultAbi}__ and `functionName` set to `"transferOwnership"`
+ */
+export const useWriteFeeVaultTransferOwnership =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: feeVaultAbi,
+    functionName: 'transferOwnership',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link feeVaultAbi}__
+ */
+export const useSimulateFeeVault = /*#__PURE__*/ createUseSimulateContract({
+  abi: feeVaultAbi,
+})
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link feeVaultAbi}__ and `functionName` set to `"cashOut"`
+ */
+export const useSimulateFeeVaultCashOut =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: feeVaultAbi,
+    functionName: 'cashOut',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link feeVaultAbi}__ and `functionName` set to `"renounceOwnership"`
+ */
+export const useSimulateFeeVaultRenounceOwnership =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: feeVaultAbi,
+    functionName: 'renounceOwnership',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link feeVaultAbi}__ and `functionName` set to `"transferOwnership"`
+ */
+export const useSimulateFeeVaultTransferOwnership =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: feeVaultAbi,
+    functionName: 'transferOwnership',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link feeVaultAbi}__
+ */
+export const useWatchFeeVaultEvent = /*#__PURE__*/ createUseWatchContractEvent({
+  abi: feeVaultAbi,
+})
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link feeVaultAbi}__ and `eventName` set to `"OwnershipTransferred"`
+ */
+export const useWatchFeeVaultOwnershipTransferredEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: feeVaultAbi,
     eventName: 'OwnershipTransferred',
   })
 
@@ -2707,6 +4657,132 @@ export const useReadFixedEmissionCalculate =
   })
 
 /**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link fixedEmissionAbi}__ and `functionName` set to `"calculateTotal"`
+ */
+export const useReadFixedEmissionCalculateTotal =
+  /*#__PURE__*/ createUseReadContract({
+    abi: fixedEmissionAbi,
+    functionName: 'calculateTotal',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link iDistributorV1Abi}__
+ */
+export const useWriteIDistributorV1 = /*#__PURE__*/ createUseWriteContract({
+  abi: iDistributorV1Abi,
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link iDistributorV1Abi}__ and `functionName` set to `"participate"`
+ */
+export const useWriteIDistributorV1Participate =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: iDistributorV1Abi,
+    functionName: 'participate',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link iDistributorV1Abi}__ and `functionName` set to `"participateMany"`
+ */
+export const useWriteIDistributorV1ParticipateMany =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: iDistributorV1Abi,
+    functionName: 'participateMany',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link iDistributorV1Abi}__
+ */
+export const useSimulateIDistributorV1 =
+  /*#__PURE__*/ createUseSimulateContract({ abi: iDistributorV1Abi })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link iDistributorV1Abi}__ and `functionName` set to `"participate"`
+ */
+export const useSimulateIDistributorV1Participate =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: iDistributorV1Abi,
+    functionName: 'participate',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link iDistributorV1Abi}__ and `functionName` set to `"participateMany"`
+ */
+export const useSimulateIDistributorV1ParticipateMany =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: iDistributorV1Abi,
+    functionName: 'participateMany',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link ierc7729Abi}__
+ */
+export const useReadIerc7729 = /*#__PURE__*/ createUseReadContract({
+  abi: ierc7729Abi,
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link ierc7729Abi}__ and `functionName` set to `"metadata"`
+ */
+export const useReadIerc7729Metadata = /*#__PURE__*/ createUseReadContract({
+  abi: ierc7729Abi,
+  functionName: 'metadata',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link iFactoryV1Abi}__
+ */
+export const useReadIFactoryV1 = /*#__PURE__*/ createUseReadContract({
+  abi: iFactoryV1Abi,
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link iFactoryV1Abi}__ and `functionName` set to `"config"`
+ */
+export const useReadIFactoryV1Config = /*#__PURE__*/ createUseReadContract({
+  abi: iFactoryV1Abi,
+  functionName: 'config',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link iFactoryV1Abi}__ and `functionName` set to `"owner"`
+ */
+export const useReadIFactoryV1Owner = /*#__PURE__*/ createUseReadContract({
+  abi: iFactoryV1Abi,
+  functionName: 'owner',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link iwethAbi}__
+ */
+export const useWriteIweth = /*#__PURE__*/ createUseWriteContract({
+  abi: iwethAbi,
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link iwethAbi}__ and `functionName` set to `"deposit"`
+ */
+export const useWriteIwethDeposit = /*#__PURE__*/ createUseWriteContract({
+  abi: iwethAbi,
+  functionName: 'deposit',
+})
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link iwethAbi}__
+ */
+export const useSimulateIweth = /*#__PURE__*/ createUseSimulateContract({
+  abi: iwethAbi,
+})
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link iwethAbi}__ and `functionName` set to `"deposit"`
+ */
+export const useSimulateIwethDeposit = /*#__PURE__*/ createUseSimulateContract({
+  abi: iwethAbi,
+  functionName: 'deposit',
+})
+
+/**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link linearEmissionAbi}__
  */
 export const useReadLinearEmission = /*#__PURE__*/ createUseReadContract({
@@ -2720,6 +4796,219 @@ export const useReadLinearEmissionCalculate =
   /*#__PURE__*/ createUseReadContract({
     abi: linearEmissionAbi,
     functionName: 'calculate',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link linearEmissionAbi}__ and `functionName` set to `"calculateTotal"`
+ */
+export const useReadLinearEmissionCalculateTotal =
+  /*#__PURE__*/ createUseReadContract({
+    abi: linearEmissionAbi,
+    functionName: 'calculateTotal',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link metadataStoreAbi}__
+ */
+export const useReadMetadataStore = /*#__PURE__*/ createUseReadContract({
+  abi: metadataStoreAbi,
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link metadataStoreAbi}__ and `functionName` set to `"contractURI"`
+ */
+export const useReadMetadataStoreContractUri =
+  /*#__PURE__*/ createUseReadContract({
+    abi: metadataStoreAbi,
+    functionName: 'contractURI',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link metadataStoreAbi}__ and `functionName` set to `"getAllMetadata"`
+ */
+export const useReadMetadataStoreGetAllMetadata =
+  /*#__PURE__*/ createUseReadContract({
+    abi: metadataStoreAbi,
+    functionName: 'getAllMetadata',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link metadataStoreAbi}__ and `functionName` set to `"getMetadata"`
+ */
+export const useReadMetadataStoreGetMetadata =
+  /*#__PURE__*/ createUseReadContract({
+    abi: metadataStoreAbi,
+    functionName: 'getMetadata',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link metadataStoreAbi}__ and `functionName` set to `"metadata"`
+ */
+export const useReadMetadataStoreMetadata = /*#__PURE__*/ createUseReadContract(
+  { abi: metadataStoreAbi, functionName: 'metadata' },
+)
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link metadataStoreAbi}__ and `functionName` set to `"metadataLocked"`
+ */
+export const useReadMetadataStoreMetadataLocked =
+  /*#__PURE__*/ createUseReadContract({
+    abi: metadataStoreAbi,
+    functionName: 'metadataLocked',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link metadataStoreAbi}__ and `functionName` set to `"owner"`
+ */
+export const useReadMetadataStoreOwner = /*#__PURE__*/ createUseReadContract({
+  abi: metadataStoreAbi,
+  functionName: 'owner',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link metadataStoreAbi}__
+ */
+export const useWriteMetadataStore = /*#__PURE__*/ createUseWriteContract({
+  abi: metadataStoreAbi,
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link metadataStoreAbi}__ and `functionName` set to `"lockMetadata"`
+ */
+export const useWriteMetadataStoreLockMetadata =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: metadataStoreAbi,
+    functionName: 'lockMetadata',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link metadataStoreAbi}__ and `functionName` set to `"renounceOwnership"`
+ */
+export const useWriteMetadataStoreRenounceOwnership =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: metadataStoreAbi,
+    functionName: 'renounceOwnership',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link metadataStoreAbi}__ and `functionName` set to `"setMetadata"`
+ */
+export const useWriteMetadataStoreSetMetadata =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: metadataStoreAbi,
+    functionName: 'setMetadata',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link metadataStoreAbi}__ and `functionName` set to `"setMetadataMany"`
+ */
+export const useWriteMetadataStoreSetMetadataMany =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: metadataStoreAbi,
+    functionName: 'setMetadataMany',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link metadataStoreAbi}__ and `functionName` set to `"transferOwnership"`
+ */
+export const useWriteMetadataStoreTransferOwnership =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: metadataStoreAbi,
+    functionName: 'transferOwnership',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link metadataStoreAbi}__
+ */
+export const useSimulateMetadataStore = /*#__PURE__*/ createUseSimulateContract(
+  { abi: metadataStoreAbi },
+)
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link metadataStoreAbi}__ and `functionName` set to `"lockMetadata"`
+ */
+export const useSimulateMetadataStoreLockMetadata =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: metadataStoreAbi,
+    functionName: 'lockMetadata',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link metadataStoreAbi}__ and `functionName` set to `"renounceOwnership"`
+ */
+export const useSimulateMetadataStoreRenounceOwnership =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: metadataStoreAbi,
+    functionName: 'renounceOwnership',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link metadataStoreAbi}__ and `functionName` set to `"setMetadata"`
+ */
+export const useSimulateMetadataStoreSetMetadata =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: metadataStoreAbi,
+    functionName: 'setMetadata',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link metadataStoreAbi}__ and `functionName` set to `"setMetadataMany"`
+ */
+export const useSimulateMetadataStoreSetMetadataMany =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: metadataStoreAbi,
+    functionName: 'setMetadataMany',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link metadataStoreAbi}__ and `functionName` set to `"transferOwnership"`
+ */
+export const useSimulateMetadataStoreTransferOwnership =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: metadataStoreAbi,
+    functionName: 'transferOwnership',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link metadataStoreAbi}__
+ */
+export const useWatchMetadataStoreEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({ abi: metadataStoreAbi })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link metadataStoreAbi}__ and `eventName` set to `"ContractURIUpdated"`
+ */
+export const useWatchMetadataStoreContractUriUpdatedEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: metadataStoreAbi,
+    eventName: 'ContractURIUpdated',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link metadataStoreAbi}__ and `eventName` set to `"MetadataLocked"`
+ */
+export const useWatchMetadataStoreMetadataLockedEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: metadataStoreAbi,
+    eventName: 'MetadataLocked',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link metadataStoreAbi}__ and `eventName` set to `"MetadataSet"`
+ */
+export const useWatchMetadataStoreMetadataSetEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: metadataStoreAbi,
+    eventName: 'MetadataSet',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link metadataStoreAbi}__ and `eventName` set to `"OwnershipTransferred"`
+ */
+export const useWatchMetadataStoreOwnershipTransferredEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: metadataStoreAbi,
+    eventName: 'OwnershipTransferred',
   })
 
 /**
@@ -2738,11 +5027,34 @@ export const useReadTokenV1Allowance = /*#__PURE__*/ createUseReadContract({
 })
 
 /**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"alreadyClaimed"`
+ */
+export const useReadTokenV1AlreadyClaimed = /*#__PURE__*/ createUseReadContract(
+  { abi: tokenV1Abi, functionName: 'alreadyClaimed' },
+)
+
+/**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"balanceOf"`
  */
 export const useReadTokenV1BalanceOf = /*#__PURE__*/ createUseReadContract({
   abi: tokenV1Abi,
   functionName: 'balanceOf',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"claimableOf"`
+ */
+export const useReadTokenV1ClaimableOf = /*#__PURE__*/ createUseReadContract({
+  abi: tokenV1Abi,
+  functionName: 'claimableOf',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"contractURI"`
+ */
+export const useReadTokenV1ContractUri = /*#__PURE__*/ createUseReadContract({
+  abi: tokenV1Abi,
+  functionName: 'contractURI',
 })
 
 /**
@@ -2754,12 +5066,67 @@ export const useReadTokenV1Decimals = /*#__PURE__*/ createUseReadContract({
 })
 
 /**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"getAllMetadata"`
+ */
+export const useReadTokenV1GetAllMetadata = /*#__PURE__*/ createUseReadContract(
+  { abi: tokenV1Abi, functionName: 'getAllMetadata' },
+)
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"getMetadata"`
+ */
+export const useReadTokenV1GetMetadata = /*#__PURE__*/ createUseReadContract({
+  abi: tokenV1Abi,
+  functionName: 'getMetadata',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"metadata"`
+ */
+export const useReadTokenV1Metadata = /*#__PURE__*/ createUseReadContract({
+  abi: tokenV1Abi,
+  functionName: 'metadata',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"metadataLocked"`
+ */
+export const useReadTokenV1MetadataLocked = /*#__PURE__*/ createUseReadContract(
+  { abi: tokenV1Abi, functionName: 'metadataLocked' },
+)
+
+/**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"name"`
  */
 export const useReadTokenV1Name = /*#__PURE__*/ createUseReadContract({
   abi: tokenV1Abi,
   functionName: 'name',
 })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"owner"`
+ */
+export const useReadTokenV1Owner = /*#__PURE__*/ createUseReadContract({
+  abi: tokenV1Abi,
+  functionName: 'owner',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"share"`
+ */
+export const useReadTokenV1Share = /*#__PURE__*/ createUseReadContract({
+  abi: tokenV1Abi,
+  functionName: 'share',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"supportsInterface"`
+ */
+export const useReadTokenV1SupportsInterface =
+  /*#__PURE__*/ createUseReadContract({
+    abi: tokenV1Abi,
+    functionName: 'supportsInterface',
+  })
 
 /**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"symbol"`
@@ -2770,11 +5137,27 @@ export const useReadTokenV1Symbol = /*#__PURE__*/ createUseReadContract({
 })
 
 /**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"tokenURI"`
+ */
+export const useReadTokenV1TokenUri = /*#__PURE__*/ createUseReadContract({
+  abi: tokenV1Abi,
+  functionName: 'tokenURI',
+})
+
+/**
  * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"totalSupply"`
  */
 export const useReadTokenV1TotalSupply = /*#__PURE__*/ createUseReadContract({
   abi: tokenV1Abi,
   functionName: 'totalSupply',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"vestingInfo"`
+ */
+export const useReadTokenV1VestingInfo = /*#__PURE__*/ createUseReadContract({
+  abi: tokenV1Abi,
+  functionName: 'vestingInfo',
 })
 
 /**
@@ -2793,6 +5176,47 @@ export const useWriteTokenV1Approve = /*#__PURE__*/ createUseWriteContract({
 })
 
 /**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"claim"`
+ */
+export const useWriteTokenV1Claim = /*#__PURE__*/ createUseWriteContract({
+  abi: tokenV1Abi,
+  functionName: 'claim',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"lockMetadata"`
+ */
+export const useWriteTokenV1LockMetadata = /*#__PURE__*/ createUseWriteContract(
+  { abi: tokenV1Abi, functionName: 'lockMetadata' },
+)
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"renounceOwnership"`
+ */
+export const useWriteTokenV1RenounceOwnership =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: tokenV1Abi,
+    functionName: 'renounceOwnership',
+  })
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"setMetadata"`
+ */
+export const useWriteTokenV1SetMetadata = /*#__PURE__*/ createUseWriteContract({
+  abi: tokenV1Abi,
+  functionName: 'setMetadata',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"setMetadataMany"`
+ */
+export const useWriteTokenV1SetMetadataMany =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: tokenV1Abi,
+    functionName: 'setMetadataMany',
+  })
+
+/**
  * Wraps __{@link useWriteContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"transfer"`
  */
 export const useWriteTokenV1Transfer = /*#__PURE__*/ createUseWriteContract({
@@ -2808,6 +5232,15 @@ export const useWriteTokenV1TransferFrom = /*#__PURE__*/ createUseWriteContract(
 )
 
 /**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"transferOwnership"`
+ */
+export const useWriteTokenV1TransferOwnership =
+  /*#__PURE__*/ createUseWriteContract({
+    abi: tokenV1Abi,
+    functionName: 'transferOwnership',
+  })
+
+/**
  * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link tokenV1Abi}__
  */
 export const useSimulateTokenV1 = /*#__PURE__*/ createUseSimulateContract({
@@ -2821,6 +5254,50 @@ export const useSimulateTokenV1Approve =
   /*#__PURE__*/ createUseSimulateContract({
     abi: tokenV1Abi,
     functionName: 'approve',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"claim"`
+ */
+export const useSimulateTokenV1Claim = /*#__PURE__*/ createUseSimulateContract({
+  abi: tokenV1Abi,
+  functionName: 'claim',
+})
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"lockMetadata"`
+ */
+export const useSimulateTokenV1LockMetadata =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: tokenV1Abi,
+    functionName: 'lockMetadata',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"renounceOwnership"`
+ */
+export const useSimulateTokenV1RenounceOwnership =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: tokenV1Abi,
+    functionName: 'renounceOwnership',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"setMetadata"`
+ */
+export const useSimulateTokenV1SetMetadata =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: tokenV1Abi,
+    functionName: 'setMetadata',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"setMetadataMany"`
+ */
+export const useSimulateTokenV1SetMetadataMany =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: tokenV1Abi,
+    functionName: 'setMetadataMany',
   })
 
 /**
@@ -2842,6 +5319,15 @@ export const useSimulateTokenV1TransferFrom =
   })
 
 /**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link tokenV1Abi}__ and `functionName` set to `"transferOwnership"`
+ */
+export const useSimulateTokenV1TransferOwnership =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: tokenV1Abi,
+    functionName: 'transferOwnership',
+  })
+
+/**
  * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link tokenV1Abi}__
  */
 export const useWatchTokenV1Event = /*#__PURE__*/ createUseWatchContractEvent({
@@ -2855,6 +5341,42 @@ export const useWatchTokenV1ApprovalEvent =
   /*#__PURE__*/ createUseWatchContractEvent({
     abi: tokenV1Abi,
     eventName: 'Approval',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link tokenV1Abi}__ and `eventName` set to `"ContractURIUpdated"`
+ */
+export const useWatchTokenV1ContractUriUpdatedEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: tokenV1Abi,
+    eventName: 'ContractURIUpdated',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link tokenV1Abi}__ and `eventName` set to `"MetadataLocked"`
+ */
+export const useWatchTokenV1MetadataLockedEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: tokenV1Abi,
+    eventName: 'MetadataLocked',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link tokenV1Abi}__ and `eventName` set to `"MetadataSet"`
+ */
+export const useWatchTokenV1MetadataSetEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: tokenV1Abi,
+    eventName: 'MetadataSet',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link tokenV1Abi}__ and `eventName` set to `"OwnershipTransferred"`
+ */
+export const useWatchTokenV1OwnershipTransferredEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: tokenV1Abi,
+    eventName: 'OwnershipTransferred',
   })
 
 /**
@@ -3015,4 +5537,195 @@ export const useWatchTransferToHookTransferredEvent =
   /*#__PURE__*/ createUseWatchContractEvent({
     abi: transferToHookAbi,
     eventName: 'Transferred',
+  })
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link weth9Abi}__
+ */
+export const useReadWeth9 = /*#__PURE__*/ createUseReadContract({
+  abi: weth9Abi,
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link weth9Abi}__ and `functionName` set to `"allowance"`
+ */
+export const useReadWeth9Allowance = /*#__PURE__*/ createUseReadContract({
+  abi: weth9Abi,
+  functionName: 'allowance',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link weth9Abi}__ and `functionName` set to `"balanceOf"`
+ */
+export const useReadWeth9BalanceOf = /*#__PURE__*/ createUseReadContract({
+  abi: weth9Abi,
+  functionName: 'balanceOf',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link weth9Abi}__ and `functionName` set to `"decimals"`
+ */
+export const useReadWeth9Decimals = /*#__PURE__*/ createUseReadContract({
+  abi: weth9Abi,
+  functionName: 'decimals',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link weth9Abi}__ and `functionName` set to `"name"`
+ */
+export const useReadWeth9Name = /*#__PURE__*/ createUseReadContract({
+  abi: weth9Abi,
+  functionName: 'name',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link weth9Abi}__ and `functionName` set to `"symbol"`
+ */
+export const useReadWeth9Symbol = /*#__PURE__*/ createUseReadContract({
+  abi: weth9Abi,
+  functionName: 'symbol',
+})
+
+/**
+ * Wraps __{@link useReadContract}__ with `abi` set to __{@link weth9Abi}__ and `functionName` set to `"totalSupply"`
+ */
+export const useReadWeth9TotalSupply = /*#__PURE__*/ createUseReadContract({
+  abi: weth9Abi,
+  functionName: 'totalSupply',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link weth9Abi}__
+ */
+export const useWriteWeth9 = /*#__PURE__*/ createUseWriteContract({
+  abi: weth9Abi,
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link weth9Abi}__ and `functionName` set to `"approve"`
+ */
+export const useWriteWeth9Approve = /*#__PURE__*/ createUseWriteContract({
+  abi: weth9Abi,
+  functionName: 'approve',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link weth9Abi}__ and `functionName` set to `"deposit"`
+ */
+export const useWriteWeth9Deposit = /*#__PURE__*/ createUseWriteContract({
+  abi: weth9Abi,
+  functionName: 'deposit',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link weth9Abi}__ and `functionName` set to `"transfer"`
+ */
+export const useWriteWeth9Transfer = /*#__PURE__*/ createUseWriteContract({
+  abi: weth9Abi,
+  functionName: 'transfer',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link weth9Abi}__ and `functionName` set to `"transferFrom"`
+ */
+export const useWriteWeth9TransferFrom = /*#__PURE__*/ createUseWriteContract({
+  abi: weth9Abi,
+  functionName: 'transferFrom',
+})
+
+/**
+ * Wraps __{@link useWriteContract}__ with `abi` set to __{@link weth9Abi}__ and `functionName` set to `"withdraw"`
+ */
+export const useWriteWeth9Withdraw = /*#__PURE__*/ createUseWriteContract({
+  abi: weth9Abi,
+  functionName: 'withdraw',
+})
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link weth9Abi}__
+ */
+export const useSimulateWeth9 = /*#__PURE__*/ createUseSimulateContract({
+  abi: weth9Abi,
+})
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link weth9Abi}__ and `functionName` set to `"approve"`
+ */
+export const useSimulateWeth9Approve = /*#__PURE__*/ createUseSimulateContract({
+  abi: weth9Abi,
+  functionName: 'approve',
+})
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link weth9Abi}__ and `functionName` set to `"deposit"`
+ */
+export const useSimulateWeth9Deposit = /*#__PURE__*/ createUseSimulateContract({
+  abi: weth9Abi,
+  functionName: 'deposit',
+})
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link weth9Abi}__ and `functionName` set to `"transfer"`
+ */
+export const useSimulateWeth9Transfer = /*#__PURE__*/ createUseSimulateContract(
+  { abi: weth9Abi, functionName: 'transfer' },
+)
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link weth9Abi}__ and `functionName` set to `"transferFrom"`
+ */
+export const useSimulateWeth9TransferFrom =
+  /*#__PURE__*/ createUseSimulateContract({
+    abi: weth9Abi,
+    functionName: 'transferFrom',
+  })
+
+/**
+ * Wraps __{@link useSimulateContract}__ with `abi` set to __{@link weth9Abi}__ and `functionName` set to `"withdraw"`
+ */
+export const useSimulateWeth9Withdraw = /*#__PURE__*/ createUseSimulateContract(
+  { abi: weth9Abi, functionName: 'withdraw' },
+)
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link weth9Abi}__
+ */
+export const useWatchWeth9Event = /*#__PURE__*/ createUseWatchContractEvent({
+  abi: weth9Abi,
+})
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link weth9Abi}__ and `eventName` set to `"Approval"`
+ */
+export const useWatchWeth9ApprovalEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: weth9Abi,
+    eventName: 'Approval',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link weth9Abi}__ and `eventName` set to `"Deposit"`
+ */
+export const useWatchWeth9DepositEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: weth9Abi,
+    eventName: 'Deposit',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link weth9Abi}__ and `eventName` set to `"Transfer"`
+ */
+export const useWatchWeth9TransferEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: weth9Abi,
+    eventName: 'Transfer',
+  })
+
+/**
+ * Wraps __{@link useWatchContractEvent}__ with `abi` set to __{@link weth9Abi}__ and `eventName` set to `"Withdrawal"`
+ */
+export const useWatchWeth9WithdrawalEvent =
+  /*#__PURE__*/ createUseWatchContractEvent({
+    abi: weth9Abi,
+    eventName: 'Withdrawal',
   })

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { sepolia } from "wagmi/chains";
-import { zeroAddress } from "viem";
+import { base, sepolia } from "wagmi/chains";
 import AddressTag from "@/components/AddressTag/AddressTag";
 import { Code, H2, P } from "@/components/Docs/prose";
 import { getAddresses, type ContractAddresses } from "@/contracts/contract-addresses";
@@ -9,7 +8,7 @@ import { docMetadata } from "../metadata";
 export const metadata: Metadata = docMetadata(
   "/docs/contract-addresses/",
   "Contract addresses",
-  "Deployed sqrtDAO v1 contract addresses per network: FactoryV1, root token, emission curves, hooks and factories. Sepolia testnet is live; Base coming soon.",
+  "Deployed sqrtDAO v1 contract addresses per network: FactoryV1, root token, emission curves, hooks and factories. Base mainnet and Sepolia testnet.",
 );
 
 type AddressRow = {
@@ -20,7 +19,6 @@ type AddressRow = {
 
 const ADDRESS_ROWS: AddressRow[] = [
   { key: "factoryV1", name: "FactoryV1", description: "Main entry point — creates tokens, pools and distributions" },
-  { key: "rootToken", name: "Root token", description: "sqrtDAO's own token" },
   { key: "tokenFactory", name: "TokenV1Factory", description: "Deploys new ERC20 tokens" },
   { key: "distributorFactory", name: "DistributionV1Factory", description: "Deploys DistributorV1 instances" },
   { key: "fixedEmission", name: "FixedEmission", description: "Emission curve — constant reward per epoch" },
@@ -28,6 +26,8 @@ const ADDRESS_ROWS: AddressRow[] = [
   { key: "exponentialEmission", name: "ExponentialEmission", description: "Emission curve — growth or decay per epoch" },
   { key: "transferToHook", name: "TransferToHook", description: "Hook forwarding its share to a recipient (used for the protocol fee)" },
   { key: "buyAndBurnHook", name: "BuyAndBurnHookV3", description: "Hook swapping its share and burning the proceeds" },
+  { key: "ethParticipationRouter", name: "EthParticipationRouter", description: "Wraps native ETH into WETH before participating" },
+  { key: "feeVault", name: "FeeVault", description: "Custodian of the protocol fee share" },
 ];
 
 const AddressTable = ({ chainId }: { chainId: number }) => {
@@ -44,7 +44,7 @@ const AddressTable = ({ chainId }: { chainId: number }) => {
         <tbody>
           {ADDRESS_ROWS.map((row) => {
             const address = addresses[row.key];
-            const deployed = address !== zeroAddress;
+            const deployed = address && address !== "0x0000000000000000000000000000000000000000";
             return (
               <tr key={row.key} className="border-t border-subtle">
                 <td className="px-4 py-3 align-top">
@@ -79,12 +79,17 @@ export default function Page() {
         — the same source of truth the app itself uses. Click any address to copy it.
       </P>
 
-      <H2 id="sepolia">Sepolia (testnet)</H2>
-      <P>The full v1 stack is deployed and usable on Sepolia.</P>
-      <AddressTable chainId={sepolia.id} />
+      <H2 id="base">Base (mainnet)</H2>
+      <P>Base is the mainnet target. Contracts are deployed.</P>
+      <AddressTable chainId={base.id} />
 
-      <H2 id="base">Base</H2>
-      <P>Contracts are not deployed on Base yet. This page will update once mainnet deployment happens.</P>
+      <H2 id="sepolia">Sepolia (testnet)</H2>
+      <P>
+        The v1 stack is deployed on Sepolia for testing. It was deployed from the
+        same account as Base, so the sqrtDAO contract addresses are identical on
+        both chains.
+      </P>
+      <AddressTable chainId={sepolia.id} />
 
       <H2 id="local">Local development (Anvil)</H2>
       <P>

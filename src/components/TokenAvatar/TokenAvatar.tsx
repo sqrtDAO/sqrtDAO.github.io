@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import "./TokenAvatar.css";
 
@@ -31,9 +32,14 @@ export default function TokenAvatar({
   size,
 }: TokenAvatarProps) {
   const trimmed = seed?.trim() ?? "";
-  const hasImage = Boolean(imageUrl);
   const hasSeed = trimmed.length > 0;
   const initials = trimmed.slice(0, 2).toUpperCase();
+
+  // A committed-but-unpinned CID (avatar upload skipped/failed) resolves to a
+  // gateway 404, so fall back to the generated gradient instead of a broken image.
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => setImageFailed(false), [imageUrl]);
+  const hasImage = Boolean(imageUrl) && !imageFailed;
 
   const sizingStyle = size ? { width: size, height: size } : undefined;
 
@@ -64,6 +70,7 @@ export default function TokenAvatar({
           fill
           sizes="(max-width: 767px) 180px, 258px"
           unoptimized
+          onError={() => setImageFailed(true)}
         />
       ) : (
         hasSeed && (

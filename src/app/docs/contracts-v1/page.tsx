@@ -60,20 +60,20 @@ export default function Page() {
 
       <H2 id="tokenv1-tokenv1factory">TokenV1 &amp; TokenV1Factory</H2>
       <P>
-        <Code>TokenV1</Code> is deliberately boring: a plain OpenZeppelin ERC20 whose constructor
-        mints the entire initial supply to configured allocations. No taxes, no minting later, no
-        owner.
+        <Code>TokenV1</Code> is an OpenZeppelin ERC20 with on-chain vesting and on-chain key/value
+        metadata. Its constructor mints any already-vested allocations to their recipients and
+        stores the initial metadata; the owner can add metadata later (e.g. an avatar) until it is
+        locked.
       </P>
       <CodeBlock
         caption="TokenV1.sol"
-        code={`constructor(string memory _name, string memory _symbol, Allocation[] memory _allocations) ERC20(_name, _symbol) {
-    uint256 totalSupply_ = 0;
-    for (uint256 i = 0; i < _allocations.length; i++) {
-        require(_allocations[i].recipient != address(0), "Invalid recipient");
-        totalSupply_ += _allocations[i].amount;
-        _mint(_allocations[i].recipient, _allocations[i].amount);
+        code={`constructor(TokenConfig memory _config, address _initialOwner)
+    ERC20(_config.name, _config.symbol)
+    MetadataStore(_initialOwner, _config.initialMetadata, _config.metadataEditable)
+{
+    for (uint256 i = 0; i < _config.allocations.length; i++) {
+        share[_config.allocations[i].recipient] = _config.allocations[i];
     }
-    require(totalSupply_ > 0, "Total supply must be > 0");
 }`}
       />
       <P>
@@ -82,7 +82,7 @@ export default function Page() {
       </P>
       <CodeBlock
         caption="TokenV1Factory.sol — createToken() (trimmed)"
-        code={`tokenAddress = address(new TokenV1(_name, _symbol, _allocations));
+        code={`tokenAddress = new TokenV1(_config, _creator);
 creatorOf[tokenAddress] = _creator;
 tokenList.push(tokenAddress);
 emit NewToken(tokenAddress);`}
@@ -103,12 +103,15 @@ emit NewToken(tokenAddress);`}
     uint256 minParticipation;           // minimum per-epoch amount
     uint256 claimDelaySeconds;          // wait after an epoch ends before claiming
     bool allowFutureEpochParticipation;
-    Share[] shares;                     // where drained epoch funds go
+    ReleasePolicy releasePolicy;        // who may release ended epoch funds
+    Share[] shares;                     // where released epoch funds go
     EmissionFunction emissionFunction;  // computes each epoch's reward
     address allowlistSigner;            // address(0) = allowlist disabled
     uint256 allowlistDeadline;
     uint256 numberOfEpochs;
     uint256 totalDistributionAmount;
+    MetadataEntry[] initialMetadata;    // on-chain key/value metadata
+    bool metadataEditable;
 }`}
       />
       <P>
@@ -127,7 +130,7 @@ emit NewToken(tokenAddress);`}
       </P>
       <CodeBlock
         caption="DistributionV1Factory.sol — createDistributor()"
-        code={`distributorAddress = address(new DistributorV1(_creator, _config));
+        code={`distributorAddress = new DistributorV1(_creator, factory, _config);
 creatorOf[distributorAddress] = _creator;
 distributionList.push(distributorAddress);
 emit NewDistributor(distributorAddress);`}
@@ -151,19 +154,16 @@ emit NewDistributor(distributorAddress);`}
         </LI>
       </ol>
       <CodeBlock
-        caption="FactoryV1.sol — createTokenAndLiquidityAndDistribution() (trimmed)"
-        code={`tokenAddress = createToken(_tokenName, _tokenSymbol, _tokenAllocations);
-_config.distributionToken = tokenAddress;
-
-createPoolAndAddLiquidity(
-    _config.participationToken, tokenAddress, _sqrtPriceX96,
+        caption="FactoryV1.sol — createLiquidityAndDistribution() (trimmed)"
+        code={`createPoolAndAddLiquidity(
+    _config.participationToken, _config.distributionToken, _sqrtPriceX96,
     _participationTokenAmountDesired, _distributionTokenAmountDesired,
-    false, _participationPermit2, _emptyPermit2()
+    _amount0Min, _amount1Min, true, _participationPermit2, _distributionPermit2
 );
 
-if (_buyBackAndBurnShareBps != 0) _injectBuyAndBurnShare(_config, _buyBackAndBurnShareBps);
+_injectBuyAndBurnShare(_config, _buyBackAndBurnShareBps);
 
-distributorAddress = createDistributor(_config, false);`}
+distributorAddress = createDistributor(_config, true);`}
       />
       <Callout>
         Supporting pieces: <Code>SharesLib</Code> (basis-point splits validated to sum to 100%),{" "}

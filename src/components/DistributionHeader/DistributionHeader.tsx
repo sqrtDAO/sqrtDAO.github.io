@@ -9,12 +9,19 @@ import {
   IconWorld,
 } from "@tabler/icons-react";
 import AddressTag from "@/components/AddressTag/AddressTag";
-import { Button } from "@/components/Button/Button";
 import { IconButton } from "@/components/IconButton/IconButton";
 import NetworkTag from "@/components/NetworkTag/NetworkTag";
 import Status, { type DistributionStatus } from "@/components/Status/Status";
 import TokenAvatar from "@/components/TokenAvatar/TokenAvatar";
 import { BODY_L, BODY_M } from "@/constants/typography";
+
+export type DistributionHeaderLinks = {
+  website?: string;
+  x?: string;
+  github?: string;
+  explorer?: string;
+  uniswap?: string;
+};
 
 export type DistributionHeaderProps = {
   name: string;
@@ -24,25 +31,60 @@ export type DistributionHeaderProps = {
   creator: string;
   tokenAddress: string;
   distributionAddress: string;
-};
-
-const onOpen = (link: string) => () => {
-  /* TODO: teammate wires project links (website / explorer / dex / X / GitHub) */
-  void link;
-};
-const onShare = () => {
-  /* TODO: teammate wires onShare */
+  /** Absolute URLs. Anything missing simply isn't rendered. */
+  links?: DistributionHeaderLinks;
+  onShare?: () => void;
 };
 
 const UniswapIcon = ({ size }: { size: number }) => (
   <Image src="/mainnet/uniswap.svg" alt="" width={size} height={size} />
 );
 
-const iconLinks = (size: number) => [
-  { label: "Uniswap", icon: <UniswapIcon size={size} /> },
-  { label: "X", icon: <IconBrandX size={size} /> },
-  { label: "GitHub", icon: <IconBrandGithub size={size} /> },
-];
+const ExternalBtn = ({
+  href,
+  label,
+  icon,
+}: {
+  href: string;
+  label: string;
+  icon?: React.ReactNode;
+}) => (
+  <a
+    href={href}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="sqrt-btn sqrt-btn--ghost sqrt-btn--m"
+  >
+    {icon && (
+      <span className="sqrt-btn__icon" aria-hidden="true">
+        {icon}
+      </span>
+    )}
+    <span className="sqrt-btn__label">{label}</span>
+  </a>
+);
+
+const ExternalIcon = ({
+  href,
+  label,
+  icon,
+}: {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+}) => (
+  <a
+    href={href}
+    target="_blank"
+    rel="noopener noreferrer"
+    aria-label={label}
+    className="icon-btn icon-btn--ghost icon-btn--m"
+  >
+    <span className="icon-btn__icon" aria-hidden="true">
+      {icon}
+    </span>
+  </a>
+);
 
 const Address = ({ label, value }: { label: string; value: string }) => (
   <div className="flex min-w-0 flex-1 flex-col gap-1 xl:flex-none">
@@ -65,6 +107,14 @@ const NameRow = ({ name, symbol, status }: DistributionHeaderProps) => (
 // Figma 12057:112125 (desktop) / 14639:105596 (mobile).
 const DistributionHeader = (props: DistributionHeaderProps) => {
   const seed = `${props.name} ${props.symbol}`;
+  const links = props.links ?? {};
+  const iconLinks = (size: number) =>
+    [
+      { label: "Uniswap", href: links.uniswap, icon: <UniswapIcon size={size} /> },
+      { label: "X", href: links.x, icon: <IconBrandX size={size} /> },
+      { label: "GitHub", href: links.github, icon: <IconBrandGithub size={size} /> },
+    ].filter((link) => Boolean(link.href));
+
   return (
     <>
       <div className="hidden items-center gap-4 border-b border-muted pb-4 xl:flex">
@@ -78,33 +128,23 @@ const DistributionHeader = (props: DistributionHeaderProps) => {
           <div className="flex items-center justify-between gap-4">
             <NameRow {...props} />
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="m" onClick={onOpen("website")}>
-                Website
-              </Button>
-              <Button
-                variant="ghost"
-                size="m"
-                leadingIcon={<IconExternalLink size={18} />}
-                onClick={onOpen("explorer")}
-              >
-                Explorer
-              </Button>
-              {iconLinks(24).map(({ label, icon }) => (
-                <IconButton
-                  key={label}
-                  variant="ghost"
-                  size="m"
-                  aria-label={label}
-                  icon={icon}
-                  onClick={onOpen(label)}
+              {links.website && <ExternalBtn href={links.website} label="Website" />}
+              {links.explorer && (
+                <ExternalBtn
+                  href={links.explorer}
+                  label="Explorer"
+                  icon={<IconExternalLink size={18} />}
                 />
+              )}
+              {iconLinks(24).map(({ label, href, icon }) => (
+                <ExternalIcon key={label} href={href!} label={label} icon={icon} />
               ))}
               <IconButton
                 variant="ghost"
                 size="m"
                 aria-label="Share"
                 icon={<IconShare3 size={24} />}
-                onClick={onShare}
+                onClick={props.onShare}
               />
             </div>
           </div>
@@ -140,34 +180,26 @@ const DistributionHeader = (props: DistributionHeaderProps) => {
           />
         </div>
         <div className="flex items-center gap-2">
-          {[
-            { label: "Website", icon: <IconWorld size={16} /> },
-            ...iconLinks(16),
-          ].map(({ label, icon }) => (
-            <IconButton
-              key={label}
-              variant="ghost"
-              size="s"
-              aria-label={label}
-              icon={icon}
-              onClick={onOpen(label)}
-            />
+          {links.website && (
+            <ExternalIcon href={links.website} label="Website" icon={<IconWorld size={16} />} />
+          )}
+          {iconLinks(16).map(({ label, href, icon }) => (
+            <ExternalIcon key={label} href={href!} label={label} icon={icon} />
           ))}
           <IconButton
             variant="ghost"
             size="s"
             aria-label="Share"
             icon={<IconShare3 size={16} />}
-            onClick={onShare}
+            onClick={props.onShare}
           />
-          <Button
-            variant="ghost"
-            size="m"
-            leadingIcon={<IconExternalLink size={18} />}
-            onClick={onOpen("explorer")}
-          >
-            Explorer
-          </Button>
+          {links.explorer && (
+            <ExternalBtn
+              href={links.explorer}
+              label="Explorer"
+              icon={<IconExternalLink size={18} />}
+            />
+          )}
         </div>
       </div>
     </>

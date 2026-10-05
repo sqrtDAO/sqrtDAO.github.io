@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import MainnetHeader from "@/components/MainnetHeader/MainnetHeader";
 import DistributeWizard from "@/components/DistributeWizard/DistributeWizard";
 
-const MainnetDistributePage = () => (
+const DistributionLaunchPage = () => (
   <div className="flex h-dvh flex-col overflow-y-auto bg-canvas">
     <MainnetHeader showNetworkSwitch={false} />
     <Suspense>
@@ -11,4 +11,4 @@ const MainnetDistributePage = () => (
   </div>
 );
 
-export default MainnetDistributePage;
+export default DistributionLaunchPage;

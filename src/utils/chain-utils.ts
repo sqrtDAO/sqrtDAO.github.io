@@ -26,6 +26,7 @@ export const isTestnet = (chainId: number): boolean => {
     case baseSepolia.id:
       return true;
     default:
-      throw "invalid chain";
+      // Unknown chain (e.g. a wallet switched to a chain we don't configure) — treat as not-testnet.
+      return false;
   }
 };

@@ -24,7 +24,8 @@ export type DistributorContractInfo = {
   remainingRewards: bigint;
   numberOfEpochs: bigint;
   totalDistributionAmount: bigint;
-  creator: Address;
+  owner: Address;
+  releasePolicy: number;
   shares: readonly {
     readonly shareBps: bigint;
     readonly hook: {
@@ -33,6 +34,7 @@ export type DistributorContractInfo = {
     };
   }[];
   totalUniqueParticipants: bigint;
+  metadataLocked: boolean;
 };
 
 export type EpochInfo = {

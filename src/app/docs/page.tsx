@@ -51,16 +51,18 @@ export default function Page() {
         <LI>
           <strong className="text-primary">Launch a token.</strong>{" "}
           <Code>
-            createTokenAndLiquidityAndDistribution
+            createToken
           </Code>{" "}
-          creates the ERC20, opens its pool, and starts the epoch distribution in one call.
+          creates the ERC20 with its allocations and on-chain metadata. The distribution is set up
+          as a separate step.
         </LI>
         <LI>
-          <strong className="text-primary">Distribute an existing token.</strong>{" "}
+          <strong className="text-primary">Distribute a token.</strong>{" "}
           <Code>
-            createDistributor
+            createLiquidityAndDistribution
           </Code>{" "}
-          sets up an epoch-based distribution for a token you already hold.
+          opens the pool and starts the epoch distribution for a token you already hold — whether you
+          just launched it or imported one.
         </LI>
       </ul>
 
@@ -97,7 +99,7 @@ export default function Page() {
       </ul>
 
       <Callout>
-        The protocol is currently live on the Sepolia testnet; Base is coming soon. See{" "}
+        The protocol targets Base mainnet, with Sepolia available for testing. See{" "}
         <DocLink href="/docs/contract-addresses/">contract addresses</DocLink>.
       </Callout>
     </>

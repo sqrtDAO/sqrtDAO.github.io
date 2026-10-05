@@ -3,19 +3,27 @@
 import { useState } from "react";
 import Link from "next/link";
 import WhyLaunchDialog from "@/components/WhyLaunchDialog/WhyLaunchDialog";
-import { MAINNET_IMPORT_HREF, MAINNET_LAUNCH_HREF } from "@/constants/links";
+import { DISTRIBUTION_LAUNCH_HREF, TOKEN_LAUNCH_HREF } from "@/constants/links";
 import { WizardShell, WizardTitle } from "@/components/WizardShell/WizardShell";
 
-const CARDS = [
+type RouterCard = {
+  href: string;
+  answer: string;
+  title: string;
+  description: string;
+  accent: boolean;
+};
+
+const CARDS: RouterCard[] = [
   {
-    href: MAINNET_LAUNCH_HREF,
+    href: TOKEN_LAUNCH_HREF,
     answer: "No",
     title: "Create a token",
     description: "We'll create it, then set up its distribution.",
     accent: true,
   },
   {
-    href: MAINNET_IMPORT_HREF,
+    href: DISTRIBUTION_LAUNCH_HREF,
     answer: "Yes",
     title: "Import a token",
     description: "Bring your existing token and set up its distribution.",
@@ -23,35 +31,59 @@ const CARDS = [
   },
 ];
 
+const cardClass =
+  "group flex flex-col gap-4 rounded-(--radius-l) border border-subtle bg-surface px-5 py-4 text-left transition-colors hover:bg-raised focus-visible:border-focus focus-visible:outline-none xl:h-59 xl:flex-1";
+
+const CardInner = ({
+  answer,
+  title,
+  description,
+  accent,
+}: Omit<RouterCard, "href">) => (
+  <>
+    <span className="flex flex-col gap-1">
+      <span className="text-body leading-5.5 tracking-[0.01em] text-primary">{answer}</span>
+      <span
+        className={`text-h4 leading-none font-medium group-hover:text-accent ${accent ? "text-accent" : "text-primary"}`}
+      >
+        {title}
+      </span>
+    </span>
+    <span className="flex h-14 items-center text-body leading-5.5 tracking-[0.01em] text-secondary xl:h-auto xl:flex-1">
+      {description}
+    </span>
+  </>
+);
+
 // Figma 11318:97198 (desktop) / 14467:103296 (mobile). Same structure at both sizes, so xl: variants instead of two blocks.
-const RouterPage = () => {
+// When `onImport` is given, the "Import a token" card advances the caller's flow instead of navigating.
+const RouterPage = ({ onImport }: { onImport?: () => void }) => {
   const [whyOpen, setWhyOpen] = useState(false);
 
   return (
     <WizardShell closeHref="/" spacious>
       <div className="flex w-full flex-col gap-8">
-        <WizardTitle title="Do you own a token?" description="A token for your project, or one you already own." />
+        <WizardTitle
+          title="Do you own a token?"
+          description="A token for your project, or one you already own."
+        />
 
         <div className="flex flex-col gap-6 xl:flex-row">
-          {CARDS.map(({ href, answer, title, description, accent }) => (
-            <Link
-              key={href}
-              href={href}
-              className="group flex flex-col gap-4 rounded-(--radius-l) border border-subtle bg-surface px-5 py-4 transition-colors hover:bg-raised focus-visible:border-focus focus-visible:outline-none xl:h-59 xl:flex-1"
-            >
-              <span className="flex flex-col gap-1">
-                <span className="text-body leading-5.5 tracking-[0.01em] text-primary">{answer}</span>
-                <span
-                  className={`text-h4 leading-none font-medium group-hover:text-accent ${accent ? "text-accent" : "text-primary"}`}
-                >
-                  {title}
-                </span>
-              </span>
-              <span className="flex h-14 items-center text-body leading-5.5 tracking-[0.01em] text-secondary xl:h-auto xl:flex-1">
-                {description}
-              </span>
-            </Link>
-          ))}
+          {CARDS.map(({ href, answer, title, description, accent }) => {
+            const isImport = href === DISTRIBUTION_LAUNCH_HREF;
+            const inner = (
+              <CardInner answer={answer} title={title} description={description} accent={accent} />
+            );
+            return isImport && onImport ? (
+              <button key={href} type="button" className={cardClass} onClick={onImport}>
+                {inner}
+              </button>
+            ) : (
+              <Link key={href} href={href} className={cardClass}>
+                {inner}
+              </Link>
+            );
+          })}
         </div>
       </div>
 

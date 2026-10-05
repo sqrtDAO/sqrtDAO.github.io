@@ -5,7 +5,7 @@ import Image from "next/image";
 import Input from "@/components/Input/Input";
 import { Button } from "@/components/Button/Button";
 import { useInput } from "@/hooks/useInput";
-import { MAINNET_DISTRIBUTE_HREF } from "@/constants/links";
+import { DISTRIBUTION_LAUNCH_HREF } from "@/constants/links";
 import { WizardShell, WizardTitle } from "@/components/WizardShell/WizardShell";
 
 // Static stand-in for the chain read; teammate replaces with real token data.
@@ -93,7 +93,7 @@ const ImportToken = () => {
   };
 
   return (
-    <WizardShell closeHref={MAINNET_DISTRIBUTE_HREF} spacious>
+    <WizardShell closeHref={DISTRIBUTION_LAUNCH_HREF} spacious>
 
       <div className="flex w-full flex-col gap-8 xl:items-end">
         <WizardTitle

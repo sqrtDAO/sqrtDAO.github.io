@@ -131,19 +131,20 @@ for (uint256 i = 0; i < _range.length; i++) {
         ) to pay whoever runs the claiming bot for them.
       </P>
 
-      <H2 id="draining-epoch-funds">Draining epoch funds</H2>
+      <H2 id="draining-epoch-funds">Releasing epoch funds</H2>
       <P>
         The participation token locked in an epoch doesn&apos;t sit there forever. After an epoch
-        ends, anyone can call{" "}
+        ends, a caller allowed by the distribution&apos;s{" "}
+        <Code>releasePolicy</Code> can call{" "}
         <Code>
-          callDrainHook
+          releaseEpochFunds
         </Code>
         , which forwards the whole epoch fund to the distribution&apos;s configured{" "}
         <strong className="text-primary">shares</strong> — percentage cuts in basis points that must
         sum to 100%:
       </P>
       <CodeBlock
-        caption="DistributorV1.sol — callDrainHook() (trimmed)"
+        caption="DistributorV1.sol — releaseEpochFunds() (trimmed)"
         code={`uint256 fund;
 for (uint256 i = nextEpochToRelease; i < currEpoch; i++) {
     fund += epochTotalParticipation[i];
@@ -151,7 +152,7 @@ for (uint256 i = nextEpochToRelease; i < currEpoch; i++) {
 nextEpochToRelease = currEpoch;
 
 for (uint256 i = 0; i < shares.length; i++) {
-    shares[i].approveAndCall(PARTICIPATION_TOKEN, fund);
+    shares[i].hook.approveAndCall(PARTICIPATION_TOKEN, fund);
 }`}
       />
       <Callout>
