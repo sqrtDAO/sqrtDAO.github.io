@@ -14,6 +14,7 @@ export const MAINNET_LAUNCH_HREF = "/dev/mainnet/launch";
 export const MAINNET_DISTRIBUTE_HREF = "/dev/mainnet/router";
 export const MAINNET_IMPORT_HREF = "/dev/mainnet/import";
 export const MAINNET_DISTRIBUTE_WIZARD_HREF = "/dev/mainnet/distribute";
+export const MAINNET_DISTRIBUTIONS_HREF = "/dev/mainnet/distributions";
 
 export const MAINNET_NAV = {
   // Launch token opens the router, which branches to the launch or distribution wizard.

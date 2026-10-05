@@ -6,6 +6,9 @@ import LandingAccentBar from "@/components/LandingAccentBar/LandingAccentBar";
 import GlitchReveal from "@/components/GlitchReveal/GlitchReveal";
 import Logo from "@/components/Logo/Logo";
 
+// Mainnet landing passes `ctas` (LandingCtas); without it the testnet "/" renders unchanged.
+type HeroProps = { onTryItClick?: () => void; ctas?: React.ReactNode };
+
 // The hero is already on-screen the moment a new visitor lands, so its reveal
 // needs to be a deliberate first impression rather than the snappier in-page
 // pace used elsewhere: a longer settle and a wider stagger spread. Per-section
@@ -25,7 +28,7 @@ function Glitch({ children }: { children: React.ReactElement }) {
 // Static decorative mockup of the product's epoch/progress UI — not the real
 // EpochBlockChart/EpochComboChart (confirmed with the user: this illustration is
 // flat and non-interactive, no chart data plumbing here).
-function HeroIllustration({ onTryItClick }: { onTryItClick?: () => void }) {
+function HeroIllustration({ onTryItClick, ctas }: HeroProps) {
   return (
     <div className="absolute left-[223px] top-[107px] h-[629px] w-[1167px]">
       {/* Background Frame — Figma's own exported SVG silhouette (boolean union of
@@ -85,18 +88,34 @@ function HeroIllustration({ onTryItClick }: { onTryItClick?: () => void }) {
         </p>
       </Glitch>
 
-      <Glitch>
-        <p className="absolute left-[397px] top-[407px] w-[370px] text-h4 text-primary">
-          sqrtDAO distributes your token gradually, in timed windows called epochs.
-          Everyone in the same epoch gets the same price.
-        </p>
-      </Glitch>
+      {ctas ? (
+        // Figma 11818:110508 — description + CTAs in one black box.
+        <Glitch>
+          <div className="absolute left-[381px] top-[363px] flex w-[535px] flex-col gap-6 rounded-none bg-black p-6">
+            <p className="text-h4 font-medium text-primary">
+              sqrtDAO distributes your token gradually, in timed windows called epochs.
+              <br />
+              Everyone in the same epoch gets the same price.
+            </p>
+            {ctas}
+          </div>
+        </Glitch>
+      ) : (
+        <>
+          <Glitch>
+            <p className="absolute left-[397px] top-[407px] w-[370px] text-h4 text-primary">
+              sqrtDAO distributes your token gradually, in timed windows called epochs.
+              Everyone in the same epoch gets the same price.
+            </p>
+          </Glitch>
 
-      <Glitch>
-        <LandingButtonCard className="absolute left-[784px] top-[387px]" onClick={onTryItClick}>
-          Try it on testnet
-        </LandingButtonCard>
-      </Glitch>
+          <Glitch>
+            <LandingButtonCard className="absolute left-[784px] top-[387px]" onClick={onTryItClick}>
+              Try it on testnet
+            </LandingButtonCard>
+          </Glitch>
+        </>
+      )}
 
       <Glitch>
         <LandingAccentBar
@@ -129,7 +148,7 @@ function HeroIllustration({ onTryItClick }: { onTryItClick?: () => void }) {
 // combined — invisible when nothing reaches the right edge (as here), but it
 // visibly clipped text in How It Works. Same reasoning applies to every other
 // narrow section — see LandingHowItWorks.tsx.
-function HeroMobile({ onTryItClick }: { onTryItClick?: () => void }) {
+function HeroMobile({ onTryItClick, ctas }: HeroProps) {
   return (
     <section className="relative mx-auto w-full max-w-[640px] xl:hidden">
       <div className="relative mx-auto w-full max-w-[390px]">
@@ -183,13 +202,17 @@ function HeroMobile({ onTryItClick }: { onTryItClick?: () => void }) {
           <div className="absolute left-[87px] top-[51px] size-[21px] rounded-none bg-black" />
 
           <p className="absolute left-[14px] top-[166px] w-[280px] text-body-l text-primary">
-            Distributing a token used to take a market maker, an exchange, and a
-            prayer. Now it takes an afternoon.
+            <Quote mainnet={!!ctas} />
           </p>
 
-          <LandingButtonCard className="absolute left-0 top-[319px]" onClick={onTryItClick}>
-            Try it on testnet
-          </LandingButtonCard>
+          {ctas ? (
+            // Figma 14396:84217
+            <div className="absolute left-0 top-[319px] w-[358px] rounded-none bg-black px-2 pt-4 pb-2">{ctas}</div>
+          ) : (
+            <LandingButtonCard className="absolute left-0 top-[319px]" onClick={onTryItClick}>
+              Try it on testnet
+            </LandingButtonCard>
+          )}
 
           <div className="absolute left-[162px] top-[45px] h-[16px] w-[98px] rounded-none bg-[var(--color-slate-800)]" />
           <div className="absolute left-[260px] top-[45px] h-[16px] w-[98px] rounded-none bg-[var(--color-slate-500)]" />
@@ -201,7 +224,22 @@ function HeroMobile({ onTryItClick }: { onTryItClick?: () => void }) {
   );
 }
 
-export default function LandingHero({ onTryItClick }: { onTryItClick?: () => void }) {
+// Mainnet (Figma 10694:90937) puts the punchline on its own bold line.
+const Quote = ({ mainnet }: { mainnet: boolean }) => (
+  <>
+    Distributing a token used to take a market maker, an exchange, and a prayer.{" "}
+    {mainnet ? (
+      <>
+        <br />
+        <span className="font-bold">Now it takes an afternoon.</span>
+      </>
+    ) : (
+      "Now it takes an afternoon."
+    )}
+  </>
+);
+
+export default function LandingHero({ onTryItClick, ctas }: HeroProps) {
   return (
     <>
       <section className="relative mx-auto hidden min-h-[1100px] w-full max-w-[1920px] px-gutter xl:block">
@@ -209,13 +247,12 @@ export default function LandingHero({ onTryItClick }: { onTryItClick?: () => voi
           <Glitch>
             <div className="absolute left-[106px] top-[562px] h-[209px] w-[280px] rounded-none bg-black p-6">
               <p className="text-body-l text-primary">
-                Distributing a token used to take a market maker, an exchange, and a
-                prayer. Now it takes an afternoon.
+                <Quote mainnet={!!ctas} />
               </p>
             </div>
           </Glitch>
 
-          <HeroIllustration onTryItClick={onTryItClick} />
+          <HeroIllustration onTryItClick={onTryItClick} ctas={ctas} />
 
           <Glitch>
             <div className="absolute right-[152px] top-0 rounded-none bg-black px-3 pb-4 pt-10">
@@ -226,7 +263,7 @@ export default function LandingHero({ onTryItClick }: { onTryItClick?: () => voi
         </div>
       </section>
 
-      <HeroMobile onTryItClick={onTryItClick} />
+      <HeroMobile onTryItClick={onTryItClick} ctas={ctas} />
     </>
   );
 }
