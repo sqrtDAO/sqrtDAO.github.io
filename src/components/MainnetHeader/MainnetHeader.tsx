@@ -5,20 +5,20 @@ import Link from "next/link";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { IconBoltFilled, IconBoltOff, IconMenu, IconWallet, IconX } from "@tabler/icons-react";
 import { useAccount, useSwitchChain } from "wagmi";
-import { isTestnet } from "@/utils/chain-utils";
 import Logo from "@/components/Logo/Logo";
 import { Button } from "@/components/Button/Button";
 import { IconButton } from "@/components/IconButton/IconButton";
 import NavLink from "@/components/NavLink/NavLink";
 import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
+import { isTestnet } from "@/utils/chain-utils";
 import { MAINNET_NAV } from "@/constants/links";
 
-const DESKTOP_NAV = [MAINNET_NAV.launch, MAINNET_NAV.distribute, MAINNET_NAV.explore];
+const DESKTOP_NAV = [MAINNET_NAV.launch, MAINNET_NAV.explore, MAINNET_NAV.blog, MAINNET_NAV.docs];
 
 type NetworkSwitchProps = { mainnet: boolean; onToggle?: () => void };
 
-// Figma "switch net" (14374:82709). bg via token vars: bg-live-bg / bg-danger-bg utilities aren't emitted by the dev build.
-// Renders as a static chip until more than one chain is configured in the wagmi config.
+// Figma "switch net" (14374:82709). Static chip when the chain is locked (details
+// page) or only one chain is configured; otherwise a real switch.
 const NetworkSwitch = ({ mainnet, onToggle }: NetworkSwitchProps) => {
   const className = `flex shrink-0 items-center gap-1 rounded-pill px-2 py-1.5 text-body leading-5.5 tracking-[0.01em] text-primary ${
     mainnet ? "bg-(--sqrt-state-live-bg)" : "bg-(--sqrt-state-danger-bg)"
@@ -60,10 +60,7 @@ const WalletConnect = ({ children }: { children: (p: WalletRenderProps) => React
 type MainnetHeaderProps = {
   /** Hide the Mainnet/Testnet switch (e.g. inside the distribution wizard). */
   showNetworkSwitch?: boolean;
-  /**
-   * Lock the badge to a specific chain and make it non-clickable. Used on the
-   * distribution details page, where the contract lives on exactly one chain.
-   */
+  /** Lock the badge to a chain and make it non-clickable (distribution details). */
   lockedChainId?: number;
 };
 
@@ -81,7 +78,6 @@ const MainnetHeader = ({ showNetworkSwitch = true, lockedChainId }: MainnetHeade
     const target = chains.find((c) => c.id !== chainId);
     if (target) switchChain({ chainId: target.id });
   };
-  // locked (details page) → static badge; otherwise switchable when >1 chain configured
   const onToggle =
     lockedChainId !== undefined ? undefined : chains.length > 1 ? toggleNetwork : undefined;
 
@@ -90,23 +86,25 @@ const MainnetHeader = ({ showNetworkSwitch = true, lockedChainId }: MainnetHeade
       {/* Testnet ribbon: driven by the actually connected chain. */}
       {connected && !mainnet && <TestnetRibbon />}
       {/* Desktop — Figma 11289:96189 */}
-      <div className="mx-auto hidden h-18 w-full max-w-325 items-center gap-4 xl:flex">
-        <Link href="/" aria-label="sqrtDAO home">
+      <div className="mx-auto hidden h-18 w-full max-w-325 grid-cols-[1fr_auto_1fr] items-center gap-4 xl:grid">
+        <Link href="/" aria-label="sqrtDAO home" className="justify-self-start">
           <Logo className="h-10 w-auto" />
         </Link>
-        <nav className="flex flex-1 items-center justify-center gap-4">
+        <nav className="flex items-center gap-4">
           {DESKTOP_NAV.map((item) => (
             <NavLink key={item.href} {...item} />
           ))}
         </nav>
-        {showNetworkSwitch && <NetworkSwitch mainnet={mainnet} onToggle={onToggle} />}
-        <WalletConnect>
-          {({ label, onClick }) => (
-            <Button variant="primary" size="m" onClick={onClick}>
-              {label}
-            </Button>
-          )}
-        </WalletConnect>
+        <div className="flex items-center gap-4 justify-self-end">
+          {showNetworkSwitch && <NetworkSwitch mainnet={mainnet} onToggle={onToggle} />}
+          <WalletConnect>
+            {({ label, onClick }) => (
+              <Button variant="primary" size="m" onClick={onClick}>
+                {label}
+              </Button>
+            )}
+          </WalletConnect>
+        </div>
       </div>
 
       {/* Mobile — Figma 11289:96555 */}
@@ -140,8 +138,8 @@ const MainnetHeader = ({ showNetworkSwitch = true, lockedChainId }: MainnetHeade
                 </div>
               )}
               <NavLink {...MAINNET_NAV.launch} size="l" className="w-full" onClick={closeMenu} />
-              <NavLink {...MAINNET_NAV.distribute} size="l" className="w-full" onClick={closeMenu} />
               <NavLink {...MAINNET_NAV.explore} size="l" className="w-full" onClick={closeMenu} />
+              <NavLink {...MAINNET_NAV.blog} size="l" className="w-full" onClick={closeMenu} />
               <NavLink {...MAINNET_NAV.docs} size="l" className="w-full" onClick={closeMenu} />
             </nav>
           </div>

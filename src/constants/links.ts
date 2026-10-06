@@ -9,14 +9,12 @@ export const BLOG_HREF = "/blog";
 
 export const TOKEN_LAUNCH_HREF = "/token-launch";
 export const DISTRIBUTION_LAUNCH_HREF = "/distribution-launch";
-// Legacy landing CTAs ("Try it on testnet") now point at the mainnet launch flow.
-// TODO(design): re-label these landing CTAs once the v1 landing lands.
-export const TRY_TESTNET_HREF = TOKEN_LAUNCH_HREF;
+// "Demo testnet" opens the distribution list scoped to Sepolia.
+export const TRY_TESTNET_HREF = "/distribution-list?chain=sepolia";
 
 export const MAINNET_NAV = {
   launch: { label: "Launch token", href: TOKEN_LAUNCH_HREF },
-  distribute: { label: "Distribute token", href: DISTRIBUTION_LAUNCH_HREF },
-  explore: { label: "Explore distributions", href: DISTRIBUTION_LIST },
+  explore: { label: "Explore", href: DISTRIBUTION_LIST },
   blog: { label: "Blog", href: BLOG_HREF },
   docs: { label: "Documentation", href: DOCS_URL },
 };
