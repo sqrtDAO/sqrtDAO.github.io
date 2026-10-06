@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { IconCalendarShare } from "@tabler/icons-react";
 import Alert from "@/components/Alert/Alert";
 import { Button } from "@/components/Button/Button";
@@ -46,12 +47,24 @@ const ParticipationReviewDialogV2 = ({
   onAddToCalendar = onAddToCalendarFallback,
   state = "idle",
 }: ParticipationReviewDialogV2Props) => {
+  // disable synchronously on click so a fast double-click can't fire twice
+  const [submitting, setSubmitting] = useState(false);
   const busy = state === "approving" || state === "participating";
-  const confirmLabel = busy
+  const pending = busy || submitting;
+  const confirmLabel = pending
     ? state === "approving"
       ? "Approving…"
       : "Confirming…"
     : "Confirm & sign";
+  const handleConfirm = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await onConfirm();
+    } finally {
+      setSubmitting(false);
+    }
+  };
   const words: [string, boolean][] = [
     ["You’re participating with", false],
     [`${amount},`, true],
@@ -110,8 +123,8 @@ const ParticipationReviewDialogV2 = ({
           variant="primary"
           size="m"
           className="flex-1"
-          disabled={busy}
-          onClick={onConfirm}
+          disabled={pending}
+          onClick={handleConfirm}
         >
           {confirmLabel}
         </Button>

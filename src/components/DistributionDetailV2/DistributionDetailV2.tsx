@@ -28,13 +28,13 @@ import type {
   EpochInfo,
 } from "@/hooks/useDistributorData";
 import useTokenAvatar from "@/hooks/useTokenAvatar";
-import { useInput } from "@/hooks/useInput";
+import { useInput, type UseInputReturn } from "@/hooks/useInput";
 import {
   decimalOnlyModifier,
   numberOnlyModifier,
   type InputModifier,
 } from "@/utils/modifier";
-import { validateAll, type InputValidator } from "@/utils/validator";
+import { type InputValidator } from "@/utils/validator";
 import { roundUnits, unitsToNumber } from "@/utils/round-units";
 import { formatDateTime } from "@/utils/formatDate";
 import { formatDuration } from "@/utils/formatDuration";
@@ -160,6 +160,22 @@ function computeShares(
   );
   return { priceAnchorPct, founderSharePct, protocolFeePct };
 }
+
+// Minimal UseInputReturn for derived/controlled inputs (no internal validation).
+const makeInput = (
+  value: string,
+  onChange: (v: string) => void,
+): UseInputReturn => ({
+  value,
+  onChange,
+  error: null,
+  setError: () => {},
+  clearError: () => {},
+  isGreenFlag: false,
+  setGreenFlag: () => {},
+  validate: () => true,
+  reset: () => {},
+});
 
 const DistributionDetailV2 = ({
   contractAddress,
@@ -345,71 +361,52 @@ const DistributionDetailV2 = ({
   // ---- participation inputs ----
   const participationDecimals = participationTokenDecimals ?? 18;
 
-  const fromEpochModifier = useMemo<InputModifier>(
-    () => (v) => {
-      const digits = numberOnlyModifier(v);
-      if (digits === "" || lastEpoch === 0) return digits;
-      const n = parseInt(digits, 10);
-      if (isNaN(n)) return "";
-      return String(Math.min(n, lastEpoch));
-    },
-    [lastEpoch],
-  );
-  const fromEpochValidator = useMemo<InputValidator>(
-    () => (v) => {
-      if (v.trim() === "") return "Required";
-      const n = parseInt(v.replace(/,/g, ""), 10);
-      if (isNaN(n) || n < 1) return "Invalid epoch";
-      const earliest = currentEpochDisplay ?? 1;
-      if (n < earliest) return `Earliest open epoch is ${earliest}`;
-      if (n > lastEpoch) return `Last epoch is ${lastEpoch}`;
-      return null;
-    },
-    [currentEpochDisplay, lastEpoch],
-  );
-  const fromEpochInput = useInput("", fromEpochModifier, fromEpochValidator);
-  const fromEpochNum = useMemo(() => {
-    const min = currentEpochDisplay ?? 1;
-    const n = parseInt(fromEpochInput.value, 10);
-    if (isNaN(n) || n < 1) return min;
-    return Math.min(Math.max(n, min), Math.max(lastEpoch, min));
-  }, [fromEpochInput.value, currentEpochDisplay, lastEpoch]);
+  // ---- synced epoch range: one source of truth = (start, count) ----
+  // "Spread across" edits count, "From" edits start, "To" edits start+count-1,
+  // and the +/- steppers edit count. All three inputs stay in lockstep.
+  const minStartEpoch = Math.min(currentEpochDisplay ?? 1, Math.max(lastEpoch, 1));
+  const [rangeStart, setRangeStart] = useState<number | null>(null);
+  const [rangeCount, setRangeCount] = useState<number | null>(null);
 
-  const toEpochModifier = useMemo<InputModifier>(
-    () => (v) => {
-      const digits = numberOnlyModifier(v);
-      if (digits === "" || lastEpoch === 0) return digits;
-      const n = parseInt(digits, 10);
-      if (isNaN(n)) return "";
-      return String(Math.min(n, lastEpoch));
-    },
-    [lastEpoch],
+  const fromEpochNum = Math.min(
+    Math.max(rangeStart ?? minStartEpoch, minStartEpoch),
+    Math.max(lastEpoch, 1),
   );
-  const toEpochValidator = useMemo<InputValidator>(
-    () => (v) => {
-      if (v.trim() === "") return "Required";
-      const n = parseInt(v.replace(/,/g, ""), 10);
-      if (isNaN(n) || n < 1) return "Invalid epoch";
-      if (n > lastEpoch) return `Last epoch is ${lastEpoch}`;
-      return null;
-    },
-    [lastEpoch],
+  const epochCountNum = Math.min(
+    Math.max(rangeCount ?? 1, 1),
+    Math.max(lastEpoch - fromEpochNum + 1, 1),
   );
-  const toEpochInput = useInput("", toEpochModifier, toEpochValidator);
-  const toEpochNum = useMemo(() => {
-    const n = parseInt(toEpochInput.value, 10);
-    if (isNaN(n) || n < fromEpochNum) return fromEpochNum;
-    return Math.min(n, Math.max(lastEpoch, fromEpochNum));
-  }, [toEpochInput.value, fromEpochNum, lastEpoch]);
-  const epochCountNum = toEpochNum - fromEpochNum + 1;
+  const toEpochNum = fromEpochNum + epochCountNum - 1;
 
-  useEffect(() => {
-    if (currentEpochDisplay === null || lastEpoch === 0) return;
-    const defaultEpoch = String(Math.min(currentEpochDisplay, lastEpoch));
-    if (fromEpochInput.value === "") fromEpochInput.onChange(defaultEpoch);
-    if (toEpochInput.value === "") toEpochInput.onChange(defaultEpoch);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentEpochDisplay, lastEpoch]);
+  const applyRange = useCallback(
+    (start: number, count: number) => {
+      const s = Math.min(Math.max(start, minStartEpoch), Math.max(lastEpoch, 1));
+      const c = Math.min(Math.max(count, 1), Math.max(lastEpoch - s + 1, 1));
+      setRangeStart(s);
+      setRangeCount(c);
+    },
+    [minStartEpoch, lastEpoch],
+  );
+
+  const onFromEpochChange = (v: string) => {
+    const n = parseInt(numberOnlyModifier(v), 10);
+    if (!isNaN(n)) applyRange(n, epochCountNum);
+  };
+  const onToEpochChange = (v: string) => {
+    const n = parseInt(numberOnlyModifier(v), 10);
+    if (isNaN(n)) return;
+    const end = Math.min(Math.max(n, fromEpochNum), Math.max(lastEpoch, 1));
+    applyRange(fromEpochNum, end - fromEpochNum + 1);
+  };
+  const onCountChange = (v: string) => {
+    const n = parseInt(numberOnlyModifier(v), 10);
+    if (!isNaN(n)) applyRange(fromEpochNum, n);
+  };
+  const stepEpochs = (delta: number) => applyRange(fromEpochNum, epochCountNum + delta);
+
+  const fromEpochInput = makeInput(String(fromEpochNum), onFromEpochChange);
+  const toEpochInput = makeInput(String(toEpochNum), onToEpochChange);
+  const epochsInput = makeInput(String(epochCountNum), onCountChange);
 
   const amountIssues = useCallback(
     (parsed: bigint): string | null => {
@@ -480,7 +477,6 @@ const DistributionDetailV2 = ({
   );
 
   const amountInput = useInput("", amountModifier, validateAmount);
-  const epochsInput = useInput("", numberOnlyModifier);
   const amountParsed = useMemo<bigint | null>(() => {
     try {
       return parseUnits(amountInput.value.trim(), participationDecimals);
@@ -489,13 +485,6 @@ const DistributionDetailV2 = ({
     }
   }, [amountInput.value, participationDecimals]);
   const amountLimitError = amountParsed !== null ? amountIssues(amountParsed) : null;
-
-  const stepEpochs = (delta: number) => {
-    const nextFrom = Math.max(1, Math.min(fromEpochNum + delta, lastEpoch));
-    const count = Math.max(1, epochCountNum);
-    fromEpochInput.onChange(String(nextFrom));
-    toEpochInput.onChange(String(Math.min(lastEpoch, nextFrom + count - 1)));
-  };
 
   // ---- actions ----
   const handleClaim = useCallback(async () => {
@@ -545,7 +534,12 @@ const DistributionDetailV2 = ({
   }, [walletClient, publicClient, contractInfo, contractAddress, claimData, chainId, tokenSymbol, tokenDecimals, refetch, sameChain]);
 
   const handleParticipate = useCallback(async (): Promise<boolean> => {
-    if (!walletClient || !publicClient || !contractInfo || !amountParsed) return false;
+    if (!walletClient || !publicClient || !contractInfo) return false;
+    if (!amountParsed) {
+      amountInput.validate();
+      showToast("participate.invalidAmount");
+      return false;
+    }
     if (chainId === undefined) return false;
     if (!sameChain) {
       showToast("network.wrong", { params: { chain: chainToName(chainId) } });
@@ -560,11 +554,16 @@ const DistributionDetailV2 = ({
       showToast("participate.epochClosed", { params: { epoch: fromEpochNum } });
       return false;
     }
-    if (!validateAll(amountInput, fromEpochInput, toEpochInput)) return false;
+    if (!amountInput.validate()) {
+      showToast("participate.invalidAmount");
+      return false;
+    }
     const addresses = getAddresses(chainId);
     const isEth =
       addresses.ethParticipationRouter !== zeroAddress &&
       contractInfo.participationToken.toLowerCase() === addresses.weth.toLowerCase();
+    // mark busy before the first await so the UI reacts immediately
+    setParticipateState(isEth ? "participating" : "approving");
     const totalAmount = parseUnits(amountInput.value.trim(), participationDecimals);
     const amountPerEpoch = totalAmount / BigInt(epochCountNum);
     const range = { from: BigInt(fromEpochNum - 1), length: BigInt(epochCountNum) };
@@ -644,7 +643,6 @@ const DistributionDetailV2 = ({
     contractInfo,
     amountParsed,
     amountInput,
-    epochsInput,
     chainId,
     participationDecimals,
     epochCountNum,
@@ -655,8 +653,6 @@ const DistributionDetailV2 = ({
     sameChain,
     ddpState,
     currentEpoch,
-    fromEpochInput,
-    toEpochInput,
   ]);
 
   const onAddToWallet = useCallback(async () => {
@@ -818,7 +814,7 @@ const DistributionDetailV2 = ({
       rangeState: { from: fromEpochInput, to: toEpochInput },
       onStepEpochs: stepEpochs,
       amountError: amountLimitError ?? amountInput.error,
-      rangeError: fromEpochInput.error ?? toEpochInput.error,
+      rangeError: null,
       onConnect: () => {
         if (isConnected && !sameChain) switchChain({ chainId });
         else openConnectModal?.();
@@ -875,8 +871,7 @@ const DistributionDetailV2 = ({
         data={data}
         epochActions={{
           onParticipate: (epoch) => {
-            fromEpochInput.onChange(String(epoch));
-            toEpochInput.onChange(String(epoch));
+            applyRange(epoch, 1);
           },
           onClaim: () => {
             void handleClaim();
