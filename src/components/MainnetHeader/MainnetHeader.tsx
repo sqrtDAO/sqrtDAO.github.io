@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { IconBoltFilled, IconBoltOff, IconMenu, IconWallet, IconX } from "@tabler/icons-react";
 import { useAccount, useSwitchChain } from "wagmi";
-import { base } from "wagmi/chains";
+import { isTestnet } from "@/utils/chain-utils";
 import Logo from "@/components/Logo/Logo";
 import { Button } from "@/components/Button/Button";
 import { IconButton } from "@/components/IconButton/IconButton";
@@ -60,22 +60,30 @@ const WalletConnect = ({ children }: { children: (p: WalletRenderProps) => React
 type MainnetHeaderProps = {
   /** Hide the Mainnet/Testnet switch (e.g. inside the distribution wizard). */
   showNetworkSwitch?: boolean;
+  /**
+   * Lock the badge to a specific chain and make it non-clickable. Used on the
+   * distribution details page, where the contract lives on exactly one chain.
+   */
+  lockedChainId?: number;
 };
 
-const MainnetHeader = ({ showNetworkSwitch = true }: MainnetHeaderProps) => {
+const MainnetHeader = ({ showNetworkSwitch = true, lockedChainId }: MainnetHeaderProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = () => setMenuOpen(false);
 
   const { chainId } = useAccount();
   const { chains, switchChain } = useSwitchChain();
+  const effectiveChainId = lockedChainId ?? chainId;
   const connected = chainId !== undefined;
-  const mainnet = !connected || chainId === base.id;
+  const mainnet = effectiveChainId === undefined ? true : !isTestnet(effectiveChainId);
 
   const toggleNetwork = () => {
     const target = chains.find((c) => c.id !== chainId);
     if (target) switchChain({ chainId: target.id });
   };
-  const onToggle = chains.length > 1 ? toggleNetwork : undefined;
+  // locked (details page) → static badge; otherwise switchable when >1 chain configured
+  const onToggle =
+    lockedChainId !== undefined ? undefined : chains.length > 1 ? toggleNetwork : undefined;
 
   return (
     <header className="relative z-40 w-full bg-surface">

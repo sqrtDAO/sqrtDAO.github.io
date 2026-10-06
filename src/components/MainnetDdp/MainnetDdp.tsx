@@ -34,6 +34,8 @@ import ParticipationReviewDialogV2 from "@/components/ParticipationReviewDialogV
 import type { DistributionStatus } from "@/components/Status/Status";
 import { BODY_M } from "@/constants/typography";
 import { useCountdown } from "@/hooks/useCountdown";
+import { formatEpochTimestamp, formatPrice } from "@/utils/epoch-format";
+import { roundUnits } from "@/utils/round-units";
 import type { EpochData } from "@/lib/charts/types";
 
 const EpochComboChart = dynamic(
@@ -66,7 +68,7 @@ export type MainnetDdpData = {
   >;
   about: string;
   epochDurationSec: number;
-  lastClearPrice: number;
+  lastClearPrice: number | null;
 };
 
 type MainnetDdpProps = {
@@ -74,6 +76,8 @@ type MainnetDdpProps = {
   state: DdpState;
   connected: boolean;
   data: MainnetDdpData;
+  /** When set, the header network badge is locked to this chain (no switching). */
+  chainId?: number;
   epochActions?: {
     onParticipate?: (epoch: number) => void;
     onClaim?: (epoch: number) => void;
@@ -90,23 +94,38 @@ const STATUS: Record<DdpState, DistributionStatus> = {
 
 // Figma 10690:87344 / 14640:107403 (imported) and 10690:87464 / 14639:105593 (native).
 // Fully wired: the caller supplies contract-derived `data` plus handlers.
-const MainnetDdp = ({ variant, state, connected, data, epochActions }: MainnetDdpProps) => {
+const MainnetDdp = ({ variant, state, connected, data, chainId, epochActions }: MainnetDdpProps) => {
   const [dialog, setDialog] = useState<Dialog>(null);
   const [edd, setEdd] = useState<EpochData | null>(null);
+  const [hovered, setHovered] = useState<EpochData | null>(null);
   const countdown = useCountdown(data.countdownTargetMs);
   const close = () => setDialog(null);
   const native = variant === "native";
   const claim = state === "upcoming" ? undefined : data.claim;
+  // Hovering an epoch previews its stats; otherwise show the current/last one.
+  const epochStats = hovered
+    ? {
+        epoch: `#${hovered.epoch}`,
+        epochTime: formatEpochTimestamp(hovered.timestamp, true),
+        lastClearPrice:
+          hovered.clearPrice != null
+            ? formatPrice(hovered.clearPrice)
+            : data.epochStats.lastClearPrice,
+        participation: roundUnits(hovered.participationAmount, data.quoteDecimals),
+        participants: String(hovered.participants ?? 0),
+        quoteSymbol: data.quoteSymbol,
+      }
+    : data.epochStats;
   const participation = {
     ...data.participation,
     connected,
-    disabled: state === "finished",
+    disabled: state !== "live",
     onParticipate: () => setDialog("review"),
   };
 
   return (
     <div className="flex h-dvh flex-col overflow-y-auto bg-canvas">
-      <MainnetHeader />
+      <MainnetHeader lockedChainId={chainId} />
       <main className="mx-auto flex w-full flex-1 gap-6 xl:max-w-330 xl:pt-4 xl:pb-6">
         <div className="flex min-w-0 flex-1 flex-col xl:w-218 xl:flex-none">
           <DistributionHeader {...data.header} status={STATUS[state]} />
@@ -132,7 +151,7 @@ const MainnetDdp = ({ variant, state, connected, data, epochActions }: MainnetDd
                   variant="primary"
                   size="m"
                   fullWidth
-                  disabled={state === "finished"}
+                  disabled={state !== "live"}
                   onClick={() => setDialog("participate")}
                 >
                   Participate
@@ -144,7 +163,7 @@ const MainnetDdp = ({ variant, state, connected, data, epochActions }: MainnetDd
               {state !== "upcoming" && (
                 <div className="order-2 xl:order-1">
                   <EpochStatsCard
-                    {...data.epochStats}
+                    {...epochStats}
                     epochLabel={
                       state === "finished" ? "Last epoch" : "Current epoch"
                     }
@@ -153,6 +172,7 @@ const MainnetDdp = ({ variant, state, connected, data, epochActions }: MainnetDd
                       epochs={data.epochs}
                       quoteSymbol={data.quoteSymbol}
                       tokenSymbol={data.tokenSymbol}
+                      onHoverEpoch={setHovered}
                       onSelectEpoch={setEdd}
                     />
                   </EpochStatsCard>

@@ -4,12 +4,13 @@ import { Suspense, useState, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams, notFound } from "next/navigation";
 import { Address, isAddress } from "viem";
-import { useWalletClient, usePublicClient } from "wagmi";
+import { useWalletClient, usePublicClient, useChainId } from "wagmi";
 import MainnetHeader from "@/components/MainnetHeader/MainnetHeader";
 import { Button } from "@/components/Button/Button";
 import { getDistributorV1Contract } from "@/contracts/contracts";
 import { showToast } from "@/hooks/useToast";
 import { getExplorerTxUrl } from "@/utils/explorer-utils";
+import { chainToSlug } from "@/utils/chain-utils";
 
 type ReleaseState = "idle" | "releasing" | "done" | "error";
 
@@ -20,6 +21,7 @@ function ReleaseContent() {
 
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient();
+  const connectedChainId = useChainId();
   const [state, setState] = useState<ReleaseState>("idle");
   const [txHash, setTxHash] = useState("");
 
@@ -90,7 +92,7 @@ function ReleaseContent() {
                 : "Release epoch funds"}
           </Button>
           <Link
-            href={`/distribution?address=${address}`}
+            href={`/distribution?address=${address}&chain=${chainToSlug(connectedChainId)}`}
             className="sqrt-btn sqrt-btn--outline sqrt-btn--m"
           >
             <span className="sqrt-btn__label">Back to distribution</span>

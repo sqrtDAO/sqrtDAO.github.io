@@ -39,6 +39,10 @@ export type ParticipationCardProps = {
   amountError?: string | null;
   rangeError?: string | null;
   onConnect?: () => void;
+  /** Button label when not connected (e.g. "Switch to Base"). */
+  connectLabel?: string;
+  /** In-flight / failed state for the participate action. */
+  state?: "idle" | "approving" | "participating" | "error";
 };
 
 const amountModifier = composeModifiers(decimalOnlyModifier, commaModifier);
@@ -160,11 +164,21 @@ const ParticipationCard = ({
   amountError,
   rangeError,
   onConnect,
+  connectLabel,
+  state = "idle",
 }: ParticipationCardProps) => {
   const internalAmount = useInput("", amountModifier);
   const internalEpochs = useInput("", numberOnlyModifier);
   const amount = amountState ?? internalAmount;
   const epochs = epochsState ?? internalEpochs;
+  const busy = state === "approving" || state === "participating";
+  const ctaLabel = connected
+    ? state === "approving"
+      ? "Approving…"
+      : state === "participating"
+        ? "Participating…"
+        : "Participate"
+    : connectLabel ?? "Connect wallet";
 
   return (
     <div className="flex w-full flex-col gap-4 rounded-(--radius-l) bg-canvas p-4 xl:gap-6 xl:px-6 xl:py-5">
@@ -207,6 +221,11 @@ const ParticipationCard = ({
             {perEpochEstimate}
           </p>
         )}
+        {state === "error" && (
+          <p className={`${BODY_S} text-danger`}>
+            Participation didn&apos;t go through. Please try again.
+          </p>
+        )}
       </div>
       <div className="flex w-full items-center gap-4">
         <div className={`flex flex-1 flex-col ${BODY_S}`}>
@@ -217,7 +236,7 @@ const ParticipationCard = ({
           variant="primary"
           size="m"
           className="flex-1"
-          disabled={disabled}
+          disabled={disabled || busy}
           onClick={() => {
             if (!connected) {
               onConnect?.();
@@ -226,7 +245,7 @@ const ParticipationCard = ({
             onParticipate?.();
           }}
         >
-          {connected ? "Participate" : "Connect wallet"}
+          {ctaLabel}
         </Button>
       </div>
     </div>

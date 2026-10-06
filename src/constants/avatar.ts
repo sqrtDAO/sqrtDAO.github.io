@@ -1,6 +1,6 @@
 export const AVATAR_API_BASE = "https://api.sqrtdao.org";
 
-export const AVATAR_IPFS_GATEWAY = "https://ipfs.io/ipfs/";
+export const AVATAR_IPFS_GATEWAY = "https://gateway.pinata.cloud/ipfs/";
 
 
 export const AVATAR_ALLOWED_MIME_TYPES = [

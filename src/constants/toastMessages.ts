@@ -26,6 +26,7 @@ export type ToastMessageKey =
   | "participate.rejected"
   | "participate.epochClosed"
   | "participate.ended"
+  | "participate.notStarted"
   | "claim.pending"
   | "claim.success"
   | "claim.failed"
@@ -90,6 +91,10 @@ export const TOAST_MESSAGES: Record<ToastMessageKey, ToastMessageDef> = {
   "participate.ended": {
     type: "error",
     copy: "This distribution has finished — your participation didn't go through.",
+  },
+  "participate.notStarted": {
+    type: "error",
+    copy: "This distribution hasn't started yet — you can participate once it goes live.",
   },
 
   "claim.pending": { type: "pending", copy: "Claiming your {symbol}…" },

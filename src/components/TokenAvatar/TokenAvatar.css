@@ -18,8 +18,7 @@
 
 .token-avatar.is-generated,
 .token-avatar.is-image {
-  border-style: solid;
-  border-color: transparent;
+  border: none;
 }
 
 .token-avatar__image {

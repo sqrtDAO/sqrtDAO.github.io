@@ -9,6 +9,7 @@ import TokenAvatar from "@/components/TokenAvatar/TokenAvatar";
 import useTokenAvatar from "@/hooks/useTokenAvatar";
 import { formatDate } from "@/utils/formatDate";
 import { roundUnits } from "@/utils/round-units";
+import { chainToSlug } from "@/utils/chain-utils";
 import { BODY_L, BODY_M, BODY_S } from "@/constants/typography";
 
 export type DistributionCardProps = {
@@ -44,7 +45,7 @@ export default function DistributionCard({
       <Link
         aria-label={`View ${distribution.tokenName} distribution`}
         className="absolute inset-0"
-        href={`/distribution/?address=${distribution.address}`}
+        href={`/distribution/?address=${distribution.address}&chain=${chainToSlug(chainId)}`}
         target="_blank"
         rel="noopener noreferrer"
       />

@@ -6,11 +6,18 @@ import {
   useAccount,
   useChainId,
   usePublicClient,
+  useSwitchChain,
   useWalletClient,
 } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { base } from "viem/chains";
+import { IconLoader2 } from "@tabler/icons-react";
+import { base, sepolia } from "viem/chains";
+import { chainNameToId, chainToName } from "@/utils/chain-utils";
 import MainnetDdp, { type MainnetDdpData } from "@/components/MainnetDdp/MainnetDdp";
+import MainnetHeader from "@/components/MainnetHeader/MainnetHeader";
+import MainnetFooter from "@/components/MainnetFooter/MainnetFooter";
+import { Button } from "@/components/Button/Button";
+import ClaimRootDialog from "@/components/ClaimRootDialog/ClaimRootDialog";
 import type { DdpState } from "@/components/DistributionOverview/DistributionOverview";
 import type { FundSplit } from "@/components/FundSplitBar/FundSplitBar";
 import type { EpochData } from "@/lib/charts/types";
@@ -27,10 +34,11 @@ import {
   numberOnlyModifier,
   type InputModifier,
 } from "@/utils/modifier";
-import { type InputValidator } from "@/utils/validator";
+import { validateAll, type InputValidator } from "@/utils/validator";
 import { roundUnits, unitsToNumber } from "@/utils/round-units";
 import { formatDateTime } from "@/utils/formatDate";
 import { formatDuration } from "@/utils/formatDuration";
+import { formatEpochTimestamp, formatPrice } from "@/utils/epoch-format";
 import { fmtInt } from "@/utils/formatInt";
 import { showToast } from "@/hooks/useToast";
 import { isUserRejectedError } from "@/utils/wallet-error";
@@ -49,26 +57,31 @@ const STATE_TO_DDP: Record<DistributionState, DdpState> = {
   ended: "finished",
 };
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-const fmtEpochDate = (timestamp: number, withTime: boolean): string => {
-  const d = new Date(timestamp);
-  const day = d.getDate();
-  const month = MONTHS[d.getMonth()];
-  if (withTime) {
-    const time = d.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    });
-    return `${day} ${month}, ${time}`;
-  }
-  return `${day} ${month}, ${d.getFullYear()}`;
+// Values users type into metadata are free-form, so normalize to an absolute URL
+// and drop empties/placeholders before rendering any <a href>.
+const SOCIAL_JUNK = new Set([
+  "",
+  "#",
+  "-",
+  "n/a",
+  "na",
+  "none",
+  "null",
+  "undefined",
+  "tbd",
+]);
+const absoluteUrl = (raw?: string): string | undefined => {
+  const v = (raw ?? "").trim();
+  if (SOCIAL_JUNK.has(v.toLowerCase())) return undefined;
+  if (/^https?:\/\//i.test(v)) return v;
+  if (!/\.[a-z]{2,}/i.test(v)) return undefined; // not a plausible domain
+  return `https://${v.replace(/^\/+/, "")}`;
 };
 
-const fmtPrice = (price: number | null): string =>
-  price == null ? "—" : parseFloat(price.toFixed(4)).toString();
+const EXPLORER_URLS: Record<number, string> = {
+  [base.id]: "https://basescan.org",
+  [sepolia.id]: "https://sepolia.etherscan.io",
+};
 
 function buildEpochs(
   contractInfo: DistributorContractInfo,
@@ -136,19 +149,34 @@ function computeShares(
   const priceAnchor = shares.find(
     (e) => e.hook.contractAddress === addresses.buyAndBurnHook,
   );
-  const priceAnchorPct = Math.round(priceAnchor ? Number(priceAnchor.shareBps) / 100 : 0);
+  // basis points → percent, keeping fractions (2.5% stays 2.5%, not 2%)
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const priceAnchorPct = priceAnchor ? Number(priceAnchor.shareBps) / 100 : 0;
   const protocolFeePct =
-    shares.length > 0 ? Math.round(Number(shares[shares.length - 1].shareBps)) / 100 : 0;
-  const founderSharePct = Math.max(0, 100 - (protocolFeePct + priceAnchorPct));
+    shares.length > 0 ? Number(shares[shares.length - 1].shareBps) / 100 : 0;
+  const founderSharePct = Math.max(
+    0,
+    round2(100 - (protocolFeePct + priceAnchorPct)),
+  );
   return { priceAnchorPct, founderSharePct, protocolFeePct };
 }
 
-const DistributionDetailV2 = ({ contractAddress }: { contractAddress: string }) => {
-  const chainId = useChainId();
+const DistributionDetailV2 = ({
+  contractAddress,
+  chainSlug,
+}: {
+  contractAddress: string;
+  chainSlug?: string | null;
+}) => {
+  const connectedChainId = useChainId();
+  // chain is mandatory: an unknown/missing ?chain= is an error, not a fallback
+  const chainId = chainNameToId(chainSlug);
   const { address, isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
-  const publicClient = usePublicClient();
+  const publicClient = usePublicClient(chainId ? { chainId } : undefined);
   const { openConnectModal } = useConnectModal();
+  const { switchChain } = useSwitchChain();
+  const sameChain = isConnected && chainId !== undefined && connectedChainId === chainId;
 
   const {
     state,
@@ -163,14 +191,23 @@ const DistributionDetailV2 = ({ contractAddress }: { contractAddress: string }) 
     participationTokenSymbol,
     participationTokenDecimals,
     participationTokenBalance,
+    isLoading,
+    error,
     refetch,
-  } = useDistributorData(contractAddress as Address);
+  } = useDistributorData(contractAddress as Address, chainId);
 
   const avatarUrl = useTokenAvatar(contractInfo?.distributionToken, chainId);
 
   const [metadata, setMetadata] = useState<Record<string, string>>({});
-  const [native, setNative] = useState(true);
-  const [claimState, setClaimState] = useState<"idle" | "claiming" | "done">("idle");
+  // optimistic default: only claim "Created on sqrtDAO" once creatorOf confirms it
+  const [native, setNative] = useState(false);
+  const [claimState, setClaimState] = useState<
+    "idle" | "claiming" | "done" | "error"
+  >("idle");
+  const [participateState, setParticipateState] = useState<
+    "idle" | "approving" | "participating" | "error"
+  >("idle");
+  const [claimRootOpen, setClaimRootOpen] = useState(true);
 
   useEffect(() => {
     if (!publicClient || !contractInfo) return;
@@ -183,7 +220,7 @@ const DistributionDetailV2 = ({ contractAddress }: { contractAddress: string }) 
   }, [publicClient, contractInfo?.distributionToken]);
 
   useEffect(() => {
-    if (!publicClient || !contractInfo || !chainId) return;
+    if (!publicClient || !contractInfo || chainId === undefined) return;
     publicClient
       .readContract({
         address: getAddresses(chainId).tokenFactory,
@@ -194,6 +231,15 @@ const DistributionDetailV2 = ({ contractAddress }: { contractAddress: string }) 
       .then((creator) => setNative(creator !== zeroAddress))
       .catch(() => {});
   }, [publicClient, contractInfo?.distributionToken, chainId]);
+
+  // Auto-switch the wallet to the distribution's chain (once per visit).
+  const autoSwitched = useRef(false);
+  useEffect(() => {
+    if (!isConnected || chainId === undefined || connectedChainId === chainId) return;
+    if (autoSwitched.current) return;
+    autoSwitched.current = true;
+    switchChain({ chainId });
+  }, [isConnected, chainId, connectedChainId, switchChain]);
 
   const ddpState: DdpState = state ? STATE_TO_DDP[state] : "upcoming";
   const running = ddpState === "live";
@@ -267,8 +313,30 @@ const DistributionDetailV2 = ({ contractAddress }: { contractAddress: string }) 
           contractInfo.startingTimestamp + (currentEpoch + 1n) * contractInfo.epochDuration,
         ) * 1000
       : 0;
+  // Countdown always targets the END of the distribution (not the current epoch).
   const countdownTargetMs =
-    ddpState === "upcoming" ? startTimestampMs : ddpState === "finished" ? endTimestampMs : currentEpochEndMs;
+    ddpState === "upcoming" ? startTimestampMs : endTimestampMs;
+
+  // Restore the old DDP's self-refreshing: re-read when the sale starts, and at
+  // every epoch boundary, so the page moves upcoming → live → next epoch on its own.
+  useEffect(() => {
+    if (!contractInfo) return;
+    const delay = Number(contractInfo.startingTimestamp) * 1000 - Date.now();
+    if (delay <= 0) return;
+    const id = setTimeout(refetch, delay);
+    return () => clearTimeout(id);
+  }, [contractInfo, refetch]);
+
+  useEffect(() => {
+    if (currentEpochEndMs <= 0 || ddpState !== "live") return;
+    const delay = currentEpochEndMs - Date.now();
+    if (delay <= 0) {
+      refetch();
+      return;
+    }
+    const id = setTimeout(refetch, delay);
+    return () => clearTimeout(id);
+  }, [currentEpochEndMs, ddpState, refetch]);
 
   const claimDelayDays = contractInfo
     ? Math.round(Number(contractInfo.claimDelaySeconds) / 86400)
@@ -287,7 +355,19 @@ const DistributionDetailV2 = ({ contractAddress }: { contractAddress: string }) 
     },
     [lastEpoch],
   );
-  const fromEpochInput = useInput("", fromEpochModifier);
+  const fromEpochValidator = useMemo<InputValidator>(
+    () => (v) => {
+      if (v.trim() === "") return "Required";
+      const n = parseInt(v.replace(/,/g, ""), 10);
+      if (isNaN(n) || n < 1) return "Invalid epoch";
+      const earliest = currentEpochDisplay ?? 1;
+      if (n < earliest) return `Earliest open epoch is ${earliest}`;
+      if (n > lastEpoch) return `Last epoch is ${lastEpoch}`;
+      return null;
+    },
+    [currentEpochDisplay, lastEpoch],
+  );
+  const fromEpochInput = useInput("", fromEpochModifier, fromEpochValidator);
   const fromEpochNum = useMemo(() => {
     const min = currentEpochDisplay ?? 1;
     const n = parseInt(fromEpochInput.value, 10);
@@ -305,7 +385,17 @@ const DistributionDetailV2 = ({ contractAddress }: { contractAddress: string }) 
     },
     [lastEpoch],
   );
-  const toEpochInput = useInput("", toEpochModifier);
+  const toEpochValidator = useMemo<InputValidator>(
+    () => (v) => {
+      if (v.trim() === "") return "Required";
+      const n = parseInt(v.replace(/,/g, ""), 10);
+      if (isNaN(n) || n < 1) return "Invalid epoch";
+      if (n > lastEpoch) return `Last epoch is ${lastEpoch}`;
+      return null;
+    },
+    [lastEpoch],
+  );
+  const toEpochInput = useInput("", toEpochModifier, toEpochValidator);
   const toEpochNum = useMemo(() => {
     const n = parseInt(toEpochInput.value, 10);
     if (isNaN(n) || n < fromEpochNum) return fromEpochNum;
@@ -410,6 +500,11 @@ const DistributionDetailV2 = ({ contractAddress }: { contractAddress: string }) 
   // ---- actions ----
   const handleClaim = useCallback(async () => {
     if (!walletClient || !publicClient || !contractInfo || !claimData) return;
+    if (chainId === undefined) return;
+    if (!sameChain) {
+      showToast("network.wrong", { params: { chain: chainToName(chainId) } });
+      return;
+    }
     if (claimData.claimableAmount === 0n) {
       showToast("claim.nothing");
       return;
@@ -430,7 +525,7 @@ const DistributionDetailV2 = ({ contractAddress }: { contractAddress: string }) 
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status === "reverted") {
         showToast("claim.failed", { id: toastId, action: viewTransactionAction(chainId, hash) });
-        setClaimState("idle");
+        setClaimState("error");
         return;
       }
       showToast("claim.success", {
@@ -445,13 +540,27 @@ const DistributionDetailV2 = ({ contractAddress }: { contractAddress: string }) 
       refetch();
     } catch (e) {
       showToast(isUserRejectedError(e) ? "claim.rejected" : "claim.failed", { id: toastId });
-      setClaimState("idle");
+      setClaimState("error");
     }
-  }, [walletClient, publicClient, contractInfo, contractAddress, claimData, chainId, tokenSymbol, tokenDecimals, refetch]);
+  }, [walletClient, publicClient, contractInfo, contractAddress, claimData, chainId, tokenSymbol, tokenDecimals, refetch, sameChain]);
 
   const handleParticipate = useCallback(async (): Promise<boolean> => {
     if (!walletClient || !publicClient || !contractInfo || !amountParsed) return false;
-    if (!amountInput.validate()) return false;
+    if (chainId === undefined) return false;
+    if (!sameChain) {
+      showToast("network.wrong", { params: { chain: chainToName(chainId) } });
+      return false;
+    }
+    // meaningfully tell the user why participation can't proceed right now
+    if (ddpState !== "live") {
+      showToast(ddpState === "upcoming" ? "participate.notStarted" : "participate.ended");
+      return false;
+    }
+    if (fromEpochNum - 1 < Number(currentEpoch ?? 0)) {
+      showToast("participate.epochClosed", { params: { epoch: fromEpochNum } });
+      return false;
+    }
+    if (!validateAll(amountInput, fromEpochInput, toEpochInput)) return false;
     const addresses = getAddresses(chainId);
     const isEth =
       addresses.ethParticipationRouter !== zeroAddress &&
@@ -463,6 +572,7 @@ const DistributionDetailV2 = ({ contractAddress }: { contractAddress: string }) 
     try {
       if (isEth) {
         const router = getEthParticipationRouterContract(walletClient);
+        setParticipateState("participating");
         showToast("participate.pending", { id: toastId, params: { epoch: fromEpochNum } });
         const hash = await router.write.participateWithETH(
           [contractAddress as Address, amountPerEpoch, range, walletClient.account.address, "0x"],
@@ -480,8 +590,8 @@ const DistributionDetailV2 = ({ contractAddress }: { contractAddress: string }) 
           walletClient.account.address,
           contractAddress as Address,
         ]);
-        showToast("participate.pending", { id: toastId, params: { epoch: fromEpochNum } });
         if (allowance < totalAmount) {
+          setParticipateState("approving");
           const approveHash = await pToken.write.approve([contractAddress as Address, maxUint256], {
             account: walletClient.account,
             chain: walletClient.chain,
@@ -489,6 +599,8 @@ const DistributionDetailV2 = ({ contractAddress }: { contractAddress: string }) 
           const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
           if (approveReceipt.status === "reverted") throw new Error("approve failed");
         }
+        setParticipateState("participating");
+        showToast("participate.pending", { id: toastId, params: { epoch: fromEpochNum } });
         const distributor = getDistributorV1Contract(walletClient, contractAddress as Address);
         const hash = await distributor.write.participate(
           [amountPerEpoch, range, walletClient.account.address, "0x"],
@@ -509,10 +621,21 @@ const DistributionDetailV2 = ({ contractAddress }: { contractAddress: string }) 
       );
       amountInput.reset();
       epochsInput.reset();
+      setParticipateState("idle");
       refetch();
       return true;
     } catch (e) {
-      showToast(isUserRejectedError(e) ? "participate.rejected" : "participate.failed", { id: toastId });
+      setParticipateState(isUserRejectedError(e) ? "idle" : "error");
+      showToast(
+        isUserRejectedError(e) ? "participate.rejected" : "participate.failed",
+        { id: toastId },
+      );
+      if (!isUserRejectedError(e)) {
+        showToast("tx.reverted", {
+          id: `${toastId}-reason`,
+          params: { reason: revertReason(e) },
+        });
+      }
       return false;
     }
   }, [
@@ -529,6 +652,11 @@ const DistributionDetailV2 = ({ contractAddress }: { contractAddress: string }) 
     toEpochNum,
     contractAddress,
     refetch,
+    sameChain,
+    ddpState,
+    currentEpoch,
+    fromEpochInput,
+    toEpochInput,
   ]);
 
   const onAddToWallet = useCallback(async () => {
@@ -553,7 +681,10 @@ const DistributionDetailV2 = ({ contractAddress }: { contractAddress: string }) 
   }, []);
 
   const split = useMemo(
-    () => (contractInfo ? computeShares(contractInfo, chainId) : { priceAnchorPct: 0, founderSharePct: 0, protocolFeePct: 0 }),
+    () =>
+      contractInfo && chainId !== undefined
+        ? computeShares(contractInfo, chainId)
+        : { priceAnchorPct: 0, founderSharePct: 0, protocolFeePct: 0 },
     [contractInfo, chainId],
   );
 
@@ -564,109 +695,160 @@ const DistributionDetailV2 = ({ contractAddress }: { contractAddress: string }) 
     return (lastEpochEndSec + Number(contractInfo.claimDelaySeconds)) * 1000;
   }, [contractInfo, toEpochNum]);
 
+  // chain is mandatory in the URL
+  if (chainId === undefined) {
+    return (
+      <DdpMessage
+        title="Unknown chain"
+        message="This link is missing a valid ?chain= parameter. Append ?chain=base or ?chain=sepolia."
+      />
+    );
+  }
+
+  if (error) {
+    return (
+      <DdpMessage
+        title="Couldn't load this distribution"
+        message={error}
+        onRetry={refetch}
+      />
+    );
+  }
+
+  // wait for ALL page data before rendering, so nothing below needs null defaults
+  if (
+    isLoading ||
+    !contractInfo ||
+    currentEpoch === undefined ||
+    tokenSymbol === undefined ||
+    tokenDecimals === undefined ||
+    participationTokenSymbol === undefined ||
+    participationTokenDecimals === undefined
+  ) {
+    return <DdpLoading chainId={chainId} />;
+  }
+
   const claimable = claimData?.claimableAmount ?? 0n;
-  const showClaim = ddpState !== "upcoming" && (claimable > 0n || claimState === "done");
+  const showClaim =
+    ddpState !== "upcoming" &&
+    sameChain &&
+    (claimable > 0n || claimState === "done" || claimState === "error");
 
   const data: MainnetDdpData = {
     header: {
       name: tokenName ?? "—",
-      symbol: tokenSymbol ?? "",
-      creator: contractInfo?.owner ?? "—",
-      tokenAddress: contractInfo?.distributionToken ?? "—",
+      symbol: tokenSymbol,
+      creator: contractInfo.owner,
+      tokenAddress: contractInfo.distributionToken,
       distributionAddress: contractAddress,
       imageUrl: avatarUrl ?? undefined,
+      network: chainToName(chainId),
       links: {
-        website: metadata.website || undefined,
-        x: metadata.x || undefined,
-        github: metadata.github || undefined,
-        explorer: contractInfo
-          ? `${base.blockExplorers?.default.url}/token/${contractInfo.distributionToken}`
+        website: absoluteUrl(metadata.website),
+        x: absoluteUrl(metadata.x),
+        github: absoluteUrl(metadata.github),
+        explorer: EXPLORER_URLS[chainId]
+          ? `${EXPLORER_URLS[chainId]}/token/${contractInfo.distributionToken}`
           : undefined,
-        uniswap: contractInfo
-          ? `https://app.uniswap.org/explore/tokens/base/${contractInfo.distributionToken}`
-          : undefined,
+        uniswap:
+          chainId === base.id
+            ? `https://app.uniswap.org/explore/tokens/base/${contractInfo.distributionToken}`
+            : undefined,
       },
       onShare,
     },
     overview: {
-      distributedSupply: roundUnits(stats.distributedSupplyAmount, tokenDecimals ?? 18),
-      totalSupply: roundUnits(contractInfo?.totalDistributionAmount ?? 0n, tokenDecimals ?? 18),
-      tokenSymbol: tokenSymbol ?? "",
-      totalParticipation: roundUnits(contractInfo?.totalParticipation ?? 0n, participationDecimals),
-      quoteSymbol: participationTokenSymbol ?? "",
+      distributedSupply: roundUnits(stats.distributedSupplyAmount, tokenDecimals),
+      totalSupply: roundUnits(contractInfo.totalDistributionAmount, tokenDecimals),
+      tokenSymbol,
+      totalParticipation: roundUnits(contractInfo.totalParticipation, participationDecimals),
+      quoteSymbol: participationTokenSymbol,
       periodDate: formatDateTime(ddpState === "upcoming" ? startTimestampMs : endTimestampMs),
     },
     countdownTargetMs,
     epochStats: {
       epoch: displayEpoch ? `#${displayEpoch.epoch}` : "—",
-      epochTime: displayEpoch ? fmtEpochDate(displayEpoch.timestamp, true) : "—",
-      lastClearPrice: fmtPrice(lastClearPrice),
+      epochTime: displayEpoch ? formatEpochTimestamp(displayEpoch.timestamp, true) : "—",
+      lastClearPrice: formatPrice(lastClearPrice),
       participation: roundUnits(displayEpoch?.participationAmount ?? 0n, participationDecimals),
       participants: String(displayEpoch?.participants ?? 0),
-      quoteSymbol: participationTokenSymbol ?? "",
+      quoteSymbol: participationTokenSymbol,
     },
     legend: {
       stats: [
         { label: "Total epochs", value: fmtInt(stats.totalEpochs) },
         {
           label: "Supply per epoch (Flat release)",
-          value: `${roundUnits(stats.supplyPerEpoch, tokenDecimals ?? 18)} ${tokenSymbol ?? ""}`,
+          value: `${roundUnits(stats.supplyPerEpoch, tokenDecimals)} ${tokenSymbol}`,
         },
-        { label: "Epoch duration", value: contractInfo ? formatDuration(Number(contractInfo.epochDuration)) : "—" },
-        { label: "Unique participants", value: fmtInt(Number(contractInfo?.totalUniqueParticipants ?? 0n)) },
+        { label: "Epoch duration", value: formatDuration(Number(contractInfo.epochDuration)) },
+        { label: "Unique participants", value: fmtInt(Number(contractInfo.totalUniqueParticipants)) },
       ],
-      supplyRemaining: `${roundUnits(stats.supplyPerEpoch * BigInt(Math.max(stats.remainingCount, 0)), tokenDecimals ?? 18)} ${tokenSymbol ?? ""}`,
+      supplyRemaining: `${roundUnits(stats.supplyPerEpoch * BigInt(Math.max(stats.remainingCount, 0)), tokenDecimals)} ${tokenSymbol}`,
       epochsLeft: fmtInt(Math.max(stats.remainingCount, 0)),
     },
     epochs,
-    tokenSymbol: tokenSymbol ?? "",
-    tokenDecimals: tokenDecimals ?? 18,
-    quoteSymbol: participationTokenSymbol ?? "",
+    tokenSymbol,
+    tokenDecimals,
+    quoteSymbol: participationTokenSymbol,
     quoteDecimals: participationDecimals,
     claiming: claimState === "claiming",
     split,
     claim: showClaim
       ? {
           state: claimState === "idle" ? "ready" : claimState,
-          amount: roundUnits(claimable, tokenDecimals ?? 18),
-          symbol: tokenSymbol ?? "",
+          amount: roundUnits(claimable, tokenDecimals),
+          symbol: tokenSymbol,
           onClaim: handleClaim,
           onAddToWallet,
         }
       : undefined,
     participation: {
-      quoteSymbol: participationTokenSymbol ?? "",
-      walletBalance: `${roundUnits(participationTokenBalance ?? 0n, participationDecimals)} ${participationTokenSymbol ?? ""}`,
+      quoteSymbol: participationTokenSymbol,
+      walletBalance: `${roundUnits(participationTokenBalance ?? 0n, participationDecimals)} ${participationTokenSymbol}`,
       claimDelay: `${claimDelayDays} days`,
       fromEpoch: String(fromEpochNum),
       toEpoch: String(toEpochNum),
       perEpochEstimate:
         amountParsed && epochCountNum > 0
-          ? `≈ ${roundUnits(amountParsed / BigInt(epochCountNum), participationDecimals)} ${participationTokenSymbol ?? ""} per epoch`
+          ? `≈ ${roundUnits(amountParsed / BigInt(epochCountNum), participationDecimals)} ${participationTokenSymbol} per epoch`
           : "",
       amountState: amountInput,
       epochsState: epochsInput,
       rangeState: { from: fromEpochInput, to: toEpochInput },
       onStepEpochs: stepEpochs,
       amountError: amountLimitError ?? amountInput.error,
-      onConnect: openConnectModal,
+      rangeError: fromEpochInput.error ?? toEpochInput.error,
+      onConnect: () => {
+        if (isConnected && !sameChain) switchChain({ chainId });
+        else openConnectModal?.();
+      },
+      connectLabel:
+        isConnected && !sameChain
+          ? `Switch to ${chainToName(chainId)}`
+          : undefined,
+      state: participateState,
     },
     review: {
-      amount: `${amountInput.value || "0"} ${participationTokenSymbol ?? ""}`,
+      amount:
+        amountParsed !== null
+          ? `${roundUnits(amountParsed, participationDecimals)} ${participationTokenSymbol}`
+          : `0 ${participationTokenSymbol}`,
       fromEpoch: fromEpochNum,
       toEpoch: toEpochNum,
-      tokenSymbol: tokenSymbol ?? "",
+      tokenSymbol,
       claimDelayDays,
       claimDate: formatDateTime(claimAvailableMs),
       onConfirm: handleParticipate,
+      state: participateState,
       onAddToCalendar: () => {
         const ics = [
           "BEGIN:VCALENDAR",
           "VERSION:2.0",
           "BEGIN:VEVENT",
-          `SUMMARY:Claim ${tokenSymbol ?? ""}`,
+          `SUMMARY:Claim ${tokenSymbol}`,
           `DTSTART:${new Date(claimAvailableMs).toISOString().replace(/[-:.]/g, "").slice(0, 15)}Z`,
-          `DESCRIPTION:Claim your ${tokenSymbol ?? ""} share`,
+          `DESCRIPTION:Claim your ${tokenSymbol} share`,
           "END:VEVENT",
           "END:VCALENDAR",
         ].join("\r\n");
@@ -679,27 +861,84 @@ const DistributionDetailV2 = ({ contractAddress }: { contractAddress: string }) 
       },
     },
     about: metadata.description ?? "",
-    epochDurationSec: contractInfo ? Number(contractInfo.epochDuration) : 0,
-    lastClearPrice: lastClearPrice ?? 0,
+    epochDurationSec: Number(contractInfo.epochDuration),
+    lastClearPrice,
   };
 
   return (
-    <MainnetDdp
-      variant={native ? "native" : "imported"}
-      state={ddpState}
-      connected={isConnected}
-      data={data}
-      epochActions={{
-        onParticipate: (epoch) => {
-          fromEpochInput.onChange(String(epoch));
-          toEpochInput.onChange(String(epoch));
-        },
-        onClaim: () => {
-          void handleClaim();
-        },
-      }}
-    />
+    <>
+      <MainnetDdp
+        variant={native ? "native" : "imported"}
+        state={ddpState}
+        connected={sameChain}
+        chainId={chainId}
+        data={data}
+        epochActions={{
+          onParticipate: (epoch) => {
+            fromEpochInput.onChange(String(epoch));
+            toEpochInput.onChange(String(epoch));
+          },
+          onClaim: () => {
+            void handleClaim();
+          },
+        }}
+      />
+      {/* ROOT-faucet prompt is Sepolia-only; on Base there is no ROOT token. */}
+      {chainId === sepolia.id && claimRootOpen && (
+        <ClaimRootDialog onClose={() => setClaimRootOpen(false)} />
+      )}
+    </>
   );
+};
+
+// Full-page spinner shown until every read has resolved.
+function DdpLoading({ chainId }: { chainId: number }) {
+  return (
+    <div className="flex h-dvh flex-col overflow-y-auto bg-canvas">
+      <MainnetHeader lockedChainId={chainId} />
+      <div className="flex flex-1 items-center justify-center">
+        <IconLoader2 size={32} className="animate-spin text-tertiary" />
+      </div>
+      <MainnetFooter />
+    </div>
+  );
+}
+
+function DdpMessage({
+  title,
+  message,
+  onRetry,
+}: {
+  title: string;
+  message: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <div className="flex h-dvh flex-col overflow-y-auto bg-canvas">
+      <MainnetHeader />
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
+        <div className="flex flex-col gap-2">
+          <h1 className="font-display text-h3 text-primary">{title}</h1>
+          <p className="max-w-120 text-body leading-6 text-secondary">{message}</p>
+        </div>
+        {onRetry && (
+          <Button variant="primary" size="m" onClick={onRetry}>
+            Retry
+          </Button>
+        )}
+      </div>
+      <MainnetFooter />
+    </div>
+  );
+}
+
+// Pulls the human reason out of a viem contract error so users see why a tx failed.
+const revertReason = (e: unknown): string => {
+  const err = e as { shortMessage?: string; message?: string };
+  const msg = err.shortMessage ?? err.message ?? String(e);
+  const afterReason = msg.match(/reason:\s*([^\n]+)/);
+  if (afterReason) return afterReason[1].trim();
+  return msg.split("\n")[0];
 };
 
 export default DistributionDetailV2;

@@ -4,7 +4,7 @@ import { IconLoader3, IconSquareRoundedCheckFilled } from "@tabler/icons-react";
 import { Button } from "@/components/Button/Button";
 import { BODY_L, BODY_S } from "@/constants/typography";
 
-export type ClaimState = "ready" | "claiming" | "done";
+export type ClaimState = "ready" | "claiming" | "done" | "error";
 
 export type ClaimCardProps = {
   state: ClaimState;
@@ -61,6 +61,7 @@ const Done = ({ size, onAddToWallet }: { size: "m" | "s"; onAddToWallet?: () => 
 const ClaimCard = ({ state, amount, symbol, onClaim, onAddToWallet }: ClaimCardProps) => {
   const claiming = state === "claiming";
   const done = state === "done";
+  const error = state === "error";
   return (
     <>
       <div className="hidden w-full flex-col gap-4 rounded-(--radius-l) border border-subtle bg-sumi px-6 py-5 xl:flex">
@@ -75,6 +76,11 @@ const ClaimCard = ({ state, amount, symbol, onClaim, onAddToWallet }: ClaimCardP
               </span>
               <span className={`${BODY_S} text-secondary`}>{symbol}</span>
             </p>
+            {error && (
+              <p className={`${BODY_S} text-danger`}>
+                Claim didn&apos;t go through. Please try again.
+              </p>
+            )}
             <ClaimButton claiming={claiming} size="m" onClick={onClaim} />
           </>
         )}
@@ -87,13 +93,20 @@ const ClaimCard = ({ state, amount, symbol, onClaim, onAddToWallet }: ClaimCardP
         {done ? (
           <Done size="s" onAddToWallet={onAddToWallet} />
         ) : (
-          <div className="flex items-center justify-between gap-4">
-            <p className="flex items-baseline gap-1">
-              <span className={`${BODY_L} text-primary`}>{amount}</span>
-              <span className={`${BODY_S} text-secondary`}>{symbol}</span>
-            </p>
-            <ClaimButton claiming={claiming} size="s" onClick={onClaim} />
-          </div>
+          <>
+            <div className="flex items-center justify-between gap-4">
+              <p className="flex items-baseline gap-1">
+                <span className={`${BODY_L} text-primary`}>{amount}</span>
+                <span className={`${BODY_S} text-secondary`}>{symbol}</span>
+              </p>
+              <ClaimButton claiming={claiming} size="s" onClick={onClaim} />
+            </div>
+            {error && (
+              <p className={`${BODY_S} text-danger`}>
+                Claim didn&apos;t go through. Please try again.
+              </p>
+            )}
+          </>
         )}
       </div>
     </>

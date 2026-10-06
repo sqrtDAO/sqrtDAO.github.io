@@ -8,8 +8,9 @@ import DistributionDetailV2 from "@/components/DistributionDetailV2/Distribution
 function DistributionContent() {
   const searchParams = useSearchParams();
   const address = searchParams.get("address");
+  const chain = searchParams.get("chain");
   if (!address || !isAddress(address)) notFound();
-  return <DistributionDetailV2 contractAddress={address} />;
+  return <DistributionDetailV2 contractAddress={address} chainSlug={chain} />;
 }
 
 export default function DistributionPage() {

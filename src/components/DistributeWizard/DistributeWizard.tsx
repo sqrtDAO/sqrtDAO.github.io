@@ -67,6 +67,7 @@ import { viewTransactionAction } from "@/utils/explorer-utils";
 import { quickSqrtPriceX96 } from "@/lib/utils/sqrtPricex96";
 import { EMPTY_PERMIT2 } from "@/lib/utils/permit2";
 import { roundUnits } from "@/utils/round-units";
+import { chainToSlug } from "@/utils/chain-utils";
 
 type Step = "router" | "import" | "welcome" | "supply" | "release" | "rules" | "review" | "wallet" | "confirming" | "ready";
 type ReleaseType = "time" | "epoch";
@@ -289,9 +290,11 @@ const ReviewSection = ({
 const Status = ({
   step,
   distributor,
+  chainId,
 }: {
   step: "wallet" | "confirming" | "ready";
   distributor?: Address;
+  chainId?: number;
 }) => (
   <div className="flex w-full flex-col items-center gap-8 text-center">
     <Image
@@ -331,7 +334,9 @@ const Status = ({
         <div className="flex w-full flex-col gap-4 xl:flex-row xl:justify-center">
           <Link
             href={
-              distributor ? `/distribution?address=${distributor}` : DISTRIBUTION_LIST
+              distributor
+                ? `/distribution?address=${distributor}${chainId ? `&chain=${chainToSlug(chainId)}` : ""}`
+                : DISTRIBUTION_LIST
             }
             className="sqrt-btn sqrt-btn--outline sqrt-btn--l"
           >
@@ -866,7 +871,7 @@ if (asset.native) {
   if (step === "wallet" || step === "confirming" || step === "ready") {
     return (
       <WizardShell>
-        <Status step={step} distributor={distributor ?? undefined} />
+        <Status step={step} distributor={distributor ?? undefined} chainId={walletClient?.chain.id} />
       </WizardShell>
     );
   }

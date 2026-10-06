@@ -90,16 +90,6 @@ export default function Page() {
         both chains.
       </P>
       <AddressTable chainId={sepolia.id} />
-
-      <H2 id="local">Local development (Anvil)</H2>
-      <P>
-        For local development against Anvil, addresses live in{" "}
-        <Code>
-          contract-addresses.ts
-        </Code>{" "}
-        too, but they rotate on every fresh deploy — always redeploy and re-sync rather than
-        hardcoding them anywhere.
-      </P>
     </>
   );
 }

@@ -1,7 +1,7 @@
-import { zeroAddress, type Address } from "viem";
-import { anvil, base, sepolia } from "wagmi/chains";
+import { type Address } from "viem";
+import { base, sepolia } from "wagmi/chains";
 
-export type ChainId = typeof anvil.id | typeof base.id | typeof sepolia.id;
+export type ChainId = typeof base.id | typeof sepolia.id;
 
 export interface ContractAddresses {
   factoryV1: Address;
@@ -20,19 +20,6 @@ export interface ContractAddresses {
 // Each chain is listed in full on purpose — the two deployments happen to share
 // addresses today (same deployer, nonce 0), but they must stay independently editable.
 const addresses: Record<ChainId, ContractAddresses> = {
-  [anvil.id]: {
-    factoryV1: zeroAddress,
-    fixedEmission: zeroAddress,
-    linearEmission: zeroAddress,
-    exponentialEmission: zeroAddress,
-    transferToHook: zeroAddress,
-    buyAndBurnHook: zeroAddress,
-    tokenFactory: zeroAddress,
-    distributorFactory: zeroAddress,
-    ethParticipationRouter: zeroAddress,
-    feeVault: zeroAddress,
-    weth: zeroAddress,
-  },
   [sepolia.id]: {
     factoryV1: "0x0d7c71B0E33636555C237899DfF80F847637186e",
     fixedEmission: "0xa616f9d40DfBe52836B47744BcF2F4be0cDE4ACb",

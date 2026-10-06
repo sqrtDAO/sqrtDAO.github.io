@@ -7,9 +7,9 @@ import { readTokenAvatar } from "@/utils/avatar-api";
 
 const useTokenAvatar = (
   address: Address | undefined,
-  _chainId?: number,
+  chainId?: number,
 ): string | null => {
-  const publicClient = usePublicClient();
+  const publicClient = usePublicClient(chainId ? { chainId } : undefined);
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {

@@ -31,6 +31,8 @@ export type DistributionHeaderProps = {
   creator: string;
   tokenAddress: string;
   distributionAddress: string;
+  /** Chain name shown in the "on X" tag; defaults to the connected chain. */
+  network?: string;
   /** Absolute URLs. Anything missing simply isn't rendered. */
   links?: DistributionHeaderLinks;
   onShare?: () => void;
@@ -93,11 +95,11 @@ const Address = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
-const NameRow = ({ name, symbol, status }: DistributionHeaderProps) => (
+const NameRow = ({ name, symbol, status, network }: DistributionHeaderProps) => (
   <div className="flex flex-col gap-1 xl:gap-2">
     <div className="flex items-center gap-2 xl:items-end">
       <h1 className="text-h4 leading-none font-medium text-primary">{name}</h1>
-      <NetworkTag />
+      <NetworkTag network={network} />
       <Status status={status} className="shrink-0" />
     </div>
     <p className={`${BODY_L} text-secondary`}>{symbol}</p>
@@ -122,7 +124,7 @@ const DistributionHeader = (props: DistributionHeaderProps) => {
           seed={seed}
           imageUrl={props.imageUrl}
           size={130}
-          className="!rounded-m !border-muted"
+          className="!rounded-m"
         />
         <div className="flex min-w-0 flex-1 flex-col gap-4">
           <div className="flex items-center justify-between gap-4">

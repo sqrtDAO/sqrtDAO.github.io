@@ -3,6 +3,7 @@ import {
   getDistributorV1Contract,
   getTokenV1Contract,
 } from "@/contracts/contracts";
+import { getAddresses } from "@/contracts/contract-addresses";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
 import {
@@ -56,8 +57,8 @@ const UI_EPOCH_LIMIT = BigInt(MAX_RENDERED_EPOCHS);
 // MIN_GRID_CAPACITY blocks so it remains visible on the smallest grid
 const PAST_EPOCHS = UI_EPOCH_LIMIT - BigInt(MIN_GRID_CAPACITY);
 
-export function useDistributorData(contractAddress: Address) {
-  const publicClient = usePublicClient();
+export function useDistributorData(contractAddress: Address, chainId?: number) {
+  const publicClient = usePublicClient(chainId ? { chainId } : undefined);
   const { address } = useAccount();
 
   const [contractInfo, setContractInfo] = useState<
@@ -102,8 +103,10 @@ export function useDistributorData(contractAddress: Address) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!publicClient) return;
+      // no chain → no read; the page renders an "unknown chain" error
+      if (!publicClient || chainId === undefined) return;
       setIsLoading(true);
+      setError(undefined);
       try {
         const distributor = getDistributorV1Contract(
           publicClient,
@@ -137,8 +140,18 @@ export function useDistributorData(contractAddress: Address) {
         setParticipationTokenSymbol(await pToken.read.symbol());
         setParticipationTokenDecimals(await pToken.read.decimals());
         if (cancelled) return;
+        // ETH-paired distributions use WETH as the participation token, but the
+        // user actually holds native ETH — show that balance.
+        const weth = getAddresses(publicClient.chain.id).weth;
+        const isWeth =
+          weth !== zeroAddress &&
+          info.participationToken.toLowerCase() === weth.toLowerCase();
         setParticipationTokenBalance(
-          address ? await pToken.read.balanceOf([address]) : BigInt(0),
+          !address
+            ? BigInt(0)
+            : isWeth
+              ? await publicClient.getBalance({ address })
+              : await pToken.read.balanceOf([address]),
         );
 
         // currentEpoch keeps growing after the distribution ends, so the

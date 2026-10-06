@@ -20,6 +20,8 @@ type ParticipationReviewDialogV2Props = {
   /** Resolve true/false to tell the host whether to close the dialog. */
   onConfirm?: () => void | Promise<boolean | void>;
   onAddToCalendar?: () => void;
+  /** In-flight / failed state for the confirm action. */
+  state?: "idle" | "approving" | "participating" | "error";
 };
 
 const onConfirmFallback = () => {
@@ -42,7 +44,14 @@ const ParticipationReviewDialogV2 = ({
   onClose,
   onConfirm = onConfirmFallback,
   onAddToCalendar = onAddToCalendarFallback,
+  state = "idle",
 }: ParticipationReviewDialogV2Props) => {
+  const busy = state === "approving" || state === "participating";
+  const confirmLabel = busy
+    ? state === "approving"
+      ? "Approving…"
+      : "Confirming…"
+    : "Confirm & sign";
   const words: [string, boolean][] = [
     ["You’re participating with", false],
     [`${amount},`, true],
@@ -101,9 +110,10 @@ const ParticipationReviewDialogV2 = ({
           variant="primary"
           size="m"
           className="flex-1"
+          disabled={busy}
           onClick={onConfirm}
         >
-          Confirm &amp; sign
+          {confirmLabel}
         </Button>
       </div>
     </DialogShell>
