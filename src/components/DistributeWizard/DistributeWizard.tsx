@@ -886,7 +886,22 @@ if (asset.native) {
         // wallets reject gas ==/above the block limit, so leave a small margin
         gas: (latestBlock.gasLimit * 98n) / 100n,
       });
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await publicClient
+        .waitForTransactionReceipt({ hash })
+        .catch((e) => {
+          console.error(e);
+          // Tx was broadcast, so the distribution may already exist. A failed
+          // receipt fetch must not read as "launch failed".
+          showToast("launch.unconfirmed", {
+            id: toastId,
+            action: viewTransactionAction(walletClient.chain.id, hash),
+          });
+          return null;
+        });
+      if (!receipt) {
+        setStep("review");
+        return;
+      }
       if (receipt.status === "reverted") {
         showToast("launch.failed", { id: toastId, action: viewTransactionAction(walletClient.chain.id, hash) });
         throw new Error("createLiquidityAndDistribution reverted");

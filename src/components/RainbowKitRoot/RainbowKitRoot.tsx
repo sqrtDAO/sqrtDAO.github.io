@@ -5,22 +5,45 @@ import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { base, sepolia } from "wagmi/chains";
-import { http } from "viem";
+import { fallback, http, type Transport } from "viem";
 import { useState, type ReactNode } from "react";
 import WalletToastWatcher from "@/components/WalletToastWatcher/WalletToastWatcher";
 import "@rainbow-me/rainbowkit/styles.css";
 
 // Base is the default network; Sepolia is selectable via the header network switch.
-// Public RPCs rate-limit hard (the default base.org/sepolia RPCs especially), so
-// default to publicnode and allow a dedicated RPC via env for heavier use.
+//
+// Public RPCs rate-limit or reject specific calls — e.g. publicnode's free tier
+// answers `eth_getTransactionReceipt` with "archive requests require a personal
+// token", which made a *successful* token launch look like it failed. Use a
+// `fallback` transport so one provider failing falls through to the next instead
+// of breaking reads or dropping an already-mined transaction. A dedicated RPC
+// can still be supplied via env and is tried first.
+const buildTransport = (dedicated: string | undefined, defaults: string[]): Transport =>
+  fallback(
+    [dedicated, ...defaults]
+      .filter((url): url is string => Boolean(url))
+      .map((url) => http(url, { retryCount: 2 })),
+    {
+      // keep our order (dedicated first) rather than latency-ranking the public RPCs
+      rank: false,
+      retryCount: 2,
+      // always try the next provider rather than surfacing a single provider's error
+      shouldThrow: () => false,
+    },
+  );
+
 const transports = {
-  [base.id]: http(
-    process.env.NEXT_PUBLIC_BASE_RPC_URL ?? "https://base-rpc.publicnode.com",
-  ),
-  [sepolia.id]: http(
-    process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL ??
-      "https://ethereum-sepolia-rpc.publicnode.com",
-  ),
+  [base.id]: buildTransport(process.env.NEXT_PUBLIC_BASE_RPC_URL, [
+    "https://mainnet.base.org",
+    "https://base.llamarpc.com",
+    "https://base-rpc.publicnode.com",
+    "https://base.drpc.org",
+  ]),
+  [sepolia.id]: buildTransport(process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL, [
+    "https://ethereum-sepolia-rpc.publicnode.com",
+    "https://sepolia.drpc.org",
+    "https://rpc.sepolia.org",
+  ]),
 };
 
 const config = getDefaultConfig({

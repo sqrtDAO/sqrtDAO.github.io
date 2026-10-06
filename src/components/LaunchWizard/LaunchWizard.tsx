@@ -258,7 +258,20 @@ const LaunchWizard = () => {
         account: walletClient.account,
         chain: walletClient.chain,
       });
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await publicClient
+        .waitForTransactionReceipt({ hash })
+        .catch((e) => {
+          console.error(e);
+          // The wallet broadcast the tx, so the token may already exist. A
+          // receipt-fetch failure (e.g. the RPC refusing the call) must never
+          // read as "creation failed" — surface the tx instead.
+          showToast("deploy.unconfirmed", {
+            id: toastId,
+            action: viewTransactionAction(chainId, hash),
+          });
+          return null;
+        });
+      if (!receipt) return;
       if (receipt.status === "reverted") {
         showToast("deploy.failed", { id: toastId, action: viewTransactionAction(chainId, hash) });
         throw new Error("createToken reverted");
