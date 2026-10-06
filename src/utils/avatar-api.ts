@@ -2,7 +2,7 @@ import type { Address, PublicClient } from "viem";
 import { importer } from "ipfs-unixfs-importer";
 import { MemoryBlockstore } from "blockstore-core/memory";
 import { tokenV1Abi } from "@/contracts/abis";
-import { AVATAR_API_BASE, AVATAR_IPFS_GATEWAY } from "@/constants/avatar";
+import { AVATAR_API_BASE } from "@/constants/avatar";
 
 type UploadLinkResponse = {
   upload_url: string;
@@ -78,8 +78,9 @@ export const readTokenAvatar = async (
     abi: tokenV1Abi,
     functionName: "getAllMetadata",
   });
-  const avatar = entries.find((entry) => entry.key === "avatar")?.value;
+  const avatar = entries.find((entry) => entry.key === "avatar")?.value?.trim();
   if (!avatar) return null;
-  const cid = avatar.startsWith("ipfs://") ? avatar.slice("ipfs://".length) : avatar;
-  return cid ? `${AVATAR_IPFS_GATEWAY}${cid}` : null;
+  // return the raw value; TokenAvatar resolves ipfs:// via gateways with fallback
+  if (avatar.startsWith("ipfs://") || /^https?:\/\//i.test(avatar)) return avatar;
+  return `ipfs://${avatar}`;
 };
