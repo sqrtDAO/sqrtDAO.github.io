@@ -62,15 +62,24 @@ type MainnetHeaderProps = {
   showNetworkSwitch?: boolean;
   /** Lock the badge to a chain and make it non-clickable (distribution details). */
   lockedChainId?: number;
+  /** Reflect this chain in the badge but keep it clickable (e.g. list scoped by ?chain=). */
+  displayChainId?: number;
+  /** Override what clicking the badge does (e.g. change the ?chain= URL param). */
+  onNetworkToggle?: () => void;
 };
 
-const MainnetHeader = ({ showNetworkSwitch = true, lockedChainId }: MainnetHeaderProps) => {
+const MainnetHeader = ({
+  showNetworkSwitch = true,
+  lockedChainId,
+  displayChainId,
+  onNetworkToggle,
+}: MainnetHeaderProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = () => setMenuOpen(false);
 
   const { chainId } = useAccount();
   const { chains, switchChain } = useSwitchChain();
-  const effectiveChainId = lockedChainId ?? chainId;
+  const effectiveChainId = lockedChainId ?? displayChainId ?? chainId;
   const connected = chainId !== undefined;
   const mainnet = effectiveChainId === undefined ? true : !isTestnet(effectiveChainId);
 
@@ -79,7 +88,13 @@ const MainnetHeader = ({ showNetworkSwitch = true, lockedChainId }: MainnetHeade
     if (target) switchChain({ chainId: target.id });
   };
   const onToggle =
-    lockedChainId !== undefined ? undefined : chains.length > 1 ? toggleNetwork : undefined;
+    lockedChainId !== undefined
+      ? undefined
+      : onNetworkToggle
+        ? onNetworkToggle
+        : chains.length > 1
+          ? toggleNetwork
+          : undefined;
 
   return (
     <header className="relative z-40 w-full bg-surface">

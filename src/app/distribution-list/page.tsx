@@ -1,8 +1,9 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { useChainId } from "wagmi";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAccount, useChainId, useSwitchChain } from "wagmi";
+import { base, sepolia } from "viem/chains";
 import MainnetDistributionList from "@/components/MainnetDistributionList/MainnetDistributionList";
 import { useDistributions } from "@/hooks/useDistributions";
 import { chainNameToId, chainToSlug } from "@/utils/chain-utils";
@@ -13,12 +14,27 @@ const PAGE_SIZE = 10;
 
 function DistributionListContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const connectedChainId = useChainId();
+  const { isConnected } = useAccount();
+  const { switchChain } = useSwitchChain();
+  // the URL is the source of truth for which chain the list shows
   const chainId = chainNameToId(searchParams.get("chain")) ?? connectedChainId;
 
   const [page, setPage] = useState(1);
   const { distributions, isLoading, error, total, totalPages } =
     useDistributions({ page, pageSize: PAGE_SIZE, chainId });
+
+  // chain change → back to page 1
+  useEffect(() => setPage(1), [chainId]);
+
+  const onNetworkToggle = useCallback(() => {
+    const target = chainId === base.id ? sepolia.id : base.id;
+    router.replace(`/distribution-list?chain=${chainToSlug(target)}`, {
+      scroll: false,
+    });
+    if (isConnected) switchChain({ chainId: target });
+  }, [chainId, isConnected, router, switchChain]);
 
   const cards = distributions.map((d) => ({
     id: d.address,
@@ -50,6 +66,8 @@ function DistributionListContent() {
       onPageChange={setPage}
       isLoading={isLoading}
       error={error}
+      chainId={chainId}
+      onNetworkToggle={onNetworkToggle}
     />
   );
 }

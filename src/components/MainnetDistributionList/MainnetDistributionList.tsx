@@ -22,6 +22,10 @@ export type MainnetDistributionListProps = {
   onPageChange: (page: number) => void;
   isLoading?: boolean;
   error?: string;
+  /** Chain the list is scoped to (drives the header badge). */
+  chainId?: number;
+  /** Called when the header network badge is clicked. */
+  onNetworkToggle?: () => void;
 };
 
 // Figma 14306:80842 (desktop) / 14714:107568 (mobile).
@@ -40,7 +44,10 @@ const MainnetDistributionList = (props: MainnetDistributionListProps) => {
     <>
       <SmokeMeshBackground />
       <div className="relative z-10 flex h-dvh flex-col overflow-y-auto">
-        <MainnetHeader />
+        <MainnetHeader
+          displayChainId={props.chainId}
+          onNetworkToggle={props.onNetworkToggle}
+        />
         <main className="mx-auto flex w-full max-w-374 flex-col pt-4 xl:px-38 xl:pt-6">
           <div className="flex items-start justify-between px-4 xl:px-0">
             <div className="flex flex-col">
