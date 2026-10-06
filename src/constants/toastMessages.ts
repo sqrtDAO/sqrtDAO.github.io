@@ -11,10 +11,12 @@ export type ToastMessageKey =
   | "deploy.success"
   | "deploy.failed"
   | "deploy.rejected"
+  | "deploy.unconfirmed"
   | "launch.pending"
   | "launch.success"
   | "launch.failed"
   | "launch.rejected"
+  | "launch.unconfirmed"
   | "approve.pending"
   | "approve.success"
   | "approve.failed"
@@ -66,11 +68,19 @@ export const TOAST_MESSAGES: Record<ToastMessageKey, ToastMessageDef> = {
   "deploy.success": { type: "success", copy: "Token created — {symbol} is live on-chain." },
   "deploy.failed": { type: "error", copy: "Token creation didn't go through. Please try again." },
   "deploy.rejected": { type: "info", copy: "Deployment cancelled." },
+  "deploy.unconfirmed": {
+    type: "info",
+    copy: "Transaction submitted. We couldn't confirm it yet — check the explorer; it may already be on-chain.",
+  },
 
   "launch.pending": { type: "pending", copy: "Launching your distribution…" },
   "launch.success": { type: "success", copy: "Your distribution is live." },
   "launch.failed": { type: "error", copy: "Launch didn't go through. Please try again." },
   "launch.rejected": { type: "info", copy: "Launch cancelled. You can launch when ready." },
+  "launch.unconfirmed": {
+    type: "info",
+    copy: "Transaction submitted. We couldn't confirm it yet — check the explorer; it may already be on-chain.",
+  },
 
   "approve.pending": { type: "pending", copy: "Approving {asset}…" },
   "approve.success": { type: "success", copy: "{asset} approved. You can participate now." },
