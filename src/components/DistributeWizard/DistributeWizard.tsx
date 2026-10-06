@@ -507,11 +507,28 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
       .catch(() => {});
   }, [token?.address, address, publicClient]);
 
-  const balanceNum = token ? Number(formatUnits(token.balance, token.decimals)) : 0;
-  const initialNum = Number(initialSupply.value.replace(/,/g, "")) || 0;
-  const distributedNum = Number(toDistribute.value.replace(/,/g, "")) || 0;
-  const available = Math.max(0, balanceNum - initialNum);
-  const percent = available > 0 ? Math.min(100, Math.round((distributedNum / available) * 100)) : 0;
+  const decimals = token?.decimals ?? 18;
+  const balanceBig = token?.balance ?? 0n;
+  const tryParseAmount = (v: string): bigint | null => {
+    try {
+      return parseUnits(v.replace(/,/g, "") || "0", decimals);
+    } catch {
+      return null;
+    }
+  };
+  const initialBig = tryParseAmount(initialSupply.value) ?? 0n;
+  const distributedBig = tryParseAmount(toDistribute.value) ?? 0n;
+  const availableBig = balanceBig > initialBig ? balanceBig - initialBig : 0n;
+
+  const balanceNum = Number(formatUnits(balanceBig, decimals));
+  const initialNum = Number(formatUnits(initialBig, decimals));
+  const distributedNum = Number(formatUnits(distributedBig, decimals));
+  const available = Number(formatUnits(availableBig, decimals));
+  const percent =
+    availableBig > 0n ? Math.min(100, Number((distributedBig * 100n) / availableBig)) : 0;
+
+  // bigint formatting keeps fractions precise (500.5 stays 500.5, never floored)
+  const fmtAmount = (v: bigint) => commaModifier(formatUnits(v, decimals));
 
   // Both amounts come out of the same wallet balance, so they stay coupled:
   // - typing "Initial token supply" caps itself at the balance and live-shrinks
@@ -519,18 +536,21 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
   // - typing "Supply to distribute" is capped live at the remainder, so it can
   //   never exceed the balance (no over-100% state).
   const onInitialSupplyChange = (v: string) => {
-    const raw = v.replace(/,/g, "");
-    const n = Number(raw);
-    const clamped = !isNaN(n) && n > balanceNum ? String(balanceNum) : v;
-    initialSupply.onChange(clamped);
-    const left = Math.max(0, balanceNum - (Number(raw) || 0));
-    const current = Number(toDistribute.value.replace(/,/g, "")) || 0;
-    if (current > left) toDistribute.onChange(String(left));
+    const parsed = tryParseAmount(v);
+    if (parsed === null) {
+      // mid-edit value ("1.") — pass through untouched
+      initialSupply.onChange(v);
+      return;
+    }
+    const clampedBig = parsed > balanceBig ? balanceBig : parsed;
+    initialSupply.onChange(fmtAmount(clampedBig));
+    const leftBig = balanceBig > clampedBig ? balanceBig - clampedBig : 0n;
+    if (distributedBig > leftBig) toDistribute.onChange(fmtAmount(leftBig));
   };
   const onToDistributeChange = (v: string) => {
-    const n = Number(v.replace(/,/g, ""));
-    if (!isNaN(n) && n > available) {
-      toDistribute.onChange(String(available));
+    const parsed = tryParseAmount(v);
+    if (parsed !== null && parsed > availableBig) {
+      toDistribute.onChange(fmtAmount(availableBig));
       return;
     }
     toDistribute.onChange(v);
@@ -811,6 +831,21 @@ if (asset.native) {
         distributionLiquidity + totalDistributionAmount,
       );
 
+      // Re-check the start time: approvals + wallet prompts can take long enough
+      // that a near-future start expires, and the contract reverts.
+      if (
+        Number(startTimestamp) <
+        Math.floor(Date.now() / 1000) + START_TIME_BUFFER_SEC
+      ) {
+        showToast("tx.reverted", {
+          id: toastId,
+          params: { reason: "start time passed while confirming — pick a later one" },
+        });
+        startDate.setError("Start must be in the future");
+        setStep("release");
+        return;
+      }
+
       setStep("confirming");
       showToast("launch.pending", { id: toastId });
       const args = [
@@ -1033,8 +1068,12 @@ if (asset.native) {
                 <div className="flex w-full flex-col gap-2">
                   <SupplySlider
                     value={percent}
-                    disabled={available <= 0}
-                    onChange={(p) => toDistribute.onChange(String(Math.floor((available * p) / 100)))}
+                    disabled={availableBig <= 0n}
+                    onChange={(p) =>
+                      toDistribute.onChange(
+                        fmtAmount((availableBig * BigInt(p)) / 100n),
+                      )
+                    }
                   />
                   <div className="flex w-full items-start gap-2">
                     <p className={`flex-1 ${bodyM} text-accent`}>
