@@ -1,8 +1,12 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { IconChevronRight } from "@tabler/icons-react";
+import type { Address } from "viem";
 import Logo from "@/components/Logo/Logo";
 import Status, { type DistributionStatus } from "@/components/Status/Status";
+import useTokenAvatar from "@/hooks/useTokenAvatar";
 import { BODY_L, BODY_M, BODY_S } from "@/constants/typography";
 
 export type MainnetDistributionCardProps = {
@@ -11,6 +15,9 @@ export type MainnetDistributionCardProps = {
   symbol: string;
   status: DistributionStatus;
   imageUrl?: string;
+  /** On-chain token + chain; when set the avatar is resolved from metadata. */
+  tokenAddress?: Address;
+  chainId?: number;
   /** Launched via sqrtDAO — shows the logo mark next to the name. */
   native: boolean;
   /** Pre-formatted amounts. */
@@ -53,13 +60,17 @@ const Metric = ({
 );
 
 // Figma 15438:138449 — rest / hovered+pressed × desktop (392) / mobile (358).
-const MainnetDistributionCard = (props: MainnetDistributionCardProps) => (
-  <Link
+const MainnetDistributionCard = (props: MainnetDistributionCardProps) => {
+  const avatar = useTokenAvatar(props.tokenAddress, props.chainId);
+  const imageUrl =
+    avatar ?? props.imageUrl ?? "/mainnet/token-avatar-placeholder.png";
+  return (
+    <Link
     href={props.href}
     className="group relative block aspect-square overflow-hidden bg-black"
   >
     <Image
-      src={props.imageUrl ?? "/mainnet/token-avatar-placeholder.png"}
+      src={imageUrl}
       alt=""
       fill
       sizes="(min-width: 1280px) 392px, 100vw"
@@ -127,6 +138,7 @@ const MainnetDistributionCard = (props: MainnetDistributionCardProps) => (
     {/* Hover border overlays the image so the card doesn't shift. */}
     <div className="pointer-events-none absolute inset-0 hidden border-2 border-action group-hover:block group-active:block" />
   </Link>
-);
+  );
+};
 
 export default MainnetDistributionCard;

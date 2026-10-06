@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { IconSearch } from "@tabler/icons-react";
 import Link from "next/link";
-import Chip from "@/components/Chip/Chip";
+import { IconLoader2 } from "@tabler/icons-react";
 import LandingAccentBar from "@/components/LandingAccentBar/LandingAccentBar";
 import LandingFragment from "@/components/LandingFragment/LandingFragment";
 import MainnetDistributionCard, {
@@ -13,7 +11,8 @@ import MainnetFooter from "@/components/MainnetFooter/MainnetFooter";
 import MainnetHeader from "@/components/MainnetHeader/MainnetHeader";
 import Pagination from "@/components/Pagination/Pagination";
 import SmokeMeshBackground from "@/components/SmokeMeshBackground/SmokeMeshBackground";
-import { BODY_M, BODY_S } from "@/constants/typography";
+import { BODY_M } from "@/constants/typography";
+import { TOKEN_LAUNCH_HREF } from "@/constants/links";
 
 export type MainnetDistributionListProps = {
   distributions: (MainnetDistributionCardProps & { id: string })[];
@@ -21,42 +20,16 @@ export type MainnetDistributionListProps = {
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  isLoading?: boolean;
+  error?: string;
 };
 
-const SORTS = ["Newest", "Most participation", "Ending soon"];
-const VIEWS = ["All", "Live", "Upcoming", "Finished", "sqrtDAO tokens"];
-
-const Search = () => (
-  <label className="flex min-w-0 flex-1 items-center gap-2.5 rounded-m bg-surface px-2 py-2.5 xl:w-52.5 xl:flex-none">
-    <IconSearch
-      size={16}
-      className="shrink-0 text-tertiary"
-      aria-hidden="true"
-    />
-    {/* TODO: teammate wires search */}
-    <input
-      type="search"
-      placeholder="Search tokens"
-      aria-label="Search tokens"
-      className={`min-w-0 flex-1 bg-transparent ${BODY_S} text-primary placeholder:text-tertiary focus:outline-none`}
-    />
-  </label>
-);
-
 // Figma 14306:80842 (desktop) / 14714:107568 (mobile).
+// Search + sort/status filters are intentionally hidden until they're wired.
 const MainnetDistributionList = (props: MainnetDistributionListProps) => {
-  // TODO: teammate wires sort + view filters into the query.
-  const [sort, setSort] = useState(SORTS[0]);
-  const [view, setView] = useState(VIEWS[0]);
-  const chips = (
-    <>
-      <Chip label="Sort:" options={SORTS} value={sort} onChange={setSort} />
-      <Chip label="Status:" options={VIEWS} value={view} onChange={setView} />
-    </>
-  );
   const launch = (
     <Link
-      href="/dev/mainnet/launch"
+      href={TOKEN_LAUNCH_HREF}
       className="sqrt-btn sqrt-btn--primary sqrt-btn--m"
     >
       <span className="sqrt-btn__label">Launch token</span>
@@ -101,37 +74,46 @@ const MainnetDistributionList = (props: MainnetDistributionListProps) => {
           </div>
 
           <div className="flex flex-col gap-4 p-4 xl:px-0">
-            {/* Mobile: search + launch, then chips. Desktop: one row. */}
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex items-center gap-4">
-                <Search />
-                <span className="hidden xl:contents">{chips}</span>
-                <span className="xl:hidden">{launch}</span>
+            <div className="flex items-center justify-end">{launch}</div>
+
+            {props.error ? (
+              <div className="flex flex-col items-start gap-2 py-8">
+                <p className={`${BODY_M} text-primary`}>{props.error}</p>
               </div>
-              <div className="flex gap-2 xl:hidden">{chips}</div>
-              <span className="hidden xl:block">{launch}</span>
-            </div>
+            ) : props.isLoading && props.distributions.length === 0 ? (
+              <div className="flex items-center justify-center py-16">
+                <IconLoader2 size={32} className="animate-spin text-tertiary" />
+              </div>
+            ) : props.distributions.length === 0 ? (
+              <div className="flex flex-col items-start gap-2 py-8">
+                <p className={`${BODY_M} text-primary`}>
+                  No distributions found on this network yet.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-4 xl:grid-cols-3 xl:gap-2">
+                  {props.distributions.map(({ id, ...card }) => (
+                    <MainnetDistributionCard key={id} {...card} />
+                  ))}
+                </div>
 
-            <div className="grid gap-4 xl:grid-cols-3 xl:gap-2">
-              {props.distributions.map(({ id, ...card }) => (
-                <MainnetDistributionCard key={id} {...card} />
-              ))}
-            </div>
-
-            <div className="flex flex-col items-end gap-2 xl:flex-row xl:items-center xl:justify-end xl:gap-6">
-              <Pagination
-                className="xl:order-2"
-                currentPage={props.page}
-                totalPages={props.totalPages}
-                onPageChange={props.onPageChange}
-              />
-              <p className={`${BODY_M} text-primary xl:order-1`}>
-                {props.distributions.length}{" "}
-                <span className="text-secondary">
-                  of {props.total.toLocaleString("en-US")} Distributions
-                </span>
-              </p>
-            </div>
+                <div className="flex flex-col items-end gap-2 xl:flex-row xl:items-center xl:justify-end xl:gap-6">
+                  <Pagination
+                    className="xl:order-2"
+                    currentPage={props.page}
+                    totalPages={props.totalPages}
+                    onPageChange={props.onPageChange}
+                  />
+                  <p className={`${BODY_M} text-primary xl:order-1`}>
+                    {props.distributions.length}{" "}
+                    <span className="text-secondary">
+                      of {props.total.toLocaleString("en-US")} Distributions
+                    </span>
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </main>
         <MainnetFooter placement="landing" />

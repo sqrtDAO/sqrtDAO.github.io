@@ -1,7 +1,13 @@
 import { usePublicClient } from "wagmi";
 import { useCallback, useEffect, useState, useRef } from "react";
+import { formatUnits, zeroAddress, type Address } from "viem";
 import { getDistributionV1FactoryContract } from "@/contracts/contracts";
-import { distributionV1FactoryAbi, tokenV1Abi } from "@/contracts/abis";
+import {
+  distributionV1FactoryAbi,
+  distributorV1Abi,
+  tokenV1Abi,
+  tokenV1FactoryAbi,
+} from "@/contracts/abis";
 import { getAddresses } from "@/contracts/contract-addresses";
 import type {
   Distribution,
@@ -24,10 +30,15 @@ const getEpochsCompleted = (currentEpoch: number, numberOfEpochs: number) =>
 type UseDistributionsParams = {
   page: number;
   pageSize: number;
+  chainId?: number;
 };
 
-export function useDistributions({ page, pageSize }: UseDistributionsParams) {
-  const publicClient = usePublicClient();
+export function useDistributions({
+  page,
+  pageSize,
+  chainId,
+}: UseDistributionsParams) {
+  const publicClient = usePublicClient(chainId ? { chainId } : undefined);
 
   const [distributions, setDistributions] = useState<Distribution[]>([]);
   const [total, setTotal] = useState(0);
@@ -47,6 +58,8 @@ export function useDistributions({ page, pageSize }: UseDistributionsParams) {
       setIsLoading(true);
       setError(undefined);
       try {
+        const chain = chainId ?? publicClient.chain.id;
+        const tokenFactory = getAddresses(chain).tokenFactory;
         const distributorFactory =
           getDistributionV1FactoryContract(publicClient);
         const length = Number(
@@ -66,40 +79,94 @@ export function useDistributions({ page, pageSize }: UseDistributionsParams) {
               ].reverse()
             : [];
 
+        const nowSec = Math.floor(Date.now() / 1000);
+        // per row: name, symbol, tokenDecimals, participationSymbol,
+        // participationDecimals, creatorOf, rewardOf(last), epochTotalParticipation(last)
         const metadata = await publicClient.multicall({
-          contracts: items.flatMap((item) => [
-            {
-              address: item.info.distributionToken,
-              abi: tokenV1Abi,
-              functionName: "name" as const,
-            },
-            {
-              address: item.info.distributionToken,
-              abi: tokenV1Abi,
-              functionName: "symbol" as const,
-            },
-            {
-              address: item.info.participationToken,
-              abi: tokenV1Abi,
-              functionName: "symbol" as const,
-            },
-            {
-              address: item.info.participationToken,
-              abi: tokenV1Abi,
-              functionName: "decimals" as const,
-            },
-          ]),
+          contracts: items.flatMap((item) => {
+            const currentEpoch = Math.floor(
+              (nowSec - Number(item.info.startingTimestamp)) /
+                Number(item.info.epochDuration),
+            );
+            const completed = getEpochsCompleted(
+              currentEpoch,
+              Number(item.info.numberOfEpochs),
+            );
+            const lastEpochIdx = BigInt(Math.max(0, completed - 1));
+            return [
+              {
+                address: item.info.distributionToken,
+                abi: tokenV1Abi,
+                functionName: "name" as const,
+              },
+              {
+                address: item.info.distributionToken,
+                abi: tokenV1Abi,
+                functionName: "symbol" as const,
+              },
+              {
+                address: item.info.distributionToken,
+                abi: tokenV1Abi,
+                functionName: "decimals" as const,
+              },
+              {
+                address: item.info.participationToken,
+                abi: tokenV1Abi,
+                functionName: "symbol" as const,
+              },
+              {
+                address: item.info.participationToken,
+                abi: tokenV1Abi,
+                functionName: "decimals" as const,
+              },
+              {
+                address: tokenFactory,
+                abi: tokenV1FactoryAbi,
+                functionName: "creatorOf" as const,
+                args: [item.info.distributionToken] as const,
+              },
+              {
+                address: item.addr,
+                abi: distributorV1Abi,
+                functionName: "rewardOf" as const,
+                args: [lastEpochIdx] as const,
+              },
+              {
+                address: item.addr,
+                abi: distributorV1Abi,
+                functionName: "epochTotalParticipation" as const,
+                args: [lastEpochIdx] as const,
+              },
+            ];
+          }),
         });
 
-        const nowSec = Math.floor(Date.now() / 1000);
         const rows = items.map((item, i) => {
           const info = item.info;
-          const metadataSlice = metadata.slice(i * 4, i * 4 + 4);
+          const m = metadata.slice(i * 8, i * 8 + 8);
           const currentEpoch = Math.floor(
             (nowSec - Number(info.startingTimestamp)) /
               Number(info.epochDuration),
           );
           const totalEpochs = Number(info.numberOfEpochs);
+          const epochsCompleted = getEpochsCompleted(currentEpoch, totalEpochs);
+          const tokenDecimals = Number(m[2]!.result) || 18;
+          const participationTokenDecimals = Number(m[4]!.result) || 18;
+          const native = (m[5]!.result as Address) !== zeroAddress;
+
+          let lastClearPrice: number | null = null;
+          if (epochsCompleted > 0) {
+            const rewardHuman = Number(
+              formatUnits(m[6]!.result as bigint, tokenDecimals),
+            );
+            const participationHuman = Number(
+              formatUnits(m[7]!.result as bigint, participationTokenDecimals),
+            );
+            if (rewardHuman > 0 && participationHuman > 0) {
+              lastClearPrice = rewardHuman / participationHuman;
+            }
+          }
+
           const startedAt = Number(info.startingTimestamp) * 1000;
           const finishedAt =
             (Number(info.startingTimestamp) +
@@ -109,17 +176,18 @@ export function useDistributions({ page, pageSize }: UseDistributionsParams) {
           return {
             address: item.addr,
             tokenAddress: info.distributionToken,
-            tokenName: String(metadataSlice[0]!.result),
-            tokenSymbol: String(metadataSlice[1]!.result),
+            tokenName: String(m[0]!.result),
+            tokenSymbol: String(m[1]!.result),
             status: getStatus(currentEpoch, totalEpochs),
             totalParticipation: info.totalParticipation,
-            participationTokenDecimals:
-              Number(metadataSlice[3]!.result) || 18,
-            participationTokenSymbol: String(metadataSlice[2]!.result),
+            participationTokenDecimals,
+            participationTokenSymbol: String(m[3]!.result),
             startedAt,
             finishedAt,
-            epochsCompleted: getEpochsCompleted(currentEpoch, totalEpochs),
+            epochsCompleted,
             totalEpochs,
+            native,
+            lastClearPrice,
           } satisfies Distribution;
         });
 
@@ -130,7 +198,7 @@ export function useDistributions({ page, pageSize }: UseDistributionsParams) {
       }
       setIsLoading(false);
     })();
-  }, [publicClient, fetchKey, page, pageSize]);
+  }, [publicClient, fetchKey, page, pageSize, chainId]);
 
   useEffect(() => {
     if (!publicClient || !publicClient.chain) return;
