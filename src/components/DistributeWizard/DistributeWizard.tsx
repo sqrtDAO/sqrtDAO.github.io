@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -57,7 +57,7 @@ import {
   getTokenV1Contract,
   getWethContract,
 } from "@/contracts/contracts";
-import { factoryV1Abi, tokenV1Abi, transferToHookAbi } from "@/contracts/abis";
+import { tokenV1Abi, transferToHookAbi } from "@/contracts/abis";
 import { getAddresses } from "@/contracts/contract-addresses";
 import { getParticipationAssets, type ParticipationAsset } from "@/contracts/participation-assets";
 import { DISTRIBUTION_LAUNCH_HREF, DISTRIBUTION_LIST } from "@/constants/links";
@@ -316,7 +316,7 @@ const Status = ({
     )}
     {step === "confirming" && (
       <div className="flex flex-col items-center gap-2">
-        <IconRotate2 size={40} className="text-accent animate-spin" />
+        <IconRotate2 size={40} className="text-accent animate-spin [animation-direction:reverse]" />
         <p className="text-h4 leading-none font-medium text-accent">Confirming on-chain…</p>
         <p className={`${bodyM} text-tertiary`}>This can take a moment. Keep this tab open.</p>
       </div>
@@ -542,9 +542,15 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
       initialSupply.onChange(v);
       return;
     }
-    const clampedBig = parsed > balanceBig ? balanceBig : parsed;
-    initialSupply.onChange(fmtAmount(clampedBig));
-    const leftBig = balanceBig > clampedBig ? balanceBig - clampedBig : 0n;
+    if (parsed > balanceBig) {
+      // over balance → snap to the balance (and empty the distribute field)
+      initialSupply.onChange(fmtAmount(balanceBig));
+      if (distributedBig > 0n) toDistribute.onChange(fmtAmount(0n));
+      return;
+    }
+    // keep the user's text exactly as typed, so "1.", "1.5", "1000.25" survive
+    initialSupply.onChange(v);
+    const leftBig = balanceBig - parsed;
     if (distributedBig > leftBig) toDistribute.onChange(fmtAmount(leftBig));
   };
   const onToDistributeChange = (v: string) => {
@@ -715,6 +721,17 @@ const totalDistributionAmount = useMemo(() => {
     if (receipt.status === "reverted") throw new Error("approve failed");
   };
 
+  // The chain's own clock — local time can drift from block.timestamp.
+  const latestChainSeconds = useCallback(async (): Promise<number> => {
+    if (!publicClient) return Math.floor(Date.now() / 1000);
+    try {
+      const block = await publicClient.getBlock({ blockTag: "latest" });
+      return Number(block.timestamp);
+    } catch {
+      return Math.floor(Date.now() / 1000);
+    }
+  }, [publicClient]);
+
   const onConfirm = async () => {
     if (!walletClient || !publicClient || !token || !asset) {
       showToast("generic.error");
@@ -727,8 +744,10 @@ const totalDistributionAmount = useMemo(() => {
 
     // Re-check the start time at confirm: it may have slipped into the past while
     // the user filled the form, and the contract reverts `start timestamp in the past`.
+    // Compare against the chain's own block time, not the local clock.
     const startTimestamp = parseUTCToTimestampSec(startDate.value, startTime.value);
-    if (Number(startTimestamp) < Math.floor(Date.now() / 1000) + START_TIME_BUFFER_SEC) {
+    const chainNow = await latestChainSeconds();
+    if (Number(startTimestamp) < chainNow + START_TIME_BUFFER_SEC) {
       startDate.setError("Start must be in the future");
       showToast("tx.reverted", {
         params: { reason: "start time is in the past — pick a later one" },
@@ -833,10 +852,8 @@ if (asset.native) {
 
       // Re-check the start time: approvals + wallet prompts can take long enough
       // that a near-future start expires, and the contract reverts.
-      if (
-        Number(startTimestamp) <
-        Math.floor(Date.now() / 1000) + START_TIME_BUFFER_SEC
-      ) {
+      const chainNowLate = await latestChainSeconds();
+      if (Number(startTimestamp) < chainNowLate + START_TIME_BUFFER_SEC) {
         showToast("tx.reverted", {
           id: toastId,
           params: { reason: "start time passed while confirming — pick a later one" },
@@ -859,16 +876,15 @@ if (asset.native) {
         EMPTY_PERMIT2,
         EMPTY_PERMIT2,
       ] as const;
-      await publicClient.simulateContract({
-        address: factory.address,
-        abi: factoryV1Abi,
-        functionName: "createLiquidityAndDistribution",
-        args,
-        account: address,
-      });
+      // Skip eth_estimateGas: this launch is very gas-heavy (~63M) and public
+      // RPCs cap their estimate/call, returning a bogus "reverted". Hand the tx
+      // the whole block gas limit and let the wallet send it.
+      const latestBlock = await publicClient.getBlock({ blockTag: "latest" });
       const hash = await factory.write.createLiquidityAndDistribution(args, {
         account: walletClient.account,
         chain: walletClient.chain,
+        // wallets reject gas ==/above the block limit, so leave a small margin
+        gas: (latestBlock.gasLimit * 98n) / 100n,
       });
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status === "reverted") {
