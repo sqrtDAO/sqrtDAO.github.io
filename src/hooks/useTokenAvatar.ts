@@ -2,18 +2,20 @@
 
 import { useEffect, useState } from "react";
 import type { Address } from "viem";
-import { getTokenAvatar } from "@/utils/avatar-api";
+import { usePublicClient } from "wagmi";
+import { readTokenAvatar } from "@/utils/avatar-api";
 
 const useTokenAvatar = (
   address: Address | undefined,
   chainId?: number,
 ): string | null => {
+  const publicClient = usePublicClient(chainId ? { chainId } : undefined);
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!address) return;
+    if (!address || !publicClient) return;
     let active = true;
-    getTokenAvatar(address, chainId)
+    readTokenAvatar(publicClient, address)
       .then((avatar) => {
         if (active) setUrl(avatar);
       })
@@ -21,7 +23,7 @@ const useTokenAvatar = (
     return () => {
       active = false;
     };
-  }, [address, chainId]);
+  }, [address, publicClient]);
 
   return url;
 };

@@ -1,10 +1,13 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { ipfsGatewayUrls } from "@/constants/avatar";
 import "./TokenAvatar.css";
 
 export interface TokenAvatarProps {
   seed?: string;
+  /** A normal image URL, or `ipfs://<cid>` (resolved via gateways with fallback). */
   imageUrl?: string;
   className?: string;
   /** px; overrides the 258px default from TokenAvatar.css */
@@ -31,9 +34,28 @@ export default function TokenAvatar({
   size,
 }: TokenAvatarProps) {
   const trimmed = seed?.trim() ?? "";
-  const hasImage = Boolean(imageUrl);
   const hasSeed = trimmed.length > 0;
   const initials = trimmed.slice(0, 2).toUpperCase();
+
+  // Resolve the image through a list of gateways (ipfs:// values only), trying
+  // the next one on error before falling back to the generated gradient.
+  const candidates = useMemo(() => {
+    if (!imageUrl) return [];
+    const v = imageUrl.trim();
+    if (!v) return [];
+    if (v.startsWith("ipfs://")) return ipfsGatewayUrls(v.slice("ipfs://".length));
+    return [v];
+  }, [imageUrl]);
+
+  const [idx, setIdx] = useState(0);
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => {
+    setIdx(0);
+    setImageFailed(false);
+  }, [imageUrl]);
+
+  const src = candidates[idx];
+  const hasImage = Boolean(src) && !imageFailed;
 
   const sizingStyle = size ? { width: size, height: size } : undefined;
 
@@ -59,11 +81,16 @@ export default function TokenAvatar({
       {hasImage ? (
         <Image
           className="token-avatar__image"
-          src={imageUrl!}
+          src={src!}
           alt=""
           fill
           sizes="(max-width: 767px) 180px, 258px"
           unoptimized
+          crossOrigin="anonymous"
+          onError={() => {
+            if (idx < candidates.length - 1) setIdx(idx + 1);
+            else setImageFailed(true);
+          }}
         />
       ) : (
         hasSeed && (

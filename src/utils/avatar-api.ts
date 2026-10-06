@@ -1,4 +1,7 @@
-import type { Address } from "viem";
+import type { Address, PublicClient } from "viem";
+import { importer } from "ipfs-unixfs-importer";
+import { MemoryBlockstore } from "blockstore-core/memory";
+import { tokenV1Abi } from "@/contracts/abis";
 import { AVATAR_API_BASE } from "@/constants/avatar";
 
 type UploadLinkResponse = {
@@ -21,8 +24,34 @@ const toError = async (res: Response): Promise<Error> => {
   }
 };
 
-export const requestUploadLink = async (): Promise<UploadLinkResponse> => {
-  const res = await fetch(`${AVATAR_API_BASE}/get-upload-link/`);
+/** Predicts the CIDv1 the Pinata upload will produce (Pinata's v1 recipe). */
+export const predictCid = async (file: File): Promise<string> => {
+  const blockstore = new MemoryBlockstore();
+  const content = new Uint8Array(await file.arrayBuffer());
+  let rootCid = "";
+  for await (const result of importer([{ content }], blockstore, {
+    cidVersion: 1,
+    rawLeaves: true,
+  })) {
+    rootCid = result.cid.toString();
+  }
+  if (!rootCid) throw new Error("Could not compute avatar CID");
+  return rootCid;
+};
+
+export const requestUploadLink = async (
+  token: Address,
+  cid: string,
+  chainId: number,
+): Promise<UploadLinkResponse> => {
+  const params = new URLSearchParams({
+    token,
+    cid,
+    chain_id: String(chainId),
+  });
+  const res = await fetch(
+    `${AVATAR_API_BASE}/token-avatar/get-upload-link/?${params.toString()}`,
+  );
   if (!res.ok) throw await toError(res);
   return res.json();
 };
@@ -39,31 +68,19 @@ export const uploadToIpfs = async (
   return data.cid;
 };
 
-export const setupTokenAvatar = async (
-  address: Address,
-  cid: string,
-  signature: string,
-  chainId: number,
-): Promise<void> => {
-  const res = await fetch(`${AVATAR_API_BASE}/setup-avatar/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ address, cid, signature, chain_id: chainId }),
-  });
-  if (!res.ok) throw await toError(res);
-};
-
-export const getTokenAvatar = async (
-  address: Address,
-  chainId?: number,
+/** Reads the `avatar` entry from the token's on-chain metadata. */
+export const readTokenAvatar = async (
+  publicClient: PublicClient,
+  token: Address,
 ): Promise<string | null> => {
-  const params = new URLSearchParams({ address });
-  if (chainId) params.set("chain_id", String(chainId));
-  const res = await fetch(
-    `${AVATAR_API_BASE}/get-avatar/?${params.toString()}`,
-  );
-  if (res.status === 404) return null;
-  if (!res.ok) throw await toError(res);
-  const { avatar } = await res.json();
-  return avatar;
+  const entries = await publicClient.readContract({
+    address: token,
+    abi: tokenV1Abi,
+    functionName: "getAllMetadata",
+  });
+  const avatar = entries.find((entry) => entry.key === "avatar")?.value?.trim();
+  if (!avatar) return null;
+  // return the raw value; TokenAvatar resolves ipfs:// via gateways with fallback
+  if (avatar.startsWith("ipfs://") || /^https?:\/\//i.test(avatar)) return avatar;
+  return `ipfs://${avatar}`;
 };

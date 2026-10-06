@@ -17,6 +17,10 @@ export type Distribution = {
   finishedAt: number;
   epochsCompleted: number;
   totalEpochs: number;
+  /** Launched through sqrtDAO's factory (creatorOf != 0). */
+  native: boolean;
+  /** Last closed epoch's clear price, or null if none has closed. */
+  lastClearPrice: number | null;
 };
 
 const TOKEN_NAMES = [
@@ -95,6 +99,11 @@ const buildDistribution = (index: number, now: number): Distribution => {
     ...buildTimestamps(index, status, now),
     epochsCompleted,
     totalEpochs,
+    native: index % 2 === 0,
+    lastClearPrice:
+      status === "upcoming" || index % 3 === 2
+        ? null
+        : 0.0042 + index * 0.0001,
   };
 };
 

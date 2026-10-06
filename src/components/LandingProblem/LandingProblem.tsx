@@ -6,6 +6,9 @@ import LandingFragment from "@/components/LandingFragment/LandingFragment";
 import LandingAccentBar from "@/components/LandingAccentBar/LandingAccentBar";
 import GlitchReveal from "@/components/GlitchReveal/GlitchReveal";
 
+// Mainnet landing passes `ctas` (LandingCtas); without it the testnet "/" renders unchanged.
+type ProblemProps = { onTryItClick?: () => void; ctas?: React.ReactNode };
+
 // Icon glyphs are the closest Tabler equivalents to Figma's exported line icons
 // (robot/wallet/walking-away/thumbs-down) — reusing the project's existing icon
 // system (already used this way in Header, DistributionWizard, etc.) rather than
@@ -27,7 +30,7 @@ const PROBLEMS = [
 // bottom inset) + (next frame's own top inset), read from the metadata: Hero
 // frame "2" → Problem frame "3" is ~307px (mt-[300px] below, on this section's
 // own top margin); Problem frame "3" → "4" is ~290px (mt-[290px] further down).
-function ProblemMobile({ onTryItClick }: { onTryItClick?: () => void }) {
+function ProblemMobile({ onTryItClick, ctas }: ProblemProps) {
   return (
     <section className="relative mx-auto mt-[300px] w-full max-w-[640px] xl:hidden">
       <div className="relative mx-auto w-full max-w-[390px]">
@@ -105,16 +108,21 @@ function ProblemMobile({ onTryItClick }: { onTryItClick?: () => void }) {
             </div>
           </div>
 
-          <LandingButtonCard onClick={onTryItClick}>
-            Try it on testnet
-          </LandingButtonCard>
+          {ctas ? (
+            // Figma 14396:84198
+            <div className="rounded-none bg-black px-2 pt-4 pb-2">{ctas}</div>
+          ) : (
+            <LandingButtonCard onClick={onTryItClick}>
+              Try it on testnet
+            </LandingButtonCard>
+          )}
         </div>
       </div>
     </section>
   );
 }
 
-export default function LandingProblem({ onTryItClick }: { onTryItClick?: () => void }) {
+export default function LandingProblem({ onTryItClick, ctas }: ProblemProps) {
   return (
     <>
       <section className="relative mx-auto hidden min-h-[1100px] w-full max-w-[1920px] px-gutter xl:block">
@@ -217,19 +225,23 @@ export default function LandingProblem({ onTryItClick }: { onTryItClick?: () => 
                     You did the work. The fastest bot took the reward, and your token wears the chart forever.
                   </p>
                 </div>
+                {/* Figma 11819:110509 — CTAs inside the card. */}
+                {ctas && <div className="px-6 pb-6">{ctas}</div>}
               </div>
             </GlitchReveal>
 
-            <GlitchReveal>
-              <LandingButtonCard onClick={onTryItClick}>
-                Try it on testnet
-              </LandingButtonCard>
-            </GlitchReveal>
+            {!ctas && (
+              <GlitchReveal>
+                <LandingButtonCard onClick={onTryItClick}>
+                  Try it on testnet
+                </LandingButtonCard>
+              </GlitchReveal>
+            )}
           </div>
         </div>
       </section>
 
-      <ProblemMobile onTryItClick={onTryItClick} />
+      <ProblemMobile onTryItClick={onTryItClick} ctas={ctas} />
     </>
   );
 }

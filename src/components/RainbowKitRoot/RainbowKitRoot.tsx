@@ -4,51 +4,30 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
-// import { sepolia } from "wagmi/chains";
+import { base, sepolia } from "wagmi/chains";
+import { http } from "viem";
 import { useState, type ReactNode } from "react";
 import WalletToastWatcher from "@/components/WalletToastWatcher/WalletToastWatcher";
 import "@rainbow-me/rainbowkit/styles.css";
-import { defineChain } from "viem";
 
-const sepolia = /*#__PURE__*/ defineChain({
-  id: 11_155_111,
-  name: "Sepolia",
-  nativeCurrency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
-  rpcUrls: {
-    default: {
-      http: [
-        // NOTE: there is no failover, viem only uses first one
-        "https://ethereum-sepolia-rpc.publicnode.com",
-        "https://0xrpc.io/sep",
-        "https://sepolia.gateway.tenderly.co", // this is bad
-        "https://sepolia.drpc.org",
-      ],
-    },
-  },
-  blockExplorers: {
-    default: {
-      name: "Etherscan",
-      url: "https://sepolia.etherscan.io",
-      apiUrl: "https://api-sepolia.etherscan.io/api",
-    },
-  },
-  contracts: {
-    multicall3: {
-      address: "0xca11bde05977b3631167028862be2a173976ca11",
-      blockCreated: 751532,
-    },
-    ensUniversalResolver: {
-      address: "0xeeeeeeee14d718c2b47d9923deab1335e144eeee",
-      blockCreated: 8_928_790,
-    },
-  },
-  testnet: true,
-});
+// Base is the default network; Sepolia is selectable via the header network switch.
+// Public RPCs rate-limit hard (the default base.org/sepolia RPCs especially), so
+// default to publicnode and allow a dedicated RPC via env for heavier use.
+const transports = {
+  [base.id]: http(
+    process.env.NEXT_PUBLIC_BASE_RPC_URL ?? "https://base-rpc.publicnode.com",
+  ),
+  [sepolia.id]: http(
+    process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL ??
+      "https://ethereum-sepolia-rpc.publicnode.com",
+  ),
+};
 
 const config = getDefaultConfig({
   appName: "sqrtDAO",
   projectId: "af0315795cabd9f168cf79b92e96863a",
-  chains: [sepolia],
+  chains: [base, sepolia],
+  transports,
   ssr: true,
 });
 

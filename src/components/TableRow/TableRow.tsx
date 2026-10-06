@@ -5,6 +5,7 @@ import useTokenAvatar from "@/hooks/useTokenAvatar";
 import type { Distribution } from "@/lib/fixtures/distributions";
 import { formatDate } from "@/utils/formatDate";
 import { roundUnits } from "@/utils/round-units";
+import { chainToSlug } from "@/utils/chain-utils";
 import { useChainId } from "wagmi";
 
 export type TableRowProps = {
@@ -27,7 +28,7 @@ export default function TableRow({ distribution }: TableRowProps) {
       className="group relative cursor-pointer hover:bg-canvas"
       onClick={() =>
         window.open(
-          `/distribution/?address=${distribution.address}`,
+          `/distribution/?address=${distribution.address}&chain=${chainToSlug(chainId)}`,
           "_blank",
           "noopener,noreferrer",
         )

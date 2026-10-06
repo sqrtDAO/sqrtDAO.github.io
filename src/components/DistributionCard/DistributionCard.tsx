@@ -1,21 +1,43 @@
 "use client";
 
 import Link from "next/link";
+import { useChainId } from "wagmi";
 import { IconChevronRight } from "@tabler/icons-react";
 import type { Distribution } from "@/lib/fixtures/distributions";
 import Status from "@/components/Status/Status";
+import TokenAvatar from "@/components/TokenAvatar/TokenAvatar";
+import useTokenAvatar from "@/hooks/useTokenAvatar";
 import { formatDate } from "@/utils/formatDate";
 import { roundUnits } from "@/utils/round-units";
+import { chainToSlug } from "@/utils/chain-utils";
+import { BODY_L, BODY_M, BODY_S } from "@/constants/typography";
 
 export type DistributionCardProps = {
   distribution: Distribution;
   className?: string;
 };
 
+const Stat = ({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) => (
+  <div className="flex min-w-0 flex-1 flex-col items-start justify-center whitespace-nowrap">
+    <p className={`${BODY_S} text-secondary`}>{label}</p>
+    {children}
+  </div>
+);
+
+// Figma 14392:82966 — mobile DLP card. Avatar fetch mirrors TableRow (desktop row).
 export default function DistributionCard({
   distribution,
   className,
 }: DistributionCardProps) {
+  const chainId = useChainId();
+  const tokenAvatarUrl = useTokenAvatar(distribution.tokenAddress, chainId);
+
   return (
     <div
       className={`relative flex w-full flex-col gap-4 border border-muted bg-black p-4 ${className ?? ""}`}
@@ -23,60 +45,66 @@ export default function DistributionCard({
       <Link
         aria-label={`View ${distribution.tokenName} distribution`}
         className="absolute inset-0"
-        href={`/distribution/?address=${distribution.address}`}
+        href={`/distribution/?address=${distribution.address}&chain=${chainToSlug(chainId)}`}
         target="_blank"
         rel="noopener noreferrer"
       />
       <div className="flex items-center gap-2">
+        <TokenAvatar
+          seed={`${distribution.tokenName} ${distribution.tokenSymbol}`}
+          imageUrl={tokenAvatarUrl ?? undefined}
+          size={40}
+          className="!rounded-full shrink-0"
+        />
         <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-1">
-          <p className="w-full text-body-l leading-6 text-primary">
-            {distribution.tokenName}
-          </p>
-          <p className="w-full text-body-s leading-5 text-secondary">
+          <div className="flex w-full items-center gap-2">
+            <p className={`truncate ${BODY_L} text-primary`}>
+              {distribution.tokenName}
+            </p>
+            <Status status={distribution.status} className="shrink-0" />
+          </div>
+          <p className={`w-full ${BODY_S} text-secondary`}>
             {distribution.tokenSymbol}
           </p>
         </div>
-        <Status status={distribution.status} />
-        <IconChevronRight className="shrink-0 text-tertiary" size={20} strokeWidth={1.75} />
+        <IconChevronRight
+          className="shrink-0 text-tertiary"
+          size={20}
+          strokeWidth={1.75}
+        />
       </div>
 
-      <div className="flex flex-col items-start justify-center whitespace-nowrap">
-        <p className="text-body-s leading-5 text-secondary">
-          {distribution.participationTokenSymbol} total funded
-        </p>
-        <p className="text-body-l leading-6 text-primary">
+      <Stat label={`${distribution.participationTokenSymbol} total funded`}>
+        <p className={`${BODY_L} text-primary`}>
           {roundUnits(
             distribution.totalParticipation,
             distribution.participationTokenDecimals,
           )}
         </p>
-      </div>
+      </Stat>
 
-      <div className="flex flex-col items-start justify-center whitespace-nowrap">
-        <p className="text-body-s leading-5 text-secondary">Epochs</p>
-        <div className="flex items-center justify-between gap-1 text-body leading-[22px]">
-          <span className="text-primary">
+      <Stat label="Epochs">
+        <p className="flex items-baseline gap-1">
+          <span className={`${BODY_L} text-primary`}>
             {distribution.epochsCompleted.toLocaleString("en-US")}
           </span>
-          <span className="text-tertiary">
+          <span className={`${BODY_M} text-tertiary`}>
             /{distribution.totalEpochs.toLocaleString("en-US")}
           </span>
-        </div>
-      </div>
+        </p>
+      </Stat>
 
-      <div className="flex w-full items-start gap-2 whitespace-nowrap">
-        <div className="flex min-w-0 flex-1 flex-col items-start justify-center">
-          <p className="text-body-s leading-5 text-secondary">Started at</p>
-          <p className="text-body-l leading-6 text-primary">
+      <div className="flex w-full items-start gap-2">
+        <Stat label="Started at">
+          <p className={`${BODY_L} text-primary`}>
             {formatDate(distribution.startedAt)}
           </p>
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col items-start justify-center">
-          <p className="text-body-s leading-5 text-secondary">Finished at</p>
-          <p className="text-body-l leading-6 text-primary">
+        </Stat>
+        <Stat label="Finished at">
+          <p className={`${BODY_L} text-primary`}>
             {formatDate(distribution.finishedAt)}
           </p>
-        </div>
+        </Stat>
       </div>
     </div>
   );

@@ -34,7 +34,7 @@ const TERMS: { term: string; def: string }[] = [
   },
   {
     term: "Drain",
-    def: "Releasing an ended epoch's locked participation fund to the distribution's configured shares. Triggered permissionlessly via callDrainHook after each epoch ends.",
+    def: "Releasing an ended epoch's locked participation fund to the distribution's configured shares. Triggered via releaseEpochFunds by whoever the distribution's releasePolicy allows.",
   },
   {
     term: "Emission curve",

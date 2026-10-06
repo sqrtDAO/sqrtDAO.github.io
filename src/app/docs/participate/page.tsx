@@ -13,7 +13,7 @@ export const metadata: Metadata = docMetadata(
 const STEPS = [
   {
     title: "Pick a distribution",
-    body: "Connect your wallet on Sepolia and open a distribution from the list. Each listing shows the two tokens that matter: the participation token you lock, and the distribution token you can earn.",
+    body: "Connect your wallet on Base (or Sepolia for testing) and open a distribution from the list. Each listing shows the two tokens that matter: the participation token you lock, and the distribution token you can earn.",
   },
   {
     title: "Read the numbers",

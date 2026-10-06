@@ -26,12 +26,19 @@ export type ToastMessageKey =
   | "participate.rejected"
   | "participate.epochClosed"
   | "participate.ended"
+  | "participate.notStarted"
+  | "participate.invalidAmount"
   | "claim.pending"
   | "claim.success"
   | "claim.failed"
   | "claim.rejected"
   | "claim.tooEarly"
   | "claim.nothing"
+  | "release.pending"
+  | "release.success"
+  | "release.failed"
+  | "wrap.pending"
+  | "tx.reverted"
   | "copy.link"
   | "copy.address"
   | "copy.txhash"
@@ -86,6 +93,14 @@ export const TOAST_MESSAGES: Record<ToastMessageKey, ToastMessageDef> = {
     type: "error",
     copy: "This distribution has finished — your participation didn't go through.",
   },
+  "participate.notStarted": {
+    type: "error",
+    copy: "This distribution hasn't started yet — you can participate once it goes live.",
+  },
+  "participate.invalidAmount": {
+    type: "error",
+    copy: "Enter a valid participation amount first.",
+  },
 
   "claim.pending": { type: "pending", copy: "Claiming your {symbol}…" },
   "claim.success": { type: "success", copy: "Claimed — {amount} {symbol} is in your wallet." },
@@ -93,6 +108,14 @@ export const TOAST_MESSAGES: Record<ToastMessageKey, ToastMessageDef> = {
   "claim.rejected": { type: "info", copy: "Claim cancelled. Your tokens stay claimable." },
   "claim.tooEarly": { type: "error", copy: "Not claimable yet — available after {date}." },
   "claim.nothing": { type: "info", copy: "You have nothing to claim here." },
+
+  "release.pending": { type: "pending", copy: "Releasing this epoch's funds…" },
+  "release.success": { type: "success", copy: "Epoch funds released to the configured shares." },
+  "release.failed": { type: "error", copy: "Release didn't go through. Please try again." },
+
+  "wrap.pending": { type: "pending", copy: "Wrapping {asset} into WETH…" },
+
+  "tx.reverted": { type: "error", copy: "Can't launch: {reason}" },
 
   "copy.link": { type: "success", copy: "Link copied" },
   "copy.address": { type: "success", copy: "Address copied" },
