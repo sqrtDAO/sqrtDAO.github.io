@@ -7,6 +7,7 @@ import type { Address } from "viem";
 import Logo from "@/components/Logo/Logo";
 import Status, { type DistributionStatus } from "@/components/Status/Status";
 import useTokenAvatar from "@/hooks/useTokenAvatar";
+import { useAvatarImage } from "@/hooks/useAvatarImage";
 import { BODY_L, BODY_M, BODY_S } from "@/constants/typography";
 
 export type MainnetDistributionCardProps = {
@@ -62,8 +63,10 @@ const Metric = ({
 // Figma 15438:138449 — rest / hovered+pressed × desktop (392) / mobile (358).
 const MainnetDistributionCard = (props: MainnetDistributionCardProps) => {
   const avatar = useTokenAvatar(props.tokenAddress, props.chainId);
-  const imageUrl =
-    avatar ?? props.imageUrl ?? "/mainnet/token-avatar-placeholder.png";
+  // Avatar metadata is usually `ipfs://<cid>`; resolve it through gateways
+  // (never hand ipfs:// to <img>) and fall back to the branded placeholder.
+  const { src, onError } = useAvatarImage(avatar ?? props.imageUrl);
+  const imageUrl = src ?? "/mainnet/token-avatar-placeholder.png";
   return (
     <Link
     href={props.href}
@@ -75,6 +78,7 @@ const MainnetDistributionCard = (props: MainnetDistributionCardProps) => {
       fill
       sizes="(min-width: 1280px) 392px, 100vw"
       className="object-cover"
+      onError={src ? onError : undefined}
     />
     <div className="absolute inset-x-0 top-44.5 bottom-0 bg-linear-to-t from-canvas to-transparent group-hover:hidden group-active:hidden" />
     <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 p-2 xl:p-4">

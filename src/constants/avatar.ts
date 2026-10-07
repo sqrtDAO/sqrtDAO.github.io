@@ -16,6 +16,19 @@ export const ipfsGatewayUrls = (cid: string): string[] => [
   `https://gateway.pinata.cloud/ipfs/${cid}`,
 ];
 
+/**
+ * Turns a stored avatar value into an ordered list of fetchable URLs.
+ * `ipfs://<cid>` expands to the gateway list; http(s) URLs pass through.
+ * Returns [] when there's nothing to load (callers show their own fallback).
+ */
+export const avatarImageCandidates = (imageUrl?: string): string[] => {
+  if (!imageUrl) return [];
+  const v = imageUrl.trim();
+  if (!v) return [];
+  if (v.startsWith("ipfs://")) return ipfsGatewayUrls(v.slice("ipfs://".length));
+  return [v];
+};
+
 
 
 export const AVATAR_ALLOWED_MIME_TYPES = [
