@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { ipfsGatewayUrls } from "@/constants/avatar";
+import { useAvatarImage } from "@/hooks/useAvatarImage";
 import "./TokenAvatar.css";
 
 export interface TokenAvatarProps {
@@ -39,23 +38,8 @@ export default function TokenAvatar({
 
   // Resolve the image through a list of gateways (ipfs:// values only), trying
   // the next one on error before falling back to the generated gradient.
-  const candidates = useMemo(() => {
-    if (!imageUrl) return [];
-    const v = imageUrl.trim();
-    if (!v) return [];
-    if (v.startsWith("ipfs://")) return ipfsGatewayUrls(v.slice("ipfs://".length));
-    return [v];
-  }, [imageUrl]);
-
-  const [idx, setIdx] = useState(0);
-  const [imageFailed, setImageFailed] = useState(false);
-  useEffect(() => {
-    setIdx(0);
-    setImageFailed(false);
-  }, [imageUrl]);
-
-  const src = candidates[idx];
-  const hasImage = Boolean(src) && !imageFailed;
+  const { src, onError } = useAvatarImage(imageUrl);
+  const hasImage = Boolean(src);
 
   const sizingStyle = size ? { width: size, height: size } : undefined;
 
@@ -87,10 +71,7 @@ export default function TokenAvatar({
           sizes="(max-width: 767px) 180px, 258px"
           unoptimized
           crossOrigin="anonymous"
-          onError={() => {
-            if (idx < candidates.length - 1) setIdx(idx + 1);
-            else setImageFailed(true);
-          }}
+          onError={onError}
         />
       ) : (
         hasSeed && (
