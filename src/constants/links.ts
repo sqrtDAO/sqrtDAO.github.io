@@ -13,7 +13,7 @@ export const DISTRIBUTION_LAUNCH_HREF = "/distribution-launch";
 export const TRY_TESTNET_HREF = "/distribution-list?chain=sepolia";
 
 export const MAINNET_NAV = {
-  launch: { label: "Launch token", href: TOKEN_LAUNCH_HREF },
+  launch: { label: "Launch token", href: DISTRIBUTION_LAUNCH_HREF },
   explore: { label: "Explore", href: DISTRIBUTION_LIST },
   blog: { label: "Blog", href: BLOG_HREF },
   docs: { label: "Documentation", href: DOCS_HREF },
