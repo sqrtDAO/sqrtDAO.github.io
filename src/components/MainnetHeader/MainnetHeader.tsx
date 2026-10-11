@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { IconBoltFilled, IconBoltOff, IconMenu, IconWallet, IconX } from "@tabler/icons-react";
 import { useAccount, useSwitchChain } from "wagmi";
@@ -58,6 +59,8 @@ const WalletConnect = ({ children }: { children: (p: WalletRenderProps) => React
 );
 
 type MainnetHeaderProps = {
+  /** Hide the connect-wallet button (e.g. static pages like docs/blog). */
+  showWallet?: boolean;
   /** Hide the Mainnet/Testnet switch (e.g. inside the distribution wizard). */
   showNetworkSwitch?: boolean;
   /** Lock the badge to a chain and make it non-clickable (distribution details). */
@@ -66,16 +69,23 @@ type MainnetHeaderProps = {
   displayChainId?: number;
   /** Override what clicking the badge does (e.g. change the ?chain= URL param). */
   onNetworkToggle?: () => void;
+  /** Extra content rendered inside the mobile menu (e.g. the docs section links). */
+  mobileMenuExtra?: React.ReactNode;
 };
 
 const MainnetHeader = ({
+  showWallet = true,
   showNetworkSwitch = true,
   lockedChainId,
   displayChainId,
   onNetworkToggle,
+  mobileMenuExtra,
 }: MainnetHeaderProps) => {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const closeMenu = () => setMenuOpen(false);
+  const pathname = usePathname();
+  // Open state is tied to the current path, so navigating closes the menu.
+  const [openPath, setOpenPath] = useState<string | null>(null);
+  const menuOpen = openPath === pathname;
+  const closeMenu = () => setOpenPath(null);
 
   const { chainId } = useAccount();
   const { chains, switchChain } = useSwitchChain();
@@ -112,13 +122,15 @@ const MainnetHeader = ({
         </nav>
         <div className="flex items-center gap-4 justify-self-end">
           {showNetworkSwitch && <NetworkSwitch mainnet={mainnet} onToggle={onToggle} />}
-          <WalletConnect>
-            {({ label, onClick }) => (
-              <Button variant="primary" size="m" onClick={onClick}>
-                {label}
-              </Button>
-            )}
-          </WalletConnect>
+          {showWallet && (
+            <WalletConnect>
+              {({ label, onClick }) => (
+                <Button variant="primary" size="m" onClick={onClick}>
+                  {label}
+                </Button>
+              )}
+            </WalletConnect>
+          )}
         </div>
       </div>
 
@@ -131,31 +143,35 @@ const MainnetHeader = ({
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             icon={menuOpen ? <IconX size={24} /> : <IconMenu size={24} />}
-            onClick={() => setMenuOpen((open) => !open)}
+            onClick={() => setOpenPath(menuOpen ? null : pathname)}
           />
           <Link href="/" aria-label="sqrtDAO home">
             <Logo variant="sign" className="h-8.25 w-auto" />
           </Link>
-          <WalletConnect>
-            {({ label, onClick }) => (
-              <IconButton variant="outline" size="m" aria-label={label} icon={<IconWallet size={24} />} onClick={onClick} />
-            )}
-          </WalletConnect>
+          {showWallet ? (
+            <WalletConnect>
+              {({ label, onClick }) => (
+                <IconButton variant="outline" size="m" aria-label={label} icon={<IconWallet size={24} />} onClick={onClick} />
+              )}
+            </WalletConnect>
+          ) : (
+            <span aria-hidden className="w-10" />
+          )}
         </div>
 
         {menuOpen && (
           <div className="absolute inset-x-0 top-full mt-1 px-4">
-            <nav className="flex flex-col items-center gap-2 bg-raised py-1.5">
+            <nav className="flex max-h-[calc(100dvh-4.5rem)] flex-col items-center gap-2 overflow-y-auto bg-raised py-1.5">
               {showNetworkSwitch && (
                 <div className="flex h-12 items-center justify-center gap-4 px-4">
                   <span className="text-body leading-5.5 tracking-[0.01em] text-tertiary">Network state is</span>
                   <NetworkSwitch mainnet={mainnet} onToggle={onToggle} />
                 </div>
               )}
-              <NavLink {...MAINNET_NAV.launch} size="l" className="w-full" onClick={closeMenu} />
-              <NavLink {...MAINNET_NAV.explore} size="l" className="w-full" onClick={closeMenu} />
-              <NavLink {...MAINNET_NAV.blog} size="l" className="w-full" onClick={closeMenu} />
-              <NavLink {...MAINNET_NAV.docs} size="l" className="w-full" onClick={closeMenu} />
+              {DESKTOP_NAV.map((item) => (
+                <NavLink key={item.href} {...item} size="l" className="w-full" onClick={closeMenu} />
+              ))}
+              {mobileMenuExtra}
             </nav>
           </div>
         )}
