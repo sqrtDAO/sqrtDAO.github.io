@@ -108,8 +108,6 @@ const MainnetHeader = ({
 
   return (
     <header className="relative z-40 w-full bg-surface">
-      {/* Testnet ribbon: driven by the actually connected chain. */}
-      {connected && !mainnet && <TestnetRibbon />}
       {/* Desktop — Figma 11289:96189 */}
       <div className="mx-auto hidden h-18 w-full max-w-325 grid-cols-[1fr_auto_1fr] items-center gap-4 xl:grid">
         <Link href="/" aria-label="sqrtDAO home" className="justify-self-start">
@@ -176,6 +174,9 @@ const MainnetHeader = ({
           </div>
         )}
       </div>
+
+      {/* Testnet ribbon: driven by the actually connected chain. */}
+      {connected && !mainnet && <TestnetRibbon />}
     </header>
   );
 };
