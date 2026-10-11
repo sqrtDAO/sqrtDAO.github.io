@@ -14,6 +14,8 @@ export const TRY_TESTNET_HREF = "/distribution-list?chain=sepolia";
 
 export const MAINNET_NAV = {
   launch: { label: "Launch token", href: DISTRIBUTION_LAUNCH_HREF },
+  // Footer-only entry (header nav uses an explicit list); mirrors the Hero CTA.
+  demoTestnet: { label: "Demo testnet", href: TRY_TESTNET_HREF },
   explore: { label: "Distributions", href: DISTRIBUTION_LIST },
   blog: { label: "Blog", href: BLOG_HREF },
   docs: { label: "Documentation", href: DOCS_HREF },
