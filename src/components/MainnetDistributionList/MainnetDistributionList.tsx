@@ -12,7 +12,7 @@ import MainnetHeader from "@/components/MainnetHeader/MainnetHeader";
 import Pagination from "@/components/Pagination/Pagination";
 import SmokeMeshBackground from "@/components/SmokeMeshBackground/SmokeMeshBackground";
 import { BODY_M } from "@/constants/typography";
-import { TOKEN_LAUNCH_HREF } from "@/constants/links";
+import { DISTRIBUTION_LAUNCH_HREF } from "@/constants/links";
 
 export type MainnetDistributionListProps = {
   distributions: (MainnetDistributionCardProps & { id: string })[];
@@ -33,7 +33,7 @@ export type MainnetDistributionListProps = {
 const MainnetDistributionList = (props: MainnetDistributionListProps) => {
   const launch = (
     <Link
-      href={TOKEN_LAUNCH_HREF}
+      href={DISTRIBUTION_LAUNCH_HREF}
       className="sqrt-btn sqrt-btn--primary sqrt-btn--m"
     >
       <span className="sqrt-btn__label">Launch token</span>
