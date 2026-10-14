@@ -13,17 +13,23 @@ const useTokenAvatar = (
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!address || !publicClient) return;
+    if (!address || !publicClient || publicClient.chain?.id !== chainId) {
+      setUrl(null);
+      return;
+    }
     let active = true;
+    setUrl(null);
     readTokenAvatar(publicClient, address)
       .then((avatar) => {
         if (active) setUrl(avatar);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (active) setUrl(null);
+      });
     return () => {
       active = false;
     };
-  }, [address, publicClient]);
+  }, [address, publicClient, chainId]);
 
   return url;
 };

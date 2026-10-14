@@ -30,11 +30,12 @@ function DistributionListContent() {
 
   const onNetworkToggle = useCallback(() => {
     const target = chainId === base.id ? sepolia.id : base.id;
+    setPage(1);
     router.replace(`/distribution-list?chain=${chainToSlug(target)}`, {
       scroll: false,
     });
     if (isConnected) switchChain({ chainId: target });
-  }, [chainId, isConnected, router, switchChain]);
+  }, [chainId, isConnected, router, switchChain, setPage]);
 
   const cards = distributions.map((d) => ({
     id: d.address,

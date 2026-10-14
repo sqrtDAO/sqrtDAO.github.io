@@ -49,12 +49,24 @@ export function useDistributions({
   const refetch = useCallback(() => setFetchKey((k) => k + 1), []);
 
   const hasNewDistribution = useRef(false);
+  const previousChainRef = useRef(chainId);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   useEffect(() => {
+    let active = true;
+    if (!publicClient || publicClient.chain?.id !== chainId) {
+      setIsLoading(true);
+      return () => {
+        active = false;
+      };
+    }
+    if (previousChainRef.current !== chainId) {
+      previousChainRef.current = chainId;
+      setDistributions([]);
+      setTotal(0);
+    }
     (async () => {
-      if (!publicClient) return;
       setIsLoading(true);
       setError(undefined);
       try {
@@ -65,7 +77,7 @@ export function useDistributions({
         const length = Number(
           await distributorFactory.read.distributionListLength(),
         );
-        setTotal(length);
+        if (active) setTotal(length);
 
         const offset = BigInt(Math.max(0, length - page * pageSize));
         const clampedSize = Math.min(pageSize, length - (page - 1) * pageSize);
@@ -141,8 +153,7 @@ export function useDistributions({
           }),
         });
 
-        const rows = items.map((item, i) => {
-          const info = item.info;
+        const rows = items.map((item, i) => {          const info = item.info;
           const m = metadata.slice(i * 8, i * 8 + 8);
           const currentEpoch = Math.floor(
             (nowSec - Number(info.startingTimestamp)) /
@@ -191,17 +202,23 @@ export function useDistributions({
           } satisfies Distribution;
         });
 
+        if (!active) return;
         setDistributions(rows);
       } catch (e) {
+        if (!active) return;
         setError("Error while loading on-chain data");
         console.error(e);
       }
+      if (!active) return;
       setIsLoading(false);
     })();
+    return () => {
+      active = false;
+    };
   }, [publicClient, fetchKey, page, pageSize, chainId]);
 
   useEffect(() => {
-    if (!publicClient || !publicClient.chain) return;
+    if (!publicClient || !publicClient.chain || publicClient.chain.id !== chainId) return;
 
     const unwatch = publicClient.watchContractEvent({
       address: getAddresses(publicClient.chain.id).distributorFactory,
@@ -219,7 +236,7 @@ export function useDistributions({
       unwatch();
       hasNewDistribution.current = false;
     };
-  }, [refetch, publicClient]);
+  }, [refetch, publicClient, chainId]);
 
   return { distributions, isLoading, error, refetch, total, totalPages };
 }
