@@ -48,7 +48,7 @@ const MainnetDistributionList = (props: MainnetDistributionListProps) => {
           displayChainId={props.chainId}
           onNetworkToggle={props.onNetworkToggle}
         />
-        <main className="mx-auto flex w-full max-w-374 flex-col pt-4 xl:px-38 xl:pt-6">
+        <main className="mx-auto flex w-full max-w-374 flex-1 flex-col pt-4 xl:px-38 xl:pt-6">
           <div className="flex items-start justify-between px-4 xl:px-0">
             <div className="flex flex-col">
               <div className="relative hidden h-6 w-95 xl:block">
