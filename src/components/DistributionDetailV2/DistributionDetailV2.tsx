@@ -28,6 +28,7 @@ import type {
   EpochInfo,
 } from "@/hooks/useDistributorData";
 import useTokenAvatar from "@/hooks/useTokenAvatar";
+import { avatarHttpsUrl } from "@/constants/avatar";
 import { useInput, type UseInputReturn } from "@/hooks/useInput";
 import {
   decimalOnlyModifier,
@@ -664,10 +665,11 @@ const DistributionDetailV2 = ({
           address: contractInfo.distributionToken,
           symbol: tokenSymbol,
           decimals: tokenDecimals ?? 18,
+          image: avatarHttpsUrl(avatarUrl ?? undefined),
         },
       })
       .catch(() => {});
-  }, [walletClient, contractInfo, tokenSymbol, tokenDecimals]);
+  }, [walletClient, contractInfo, tokenSymbol, tokenDecimals, avatarUrl]);
 
   const onShare = useCallback(() => {
     navigator.clipboard

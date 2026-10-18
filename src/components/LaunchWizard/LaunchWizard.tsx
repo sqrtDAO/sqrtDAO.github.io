@@ -40,7 +40,12 @@ import { DISTRIBUTION_LAUNCH_HREF } from "@/constants/links";
 import { showToast } from "@/hooks/useToast";
 import { viewTransactionAction } from "@/utils/explorer-utils";
 import { predictCid, requestUploadLink, uploadToIpfs } from "@/utils/avatar-api";
-import { AVATAR_ALLOWED_MIME_TYPES, AVATAR_MAX_FILE_SIZE } from "@/constants/avatar";
+import { buildTokenMetadataUri } from "@/utils/token-metadata";
+import {
+  AVATAR_ALLOWED_MIME_TYPES,
+  AVATAR_MAX_FILE_SIZE,
+  avatarHttpsUrl,
+} from "@/constants/avatar";
 
 type Step = "form" | "receiver" | "done";
 type AvatarStatus = "idle" | "pending" | "done" | "error" | "skipped";
@@ -218,8 +223,21 @@ const LaunchWizard = () => {
       }
     }
 
+    const avatar = cid ? `ipfs://${cid}` : "";
+
     const metadata = [
-      { key: "avatar", value: cid ? `ipfs://${cid}` : "" },
+      // reserved key — served by metadata()/contractURI()/tokenURI()
+      {
+        key: "metadata",
+        value: buildTokenMetadataUri({
+          name: name.value.trim(),
+          symbol: symbol.value.trim(),
+          description: description.value,
+          avatar,
+          website: website.value,
+        }),
+      },
+      { key: "avatar", value: avatar },
       { key: "description", value: description.value },
       { key: "website", value: website.value },
       { key: "github", value: github.value },
@@ -465,6 +483,9 @@ const LaunchWizard = () => {
                             address: result.token,
                             symbol: result.symbol,
                             decimals: 18,
+                            image: avatarHttpsUrl(
+                              avatarCid ? `ipfs://${avatarCid}` : undefined,
+                            ),
                           },
                         });
                       }}

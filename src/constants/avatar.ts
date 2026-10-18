@@ -2,18 +2,19 @@ export const AVATAR_API_BASE = "https://api.sqrtdao.org";
 
 /**
  * Gateways to resolve `ipfs://<cid>` avatars, tried in order until one loads.
- * NOTE: `gateway.pinata.cloud` (the deprecated shared gateway) does NOT serve
- * content pinned via Pinata's v3 files API, so it's a last resort. A dedicated
- * gateway can be supplied via NEXT_PUBLIC_IPFS_GATEWAY (e.g. https://x.mypinata.cloud/ipfs/).
+ * Avatars are pinned through Pinata, so its standard CDN gateway comes first.
+ * A dedicated Pinata gateway can be supplied via NEXT_PUBLIC_IPFS_GATEWAY
+ * (e.g. https://<subdomain>.mypinata.cloud/ipfs/) and is preferred when set.
  */
 const DEDICATED_GATEWAY = process.env.NEXT_PUBLIC_IPFS_GATEWAY;
+const PINATA_GATEWAY = "https://gateway.pinata.cloud/ipfs/";
 
 export const ipfsGatewayUrls = (cid: string): string[] => [
   ...(DEDICATED_GATEWAY ? [`${DEDICATED_GATEWAY.replace(/\/?$/, "/")}${cid}`] : []),
+  `${PINATA_GATEWAY}${cid}`,
   `https://${cid}.ipfs.dweb.link/`,
   `https://${cid}.ipfs.w3s.link/`,
   `https://ipfs.io/ipfs/${cid}`,
-  `https://gateway.pinata.cloud/ipfs/${cid}`,
 ];
 
 /**
@@ -28,6 +29,13 @@ export const avatarImageCandidates = (imageUrl?: string): string[] => {
   if (v.startsWith("ipfs://")) return ipfsGatewayUrls(v.slice("ipfs://".length));
   return [v];
 };
+
+/**
+ * First fetchable HTTPS URL for a stored avatar value. Wallets reject
+ * `ipfs://`, so anything handed to `wallet_watchAsset` must go through this.
+ */
+export const avatarHttpsUrl = (imageUrl?: string): string | undefined =>
+  avatarImageCandidates(imageUrl)[0];
 
 
 
