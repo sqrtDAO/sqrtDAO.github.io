@@ -1,132 +1,135 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
 import Input from "@/components/Input/Input";
 import { Button } from "@/components/Button/Button";
-import { useInput } from "@/hooks/useInput";
-import { DISTRIBUTION_LAUNCH_HREF } from "@/constants/links";
-import { WizardShell, WizardTitle } from "@/components/WizardShell/WizardShell";
+import EcosystemLabel from "@/components/EcosystemLabel/EcosystemLabel";
+import EcosystemPicker from "@/components/EcosystemPicker/EcosystemPicker";
+import { WizardTitle } from "@/components/WizardShell/WizardShell";
+import { BODY_M, BODY_S } from "@/constants/typography";
+import type { UseInputReturn } from "@/hooks/useInput";
+import { roundUnits } from "@/utils/round-units";
 
-// Static stand-in for the chain read; teammate replaces with real token data.
-const MOCK_TOKEN = { name: "Token name", decimals: 18, supply: "123,231", balance: "123,231", symbol: "Symbol" };
+export type ImportedToken = {
+  name: string;
+  symbol: string;
+  decimals: number;
+  totalSupply: bigint;
+  balance: bigint;
+};
 
-const Stat = ({ label, value }: { label: string; value: string }) => (
+type ImportTokenProps = {
+  address: UseInputReturn;
+  onAddressChange: (value: string) => void;
+  chainId: number;
+  onChainChange: (chainId: number) => void;
+  token: ImportedToken | null;
+  loading: boolean;
+  error: string | null;
+  onImport: () => void;
+  onConfirm: () => void;
+};
+
+const Stat = ({ label, value, symbol }: { label: string; value: string; symbol: string }) => (
   <div className="flex flex-1 flex-col gap-1 xl:gap-1.5">
-    <p className="text-body leading-5.5 tracking-[0.01em] text-secondary">{label}</p>
+    <p className={`${BODY_M} text-secondary`}>{label}</p>
     <p className="flex items-baseline gap-1 whitespace-nowrap">
       <span className="text-h4 leading-none font-medium text-primary">{value}</span>
-      <span className="text-body-s leading-5 tracking-[0.01em] text-secondary">{MOCK_TOKEN.symbol}</span>
+      <span className={`${BODY_S} text-secondary`}>{symbol}</span>
     </p>
   </div>
 );
 
-const Avatar = () => (
-  <Image
-    src="/mainnet/token-avatar-placeholder.png"
-    alt=""
-    width={56}
-    height={56}
-    className="size-14 shrink-0 rounded-full"
-  />
-);
-
-const TokenName = () => (
-  <div className="flex flex-col gap-1">
-    <p className="text-body-l leading-6 tracking-[0.02em] text-primary">{MOCK_TOKEN.name}</p>
-    <p className="text-body-s leading-5 tracking-[0.01em] text-secondary">{MOCK_TOKEN.decimals} Decimals</p>
+// Figma 11318:97245 (desktop) / 14469:103622 (mobile)
+const TokenCard = ({ token, chainId }: { token: ImportedToken; chainId: number }) => (
+  <div className="flex w-full flex-col gap-4 bg-surface p-4 xl:flex-row xl:p-6">
+    <div className="flex items-center gap-4 xl:items-start">
+      <Image
+        src="/mainnet/token-avatar-placeholder.png"
+        alt=""
+        width={56}
+        height={56}
+        className="size-14 shrink-0 rounded-full"
+      />
+      <div className="flex flex-col gap-1 xl:hidden">
+        <TokenName token={token} chainId={chainId} />
+      </div>
+    </div>
+    <div className="flex flex-1 flex-col gap-4">
+      <div className="hidden flex-col gap-1 xl:flex">
+        <TokenName token={token} chainId={chainId} />
+      </div>
+      <div className="flex flex-col gap-4 xl:flex-row xl:gap-0">
+        <Stat label="Token total Supply" value={roundUnits(token.totalSupply, token.decimals)} symbol={token.symbol} />
+        <Stat label="Your token balance" value={roundUnits(token.balance, token.decimals)} symbol={token.symbol} />
+      </div>
+    </div>
   </div>
 );
 
-const Supply = () => <Stat label="Token total Supply" value={MOCK_TOKEN.supply} />;
-const Balance = () => <Stat label="Your token balance" value={MOCK_TOKEN.balance} />;
-
-// Figma 11318:97245 (desktop) / 14469:103622 (mobile)
-const TokenCard = () => (
+const TokenName = ({ token, chainId }: { token: ImportedToken; chainId: number }) => (
   <>
-    <div className="hidden w-full gap-4 bg-surface p-6 xl:flex">
-      <Avatar />
-      <div className="flex flex-1 flex-col gap-4">
-        <TokenName />
-        <div className="flex">
-          <Supply />
-          <Balance />
-        </div>
-      </div>
-    </div>
-    <div className="flex w-full flex-col gap-4 bg-surface p-4 xl:hidden">
-      <div className="flex items-center gap-4">
-        <Avatar />
-        <TokenName />
-      </div>
-      <Supply />
-      <Balance />
-    </div>
+    <p className="flex flex-wrap items-center gap-2 text-body-l leading-6 tracking-[0.02em] text-primary">
+      {token.name}
+      <EcosystemLabel chainId={chainId} />
+    </p>
+    <p className={`${BODY_S} text-secondary`}>{token.decimals} Decimals</p>
   </>
 );
 
-// Figma 11318:97231 (desktop) / 14484:103660 (mobile)
-const ImportToken = () => {
-  const address = useInput("");
-  const [checked, setChecked] = useState(false);
-
-  const onAddressChange = (value: string) => {
-    address.onChange(value);
-    setChecked(false);
-  };
-
+// Figma 11318:97231 / 16780:43386 (desktop) · 14484:103660 / 16807:116164 (mobile)
+const ImportToken = (props: ImportTokenProps) => {
   const onPaste = async () => {
     try {
-      onAddressChange((await navigator.clipboard.readText()).trim());
+      props.onAddressChange((await navigator.clipboard.readText()).trim());
     } catch {
       // Clipboard permission denied — user can still type.
     }
   };
 
-  const onCheckAddress = () => {
-    /* TODO: teammate wires logic (validate address + read token) */
-    setChecked(true);
-  };
-
-  const onConfirm = () => {
-    /* TODO: teammate wires logic */
-  };
-
   return (
-    <WizardShell closeHref={DISTRIBUTION_LAUNCH_HREF} spacious>
-
-      <div className="flex w-full flex-col gap-8 xl:items-end">
+    <div className="flex w-full flex-col gap-8 xl:items-end">
+      <div className="flex w-full flex-col gap-8">
         <WizardTitle
           title="Import Existing Token"
           description="Paste the contract address of the token you want to distribute."
         />
-
-        <div className="flex w-full flex-col items-center gap-6 xl:gap-2">
-          <div className="flex w-full flex-col items-center gap-6 xl:flex-row xl:items-end xl:gap-4">
-            <div className="w-full xl:flex-1">
-              <Input
-                state={address}
-                label="Token contract address"
-                placeholder="e.g. 1FfmbHfnpaZjKFvyi1okTjJJusN455paPH"
-                onChange={onAddressChange}
-                showPaste
-                onPaste={onPaste}
-              />
-            </div>
-            <Button variant="primary" size="m" disabled={checked} onClick={onCheckAddress}>
-              {checked ? "Check address" : "Import token"}
-            </Button>
-          </div>
-          {checked && <TokenCard />}
-        </div>
-
-        {checked && (
-          <Button variant="primary" size="m" onClick={onConfirm} className="w-full xl:w-auto">
-            Confirm
-          </Button>
-        )}
+        <EcosystemPicker variant="minimal" value={props.chainId} onChange={props.onChainChange} />
       </div>
-    </WizardShell>
+
+      <div className="flex w-full flex-col items-center gap-6 xl:gap-2">
+        <div className="flex w-full flex-col items-center gap-6 xl:flex-row xl:items-start xl:gap-4">
+          <div className="w-full xl:flex-1">
+            <Input
+              state={props.address}
+              label="Token contract address"
+              placeholder="0x…"
+              onChange={props.onAddressChange}
+              showPaste
+              onPaste={onPaste}
+            />
+          </div>
+          <Button
+            variant="primary"
+            size="m"
+            disabled={props.loading || !!props.token}
+            onClick={props.onImport}
+            // label (22px) + gap (8px): stays level with the field when an error shows below it
+            className="xl:mt-7.5"
+          >
+            {props.loading ? "Loading…" : props.token ? "Check address" : "Import token"}
+          </Button>
+        </div>
+        {props.error && <p className={`w-full ${BODY_M} text-danger`}>{props.error}</p>}
+        {props.token && <TokenCard token={props.token} chainId={props.chainId} />}
+      </div>
+
+      {props.token && (
+        <Button variant="primary" size="m" onClick={props.onConfirm} className="w-full xl:w-auto">
+          Confirm
+        </Button>
+      )}
+    </div>
   );
 };
 

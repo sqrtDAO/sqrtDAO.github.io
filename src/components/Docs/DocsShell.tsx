@@ -21,7 +21,6 @@ export default function DocsShell({ children }: { children: React.ReactNode }) {
     <div className="flex h-dvh flex-col">
       <MainnetHeader
         showWallet={false}
-        showNetworkSwitch={false}
         mobileMenuExtra={
           <div className="flex w-full flex-col items-center gap-2 pt-2">
             {docsNav.map((group, i) => (

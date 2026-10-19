@@ -90,6 +90,7 @@
   /* ── Motion → animate-{name} utilities ── */
   --animate-glitch-in: glitch-burn-in var(--motion-duration-reveal) var(--motion-easing-arrive) both;
   --animate-glitch-out: glitch-dissolve-out var(--motion-duration-slow) var(--motion-easing-arrive) both;
+  --animate-marquee: marquee 45s linear infinite;
 
   /* ── Gradients → bg-{name} utilities (Tailwind v4 --background-image-* namespace) ── */
   --background-image-sumi:   var(--gradient-sumi);   /* bg-sumi   gradient (graphite + amber glow) */
@@ -151,6 +152,13 @@ h1, h2, h3 { font-family: var(--font-family-display), system-ui, sans-serif; mar
 .glitch-target.animate-glitch-out {
   animation-delay: var(--glitch-delay, 0ms);
 }
+
+@keyframes marquee {
+  to { transform: translateX(-50%); }
+}
+
+/* Hover/focus/press on a `.group` card — one variant instead of three. */
+@custom-variant group-on (&:is(:where(.group):is(:hover, :focus-visible, :active) *));
 
 @keyframes glitch-burn-in {
   0% {

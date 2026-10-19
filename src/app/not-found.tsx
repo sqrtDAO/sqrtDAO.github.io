@@ -7,7 +7,7 @@ import "@/components/Button/Button.css";
 export default function NotFound() {
   return (
     <div className="flex min-h-dvh flex-col">
-      <MainnetHeader showWallet={false} showNetworkSwitch={false} />
+      <MainnetHeader showWallet={false} />
       <main className="relative flex flex-1 flex-col items-center justify-center gap-6 overflow-y-auto overflow-x-hidden px-6 py-12 text-center md:gap-8">
         <div className="order-1 flex w-full flex-col items-center gap-1">
           <p className="font-display text-display-m font-semibold leading-none tracking-[-0.02em] text-primary">

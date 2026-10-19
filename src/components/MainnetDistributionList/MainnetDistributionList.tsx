@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { IconLoader2 } from "@tabler/icons-react";
+import Chip, { type ChipProps } from "@/components/Chip/Chip";
 import LandingAccentBar from "@/components/LandingAccentBar/LandingAccentBar";
 import LandingFragment from "@/components/LandingFragment/LandingFragment";
 import MainnetDistributionCard, {
@@ -22,10 +23,8 @@ export type MainnetDistributionListProps = {
   onPageChange: (page: number) => void;
   isLoading?: boolean;
   error?: string;
-  /** Chain the list is scoped to (drives the header badge). */
-  chainId?: number;
-  /** Called when the header network badge is clicked. */
-  onNetworkToggle?: () => void;
+  /** "Ecosystem: Show all" filter; hidden on testnet. */
+  ecosystemFilter?: Omit<ChipProps, "label">;
 };
 
 // Figma 14306:80842 (desktop) / 14714:107568 (mobile).
@@ -44,10 +43,7 @@ const MainnetDistributionList = (props: MainnetDistributionListProps) => {
     <>
       <SmokeMeshBackground />
       <div className="relative z-10 flex h-dvh flex-col overflow-y-auto">
-        <MainnetHeader
-          displayChainId={props.chainId}
-          onNetworkToggle={props.onNetworkToggle}
-        />
+        <MainnetHeader />
         <main className="mx-auto flex w-full max-w-374 flex-1 flex-col pt-4 xl:px-38 xl:pt-6">
           <div className="flex items-start justify-between px-4 xl:px-0">
             <div className="flex flex-col">
@@ -81,7 +77,14 @@ const MainnetDistributionList = (props: MainnetDistributionListProps) => {
           </div>
 
           <div className="flex flex-col gap-4 p-4 xl:px-0">
-            <div className="flex items-center justify-end">{launch}</div>
+            <div className="flex items-center justify-between gap-4">
+              {props.ecosystemFilter ? (
+                <Chip label="Ecosystem:" {...props.ecosystemFilter} />
+              ) : (
+                <span />
+              )}
+              {launch}
+            </div>
 
             {props.error ? (
               <div className="flex flex-col items-start gap-2 py-8">
