@@ -2,13 +2,17 @@
 
 import Image from "next/image";
 import type { Address } from "viem";
+import { useWalletClient } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { IconWallet } from "@tabler/icons-react";
 import Input from "@/components/Input/Input";
 import { Button } from "@/components/Button/Button";
 import EcosystemLabel from "@/components/EcosystemLabel/EcosystemLabel";
 import EcosystemPicker from "@/components/EcosystemPicker/EcosystemPicker";
 import { WizardTitle } from "@/components/WizardShell/WizardShell";
 import { BODY_M, BODY_S } from "@/constants/typography";
-import { useAvatarImage } from "@/hooks/useAvatarImage";
+import { avatarHttpsUrl } from "@/constants/avatar";
+import { useAvatarImage, type AvatarImage } from "@/hooks/useAvatarImage";
 import type { UseInputReturn } from "@/hooks/useInput";
 import useTokenAvatar from "@/hooks/useTokenAvatar";
 import { roundUnits } from "@/utils/round-units";
@@ -45,13 +49,19 @@ const Stat = ({ label, value, symbol }: { label: string; value: string; symbol: 
 );
 
 // Figma 11318:97245 (desktop) / 14469:103622 (mobile)
-const TokenCard = ({ token, chainId }: { token: ImportedToken; chainId: number }) => {
-  // Resolve the token's on-chain avatar. Non-TokenV1 ERC-20s simply have no
-  // readable avatar, so the branded placeholder stays as the fallback.
-  const avatar = useTokenAvatar(token.address, chainId);
-  const { src, onError } = useAvatarImage(avatar ?? undefined);
-  const avatarSrc = src ?? "/mainnet/token-avatar-placeholder.png";
-
+const TokenCard = ({
+  token,
+  chainId,
+  avatarSrc,
+  onAvatarError,
+  onAddToWallet,
+}: {
+  token: ImportedToken;
+  chainId: number;
+  avatarSrc: string;
+  onAvatarError?: AvatarImage["onError"];
+  onAddToWallet: () => void;
+}) => {
   return (
     <div className="flex w-full flex-col gap-4 bg-surface p-4 xl:flex-row xl:p-6">
       <div className="flex items-center gap-4 xl:items-start">
@@ -61,7 +71,7 @@ const TokenCard = ({ token, chainId }: { token: ImportedToken; chainId: number }
           width={56}
           height={56}
           className="size-14 shrink-0 rounded-full"
-          onError={src ? onError : undefined}
+          onError={onAvatarError}
         />
         <div className="flex flex-col gap-1 xl:hidden">
           <TokenName token={token} chainId={chainId} />
@@ -74,6 +84,16 @@ const TokenCard = ({ token, chainId }: { token: ImportedToken; chainId: number }
         <div className="flex flex-col gap-4 xl:flex-row xl:gap-0">
           <Stat label="Token total Supply" value={roundUnits(token.totalSupply, token.decimals)} symbol={token.symbol} />
           <Stat label="Your token balance" value={roundUnits(token.balance, token.decimals)} symbol={token.symbol} />
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="m"
+            leadingIcon={<IconWallet size={18} />}
+            onClick={onAddToWallet}
+          >
+            Add to wallet
+          </Button>
         </div>
       </div>
     </div>
@@ -92,6 +112,32 @@ const TokenName = ({ token, chainId }: { token: ImportedToken; chainId: number }
 
 // Figma 11318:97231 / 16780:43386 (desktop) · 14484:103660 / 16807:116164 (mobile)
 const ImportToken = (props: ImportTokenProps) => {
+  const { data: walletClient } = useWalletClient();
+  const { openConnectModal } = useConnectModal();
+  // Resolve the token's on-chain avatar. Non-TokenV1 ERC-20s simply have no
+  // readable avatar, so the branded placeholder stays as the fallback.
+  const avatar = useTokenAvatar(props.token?.address, props.chainId);
+  const { src, onError } = useAvatarImage(avatar ?? undefined);
+
+  const onAddToWallet = () => {
+    if (!props.token) return;
+    if (!walletClient) {
+      openConnectModal?.();
+      return;
+    }
+    walletClient
+      .watchAsset({
+        type: "ERC20",
+        options: {
+          address: props.token.address,
+          symbol: props.token.symbol,
+          decimals: props.token.decimals,
+          image: avatarHttpsUrl(avatar ?? undefined),
+        },
+      })
+      .catch(() => {});
+  };
+
   const onPaste = async () => {
     try {
       props.onAddressChange((await navigator.clipboard.readText()).trim());
@@ -134,7 +180,15 @@ const ImportToken = (props: ImportTokenProps) => {
           </Button>
         </div>
         {props.error && <p className={`w-full ${BODY_M} text-danger`}>{props.error}</p>}
-        {props.token && <TokenCard token={props.token} chainId={props.chainId} />}
+        {props.token && (
+          <TokenCard
+            token={props.token}
+            chainId={props.chainId}
+            avatarSrc={src ?? "/mainnet/token-avatar-placeholder.png"}
+            onAvatarError={src ? onError : undefined}
+            onAddToWallet={onAddToWallet}
+          />
+        )}
       </div>
 
       {props.token && (
