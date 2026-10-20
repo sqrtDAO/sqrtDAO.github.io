@@ -370,6 +370,10 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
   const [distributor, setDistributor] = useState<Address | null>(null);
   const importAddress = useInput("", undefined, addressValidator);
   const [importing, setImporting] = useState(false);
+  // Bumped whenever the address or chain changes so a late RPC response can't
+  // attach a token read on the previous chain/address to the current screen.
+  const importSeq = useRef(0);
+  const importChainRef = useRef(chainId);
 
   const assets = useMemo(() => (chainId ? getParticipationAssets(chainId) : []), [chainId]);
   const [assetIndex, setAssetIndex] = useState(0);
@@ -462,6 +466,8 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
 
   const loadToken = async (addr: Address) => {
     if (!publicClient) return false;
+    const seq = ++importSeq.current;
+    const requestChainId = chainId;
     setImporting(true);
     setLoadError(null);
     try {
@@ -473,17 +479,38 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
         contract.read.totalSupply(),
         address ? contract.read.balanceOf([address]) : Promise.resolve(0n),
       ]);
+      if (seq !== importSeq.current || importChainRef.current !== requestChainId) return false;
       setToken({ address: addr, name, symbol, decimals: Number(decimals), totalSupply, balance });
       setDistributor(null);
       return true;
     } catch (e) {
+      if (seq !== importSeq.current || importChainRef.current !== requestChainId) return false;
       console.error(e);
       setLoadError("Couldn't read that token on this network.");
       return false;
     } finally {
-      setImporting(false);
+      if (seq === importSeq.current) setImporting(false);
     }
   };
+
+  // A chain switch invalidates any in-flight import and drops the imported
+  // token (it was read on the old chain). Send the user back to the import
+  // screen so they can re-import on the newly selected chain. The wallet /
+  // confirming / ready steps are left alone: a chain change there is either a
+  // wallet-side change or too late to restart the flow.
+  const previousImportChain = useRef(chainId);
+  useEffect(() => {
+    const changed = previousImportChain.current !== chainId;
+    importChainRef.current = chainId;
+    if (!changed) return;
+    importSeq.current += 1;
+    if (step === "wallet" || step === "confirming" || step === "ready") return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setToken(null);
+    setLoadError(null);
+    setImporting(false);
+    setStep((s) => (s === "router" || s === "import" ? s : "import"));
+  }, [chainId, step]);
 
   useEffect(() => {
     if (targetToken) void loadToken(targetToken).then((ok) => ok && setStep("welcome"));
@@ -968,12 +995,19 @@ if (asset.native) {
               address={importAddress}
               onAddressChange={(v) => {
                 importAddress.onChange(v);
+                importSeq.current += 1;
                 setToken(null);
+                setLoadError(null);
+                setImporting(false);
               }}
               chainId={chainId}
               onChainChange={(id) => {
-                select(id);
+                if (id === chainId) return;
+                importSeq.current += 1;
                 setToken(null);
+                setLoadError(null);
+                setImporting(false);
+                select(id);
               }}
               token={token}
               loading={importing}

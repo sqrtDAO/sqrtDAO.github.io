@@ -13,7 +13,7 @@ import { getAddresses } from "@/contracts/contract-addresses";
 import type {
   Distribution,
   DistributionStatus,
-} from "@/lib/fixtures/distributions";
+} from "@/lib/distributions";
 
 export type ChainDistribution = Distribution & { chainId: number };
 

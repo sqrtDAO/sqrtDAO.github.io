@@ -60,3 +60,6 @@ export const ECOSYSTEMS: Ecosystem[] = [
 
 /** Where "Back to mainnet" lands. */
 export const DEFAULT_CHAIN = base;
+
+/** URL value for the distribution list's "all mainnet chains" mode. */
+export const ALL_MAINNET_CHAINS = "all";

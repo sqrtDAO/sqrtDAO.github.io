@@ -2,14 +2,22 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAccount, useAccountEffect, useSwitchChain } from "wagmi";
-import { DEFAULT_CHAIN } from "@/constants/ecosystems";
+import { ALL_MAINNET_CHAINS, DEFAULT_CHAIN } from "@/constants/ecosystems";
 import { chainNameToId, chainToSlug, ecosystemOf, isLive } from "@/utils/chain-utils";
 
 /** `?chain=` wins over the wallet — the URL is what the page shows. */
 export const useActiveChainId = () => {
-  const urlChainId = chainNameToId(useSearchParams().get("chain"));
-  const { chainId } = useAccount();
-  return { urlChainId, chainId: urlChainId ?? chainId };
+  const chainParam = useSearchParams().get("chain");
+  const urlChainId = chainNameToId(chainParam);
+  // The distribution list's "Show all" mode: all mainnet chains, regardless of
+  // a testnet wallet. Header/ribbon/wizards treat it as the default mainnet.
+  const showAll = chainParam === ALL_MAINNET_CHAINS;
+  const { chainId: walletChainId } = useAccount();
+  return {
+    urlChainId,
+    showAll,
+    chainId: urlChainId ?? (showAll ? DEFAULT_CHAIN.id : walletChainId),
+  };
 };
 
 /** Replaces `?chain=` on the current page, keeping other params. */

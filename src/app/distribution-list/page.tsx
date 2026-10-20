@@ -3,7 +3,8 @@
 import { Suspense, useState } from "react";
 import { useRouter } from "next/navigation";
 import MainnetDistributionList from "@/components/MainnetDistributionList/MainnetDistributionList";
-import { DISTRIBUTION_LIST } from "@/constants/links";
+import { ALL_MAINNET_CHAINS } from "@/constants/ecosystems";
+import { DISTRIBUTION_LAUNCH_HREF, DISTRIBUTION_LIST } from "@/constants/links";
 import { useActiveChainId } from "@/hooks/useActiveChain";
 import { useDistributions } from "@/hooks/useDistributions";
 import { MAINNET_ECOSYSTEMS, chainToSlug, isTestnet } from "@/utils/chain-utils";
@@ -16,7 +17,9 @@ const SHOW_ALL = "Show all";
 function DistributionListContent() {
   const router = useRouter();
   // ?chain= filters; without it the wallet decides testnet vs. all of mainnet.
-  const { urlChainId, chainId } = useActiveChainId();
+  // ?chain=all is the explicit "all mainnet" mode (never falls back to a
+  // testnet wallet).
+  const { urlChainId, showAll, chainId } = useActiveChainId();
   const testnet = isTestnet(chainId);
   const filterChainId = testnet ? chainId : urlChainId;
   const chainIds = filterChainId
@@ -33,10 +36,21 @@ function DistributionListContent() {
   const ecosystem = MAINNET_ECOSYSTEMS.find((e) => e.chain!.id === urlChainId);
   const onEcosystemChange = (name: string) => {
     const picked = MAINNET_ECOSYSTEMS.find((e) => e.name === name);
-    router.replace(picked ? `${DISTRIBUTION_LIST}?chain=${picked.slug}` : DISTRIBUTION_LIST, {
-      scroll: false,
-    });
+    router.replace(
+      picked
+        ? `${DISTRIBUTION_LIST}?chain=${picked.slug}`
+        : `${DISTRIBUTION_LIST}?chain=${ALL_MAINNET_CHAINS}`,
+      { scroll: false },
+    );
   };
+
+  // Keep the list's chain context when entering the launch flow. "Show all"
+  // stays on mainnet instead of inheriting a testnet wallet.
+  const launchHref = urlChainId
+    ? `${DISTRIBUTION_LAUNCH_HREF}?chain=${chainToSlug(urlChainId)}`
+    : showAll
+      ? `${DISTRIBUTION_LAUNCH_HREF}?chain=${ALL_MAINNET_CHAINS}`
+      : DISTRIBUTION_LAUNCH_HREF;
 
   const cards = distributions.map((d) => ({
     id: `${d.chainId}-${d.address}`,
@@ -68,6 +82,7 @@ function DistributionListContent() {
       onPageChange={setPage}
       isLoading={isLoading}
       error={error}
+      launchHref={launchHref}
       ecosystemFilter={
         testnet
           ? undefined

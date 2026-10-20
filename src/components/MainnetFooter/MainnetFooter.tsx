@@ -7,6 +7,8 @@ import "@/components/IconButton/IconButton.css";
 
 type MainnetFooterProps = {
   placement?: "panel" | "landing";
+  /** Override the "Launch token" link (e.g. keep the list's chain filter). */
+  launchHref?: string;
 };
 
 const BLURB = "The fair way to launch and distribute a token over time.";
@@ -39,10 +41,22 @@ const Socials = ({ className = "" }: { className?: string }) => (
 );
 
 // Desktop: 3 cols × 2 rows; mobile: 2 cols × 3 rows — same source order.
-const LinkGrid = ({ className = "" }: { className?: string }) => (
+const LinkGrid = ({
+  className = "",
+  launchHref,
+}: {
+  className?: string;
+  launchHref?: string;
+}) => (
   <nav className={`grid gap-4 ${className}`}>
     {Object.values(MAINNET_NAV).map((item) => (
-      <NavLink key={item.href} {...item} />
+      <NavLink
+        key={item.href}
+        {...item}
+        href={
+          launchHref && item.href === MAINNET_NAV.launch.href ? launchHref : item.href
+        }
+      />
     ))}
   </nav>
 );
@@ -52,7 +66,7 @@ const Copyright = ({ className = "" }: { className?: string }) => (
 );
 
 // Figma 11089:93493 (desktop) / 11252:94162 (mobile)
-const PanelFooter = () => (
+const PanelFooter = ({ launchHref }: { launchHref?: string }) => (
   <footer className="w-full bg-canvas">
     <div className="hidden justify-center border-t border-muted py-8 xl:flex">
       <div className="flex w-full max-w-325 items-center justify-between">
@@ -66,7 +80,7 @@ const PanelFooter = () => (
           </div>
           <Socials />
         </div>
-        <LinkGrid className="w-154.25 grid-cols-3" />
+        <LinkGrid className="w-154.25 grid-cols-3" launchHref={launchHref} />
       </div>
     </div>
 
@@ -74,7 +88,7 @@ const PanelFooter = () => (
       <div className="flex w-full flex-col items-start gap-8 border-t border-subtle px-4 pt-8">
         <Logo className="h-10 w-auto" />
         <p className="w-full text-body-l leading-6 tracking-[0.02em] text-primary">{BLURB}</p>
-        <LinkGrid className="w-full grid-cols-2" />
+        <LinkGrid className="w-full grid-cols-2" launchHref={launchHref} />
         <Socials className="w-full justify-center" />
         <Copyright className="w-full text-center" />
       </div>
@@ -83,7 +97,7 @@ const PanelFooter = () => (
 );
 
 // Figma 11089:93492 (desktop) / 11252:94163 (mobile)
-const LandingFooter = () => (
+const LandingFooter = ({ launchHref }: { launchHref?: string }) => (
   <footer className="w-full bg-canvas">
     <div className="relative hidden flex-col items-center pt-8 pb-12 xl:flex">
       <div className="absolute left-0 -top-13.25 bg-black p-2.5">
@@ -98,7 +112,7 @@ const LandingFooter = () => (
             </div>
             <Socials />
           </div>
-          <LinkGrid className="w-154.25 grid-cols-3" />
+          <LinkGrid className="w-154.25 grid-cols-3" launchHref={launchHref} />
         </div>
         <Image src="/landing/footer-headline.svg" alt={TAGLINE} width={1300} height={66} className="h-16.5 w-325" />
       </div>
@@ -109,7 +123,7 @@ const LandingFooter = () => (
         <Logo className="h-10.25 w-auto" />
       </div>
       <p className="w-full text-body-l leading-6 tracking-[0.02em] text-primary">{BLURB}</p>
-      <LinkGrid className="w-full grid-cols-2" />
+      <LinkGrid className="w-full grid-cols-2" launchHref={launchHref} />
       <Image src="/landing/footer-headline-mobile.svg" alt={TAGLINE} width={358} height={65} className="h-auto w-full" />
       <div className="flex w-full flex-col items-center gap-4">
         <Socials className="justify-center" />
@@ -119,7 +133,11 @@ const LandingFooter = () => (
   </footer>
 );
 
-const MainnetFooter = ({ placement = "panel" }: MainnetFooterProps) =>
-  placement === "landing" ? <LandingFooter /> : <PanelFooter />;
+const MainnetFooter = ({ placement = "panel", launchHref }: MainnetFooterProps) =>
+  placement === "landing" ? (
+    <LandingFooter launchHref={launchHref} />
+  ) : (
+    <PanelFooter launchHref={launchHref} />
+  );
 
 export default MainnetFooter;

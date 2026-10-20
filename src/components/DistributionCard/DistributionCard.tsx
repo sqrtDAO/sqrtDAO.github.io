@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useChainId } from "wagmi";
 import { IconChevronRight } from "@tabler/icons-react";
-import type { Distribution } from "@/lib/fixtures/distributions";
+import type { Distribution } from "@/lib/distributions";
 import Status from "@/components/Status/Status";
 import TokenAvatar from "@/components/TokenAvatar/TokenAvatar";
 import useTokenAvatar from "@/hooks/useTokenAvatar";

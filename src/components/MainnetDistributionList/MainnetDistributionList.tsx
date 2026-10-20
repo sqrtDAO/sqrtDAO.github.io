@@ -23,6 +23,8 @@ export type MainnetDistributionListProps = {
   onPageChange: (page: number) => void;
   isLoading?: boolean;
   error?: string;
+  /** Launch CTA target, carrying the list's chain context when scoped. */
+  launchHref?: string;
   /** "Ecosystem: Show all" filter; hidden on testnet. */
   ecosystemFilter?: Omit<ChipProps, "label">;
 };
@@ -32,7 +34,7 @@ export type MainnetDistributionListProps = {
 const MainnetDistributionList = (props: MainnetDistributionListProps) => {
   const launch = (
     <Link
-      href={DISTRIBUTION_LAUNCH_HREF}
+      href={props.launchHref ?? DISTRIBUTION_LAUNCH_HREF}
       className="sqrt-btn sqrt-btn--primary sqrt-btn--m"
     >
       <span className="sqrt-btn__label">Launch token</span>
@@ -43,7 +45,7 @@ const MainnetDistributionList = (props: MainnetDistributionListProps) => {
     <>
       <SmokeMeshBackground />
       <div className="relative z-10 flex h-dvh flex-col overflow-y-auto">
-        <MainnetHeader />
+        <MainnetHeader launchHref={props.launchHref} />
         <main className="mx-auto flex w-full max-w-374 flex-1 flex-col pt-4 xl:px-38 xl:pt-6">
           <div className="flex items-start justify-between px-4 xl:px-0">
             <div className="flex flex-col">
@@ -126,7 +128,7 @@ const MainnetDistributionList = (props: MainnetDistributionListProps) => {
             )}
           </div>
         </main>
-        <MainnetFooter placement="landing" />
+        <MainnetFooter placement="landing" launchHref={props.launchHref} />
       </div>
     </>
   );

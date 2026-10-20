@@ -35,6 +35,8 @@ type MainnetHeaderProps = {
   showWallet?: boolean;
   /** "Back to mainnet" keeps the user on this page (launch step 1, import). */
   ribbonStays?: boolean;
+  /** Override the "Launch token" nav link (e.g. keep the list's chain filter). */
+  launchHref?: string;
   /** Extra content rendered inside the mobile menu (e.g. the docs section links). */
   mobileMenuExtra?: React.ReactNode;
 };
@@ -42,6 +44,7 @@ type MainnetHeaderProps = {
 const MainnetHeader = ({
   showWallet = true,
   ribbonStays,
+  launchHref,
   mobileMenuExtra,
 }: MainnetHeaderProps) => {
   const pathname = usePathname();
@@ -49,6 +52,11 @@ const MainnetHeader = ({
   const [openPath, setOpenPath] = useState<string | null>(null);
   const menuOpen = openPath === pathname;
   const closeMenu = () => setOpenPath(null);
+  const navItems = launchHref
+    ? DESKTOP_NAV.map((item) =>
+        item.href === MAINNET_NAV.launch.href ? { ...item, href: launchHref } : item,
+      )
+    : DESKTOP_NAV;
 
   return (
     <header className="relative z-40 w-full bg-surface">
@@ -58,7 +66,7 @@ const MainnetHeader = ({
           <Logo className="h-10 w-auto" />
         </Link>
         <nav className="flex items-center gap-4">
-          {DESKTOP_NAV.map((item) => (
+          {navItems.map((item) => (
             <NavLink key={item.href} {...item} />
           ))}
         </nav>
@@ -103,7 +111,7 @@ const MainnetHeader = ({
         {menuOpen && (
           <div className="absolute inset-x-0 top-full mt-1 px-4">
             <nav className="flex max-h-[calc(100dvh-4.5rem)] flex-col items-center gap-2 overflow-y-auto bg-raised py-1.5">
-              {DESKTOP_NAV.map((item) => (
+              {navItems.map((item) => (
                 <NavLink key={item.href} {...item} size="l" className="w-full" onClick={closeMenu} />
               ))}
               {mobileMenuExtra}
