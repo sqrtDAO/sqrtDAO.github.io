@@ -73,6 +73,7 @@ import { quickSqrtPriceX96 } from "@/lib/utils/sqrtPricex96";
 import { EMPTY_PERMIT2 } from "@/lib/utils/permit2";
 import { roundUnits } from "@/utils/round-units";
 import { chainToName, chainToSlug, isTestnet } from "@/utils/chain-utils";
+import { formatDateTime } from "@/utils/formatDate";
 
 type Step = "router" | "import" | "welcome" | "supply" | "release" | "rules" | "review" | "wallet" | "confirming" | "ready";
 type ReleaseType = "time" | "epoch";
@@ -651,32 +652,32 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toDistribute.value, epochs.value, releaseTypeIdx]);
 
+  const startMs = useMemo(() => {
+    if (!startDate.value || !startTime.value) return null;
+    return Number(parseLocalToTimestampSec(startDate.value, startTime.value)) * 1000;
+  }, [startDate.value, startTime.value]);
+
+  // Time-based: the schedule runs to the start's time of day on the end date.
+  const timeBasedEndMs = useMemo(() => {
+    if (!endDate.value || !startTime.value) return null;
+    return Number(parseLocalToTimestampSec(endDate.value, startTime.value)) * 1000;
+  }, [endDate.value, startTime.value]);
+
   // Epoch / emission math
   const epochsCount = useMemo(() => {
     if (releaseTypeIdx === 0) {
-      if (!startDate.value || !startTime.value || !endDate.value) return 0;
-      const start = Number(parseUTCToTimestampSec(startDate.value, startTime.value));
-      const end = Number(parseUTCToTimestampSec(endDate.value));
-      const duration = EPOCH_DURATION_MS[epochDurationInput.value] / 1000;
-      return Math.max(0, Math.floor((end - start) / duration));
+      if (startMs === null || timeBasedEndMs === null) return 0;
+      const duration = EPOCH_DURATION_MS[epochDurationInput.value];
+      return Math.max(0, Math.floor((timeBasedEndMs - startMs) / duration));
     }
     return Math.floor(parseFloat(epochs.value.replace(/,/g, "")) || 0);
-  }, [releaseTypeIdx, startDate.value, startTime.value, endDate.value, epochDurationInput.value, epochs.value]);
+  }, [releaseTypeIdx, startMs, timeBasedEndMs, epochDurationInput.value, epochs.value]);
 
     // Epoch-based: when the schedule ends (start + epochs × duration)
   const epochBasedEndMs = useMemo(() => {
-    if (
-      releaseTypeIdx !== 1 ||
-      !startDate.value ||
-      !startTime.value ||
-      epochsCount < 1
-    )
-      return null;
-    return (
-      Number(parseUTCToTimestampSec(startDate.value, startTime.value)) * 1000 +
-      epochsCount * EPOCH_DURATION_MS[epochDurationInput.value]
-    );
-  }, [releaseTypeIdx, startDate.value, startTime.value, epochsCount, epochDurationInput.value]);
+    if (releaseTypeIdx !== 1 || startMs === null || epochsCount < 1) return null;
+    return startMs + epochsCount * EPOCH_DURATION_MS[epochDurationInput.value];
+  }, [releaseTypeIdx, startMs, epochsCount, epochDurationInput.value]);
 
 const totalDistributionAmount = useMemo(() => {
     if (!token) return 0n;
@@ -708,7 +709,7 @@ const totalDistributionAmount = useMemo(() => {
           // the contract requires startTimestamp >= block.timestamp; keep a small
           // buffer so it can't expire while the user signs
           const startSec = Number(
-            parseUTCToTimestampSec(startDate.value, startTime.value),
+            parseLocalToTimestampSec(startDate.value, startTime.value),
           );
           if (startSec > 0 && startSec < Math.floor(Date.now() / 1000) + START_TIME_BUFFER_SEC) {
             startDate.setError("Start must be in the future");
@@ -782,7 +783,7 @@ const totalDistributionAmount = useMemo(() => {
     // Re-check the start time at confirm: it may have slipped into the past while
     // the user filled the form, and the contract reverts `start timestamp in the past`.
     // Compare against the chain's own block time, not the local clock.
-    const startTimestamp = parseUTCToTimestampSec(startDate.value, startTime.value);
+    const startTimestamp = parseLocalToTimestampSec(startDate.value, startTime.value);
     const chainNow = await latestChainSeconds();
     if (Number(startTimestamp) < chainNow + START_TIME_BUFFER_SEC) {
       startDate.setError("Start must be in the future");
@@ -1212,7 +1213,7 @@ if (asset.native) {
                       error={startDate.error}
                     />
                     <PickerField
-                      label="Start time (UTC)"
+                      label="Start time"
                       type="time"
                       icon={<IconClockEdit size={16} />}
                       value={startTime.value}
@@ -1323,7 +1324,7 @@ if (asset.native) {
                         <>
                           {" "}Ends{" "}
                           <strong className="font-bold text-primary">
-                            {fmtDateTimeUtc(epochBasedEndMs)} (
+                            {formatDateTime(epochBasedEndMs)} (
                             {((epochsCount * EPOCH_DURATION_MS[epochDurationInput.value]) / 86400000).toFixed(1)} days
                             later)
                           </strong>
@@ -1447,15 +1448,15 @@ if (asset.native) {
                   title="Release strategy"
                   onChange={() => setStep("release")}
                   rows={[
-                    ["Release starts at:", `${startDate.value} ${startTime.value} UTC`],
+                    ["Release starts at:", startMs !== null ? formatDateTime(startMs) : "—"],
                     [
                       "Release ends at:",
                       releaseTypeIdx === 0
-                        ? endDate.value
-                          ? `${endDate.value} ${startTime.value} UTC`
+                        ? timeBasedEndMs !== null
+                          ? formatDateTime(timeBasedEndMs)
                           : "—"
-                        : epochBasedEndMs
-                          ? fmtDateTimeUtc(epochBasedEndMs)
+                        : epochBasedEndMs !== null
+                          ? formatDateTime(epochBasedEndMs)
                           : "—",
                     ],
                     ["Number of epochs:", `${epochsCount}`],
@@ -1505,18 +1506,16 @@ if (asset.native) {
   );
 };
 
-const parseUTCToTimestampSec = (date: string, time?: string) => {
+// Interprets the picker values in the browser's local time zone.
+const parseLocalToTimestampSec = (date: string, time?: string) => {
   const [year, month, day] = date.split("-").map(Number);
   const [hours, minutes] = time ? time.split(":").map(Number) : [0, 0];
-  const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
-  return BigInt(Math.floor(utcDate.getTime() / 1000));
+  const localDate = new Date(year, month - 1, day, hours, minutes, 0);
+  return BigInt(Math.floor(localDate.getTime() / 1000));
 };
 
 const fmtPrice = (n: number) =>
   n.toLocaleString("en-US", { maximumFractionDigits: 6 });
-
-const fmtDateTimeUtc = (ms: number) =>
-  `${new Date(ms).toISOString().slice(0, 16).replace("T", " ")} UTC`;
 
 const shortAddress = (a: string) =>
   a.length > 10 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a;

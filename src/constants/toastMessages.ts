@@ -134,7 +134,7 @@ export const TOAST_MESSAGES: Record<ToastMessageKey, ToastMessageDef> = {
     type: "success",
     copy: "Reminder downloaded — open it to add the claim date to your calendar.",
   },
-  "reminder.failed": { type: "error", copy: "Couldn't create the reminder. Note the date: {date} UTC." },
+  "reminder.failed": { type: "error", copy: "Couldn't create the reminder. Note the date: {date}." },
   "share.failed": { type: "error", copy: "Couldn't open share. Link copied instead." },
 
   "data.loadFailed": { type: "error", copy: "Couldn't load this right now. Retry." },
