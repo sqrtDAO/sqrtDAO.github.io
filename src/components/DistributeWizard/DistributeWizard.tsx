@@ -501,6 +501,10 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
   const previousImportChain = useRef(chainId);
   useEffect(() => {
     const changed = previousImportChain.current !== chainId;
+    // Remember the chain this effect last saw: it re-runs on every `step`
+    // change, and without this a single earlier chain switch would make it
+    // treat every later step change (e.g. import → welcome) as a new switch.
+    previousImportChain.current = chainId;
     importChainRef.current = chainId;
     if (!changed) return;
     importSeq.current += 1;
