@@ -1,13 +1,8 @@
-import { base, sepolia } from "viem/chains";
-
-const CHAIN_EXPLORER_URLS: Record<number, string | undefined> = {
-  [sepolia.id]: sepolia.blockExplorers?.default.url,
-  [base.id]: base.blockExplorers?.default.url,
-};
+import { getExplorerUrl } from "@/utils/chain-utils";
 
 export const getExplorerTxUrl = (chainId: number, hash: string) => {
-  const base = CHAIN_EXPLORER_URLS[chainId];
-  return base ? `${base}/tx/${hash}` : undefined;
+  const url = getExplorerUrl(chainId);
+  return url ? `${url}/tx/${hash}` : undefined;
 };
 
 export const viewTransactionAction = (chainId: number, hash: string) => {

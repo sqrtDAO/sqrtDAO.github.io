@@ -1,8 +1,6 @@
 import { type Address } from "viem";
 import { base, sepolia } from "wagmi/chains";
 
-export type ChainId = typeof base.id | typeof sepolia.id;
-
 export interface ContractAddresses {
   factoryV1: Address;
   fixedEmission: Address;
@@ -19,7 +17,9 @@ export interface ContractAddresses {
 
 // Each chain is listed in full on purpose — the two deployments happen to share
 // addresses today (same deployer, nonce 0), but they must stay independently editable.
-const addresses: Record<ChainId, ContractAddresses> = {
+// A chain listed here goes live everywhere (wallet config, pickers, list) — add
+// Robinhood (robinhood.id from constants/ecosystems) once it is deployed.
+const addresses: Record<number, ContractAddresses> = {
   [sepolia.id]: {
     factoryV1: "0x0d7c71B0E33636555C237899DfF80F847637186e",
     fixedEmission: "0xa616f9d40DfBe52836B47744BcF2F4be0cDE4ACb",
@@ -48,8 +48,10 @@ const addresses: Record<ChainId, ContractAddresses> = {
   },
 };
 
+export const isDeployed = (chainId: number) => chainId in addresses;
+
 export function getAddresses(chainId: number): ContractAddresses {
-  const entry = addresses[chainId as ChainId];
+  const entry = addresses[chainId];
   if (!entry) throw new Error(`Unsupported chain: ${chainId}`);
   return entry;
 }

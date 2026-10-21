@@ -2,7 +2,7 @@ import { IconChevronRight } from "@tabler/icons-react";
 import TableCell from "@/components/TableCell/TableCell";
 import TokenAvatar from "@/components/TokenAvatar/TokenAvatar";
 import useTokenAvatar from "@/hooks/useTokenAvatar";
-import type { Distribution } from "@/lib/fixtures/distributions";
+import type { Distribution } from "@/lib/distributions";
 import { formatDate } from "@/utils/formatDate";
 import { roundUnits } from "@/utils/round-units";
 import { chainToSlug } from "@/utils/chain-utils";

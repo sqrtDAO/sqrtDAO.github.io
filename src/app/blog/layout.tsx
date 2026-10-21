@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function BlogLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-dvh flex-col">
-      <MainnetHeader showWallet={false} showNetworkSwitch={false} />
+      <MainnetHeader showWallet={false} />
       <main className="flex-1 overflow-y-auto">
         <div className="flex min-h-full flex-col">
           <div className="flex-1">{children}</div>

@@ -76,8 +76,6 @@ type MainnetDdpProps = {
   state: DdpState;
   connected: boolean;
   data: MainnetDdpData;
-  /** When set, the header network badge is locked to this chain (no switching). */
-  chainId?: number;
   epochActions?: {
     onParticipate?: (epoch: number) => void;
     onClaim?: (epoch: number) => void;
@@ -94,7 +92,7 @@ const STATUS: Record<DdpState, DistributionStatus> = {
 
 // Figma 10690:87344 / 14640:107403 (imported) and 10690:87464 / 14639:105593 (native).
 // Fully wired: the caller supplies contract-derived `data` plus handlers.
-const MainnetDdp = ({ variant, state, connected, data, chainId, epochActions }: MainnetDdpProps) => {
+const MainnetDdp = ({ variant, state, connected, data, epochActions }: MainnetDdpProps) => {
   const [dialog, setDialog] = useState<Dialog>(null);
   const [edd, setEdd] = useState<EpochData | null>(null);
   const [hovered, setHovered] = useState<EpochData | null>(null);
@@ -125,7 +123,7 @@ const MainnetDdp = ({ variant, state, connected, data, chainId, epochActions }: 
 
   return (
     <div className="flex h-dvh flex-col overflow-y-auto bg-canvas">
-      <MainnetHeader lockedChainId={chainId} />
+      <MainnetHeader />
       <main className="mx-auto flex w-full flex-1 gap-6 xl:max-w-330 xl:pt-4 xl:pb-6">
         <div className="flex min-w-0 flex-1 flex-col xl:w-218 xl:flex-none">
           <DistributionHeader {...data.header} status={STATUS[state]} />

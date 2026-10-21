@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import {
   IconAlertSquareRounded,
   IconCalendarEvent,
+  IconChevronRight,
   IconClockEdit,
   IconEqualDouble,
   IconMathIntegralX,
@@ -36,6 +37,10 @@ import { Button } from "@/components/Button/Button";
 import { IconButton } from "@/components/IconButton/IconButton";
 import { WizardShell } from "@/components/WizardShell/WizardShell";
 import RouterPage from "@/components/RouterPage/RouterPage";
+import MainnetHeader from "@/components/MainnetHeader/MainnetHeader";
+import ImportToken from "@/components/ImportToken/ImportToken";
+import Alert from "@/components/Alert/Alert";
+import { useSelectedChain } from "@/hooks/useActiveChain";
 import { useInput } from "@/hooks/useInput";
 import {
   allowCharsModifier,
@@ -60,14 +65,15 @@ import {
 import { tokenV1Abi, transferToHookAbi } from "@/contracts/abis";
 import { getAddresses } from "@/contracts/contract-addresses";
 import { getParticipationAssets, type ParticipationAsset } from "@/contracts/participation-assets";
-import { DISTRIBUTION_LAUNCH_HREF, DISTRIBUTION_LIST } from "@/constants/links";
+import { CLAIM_ROOT_DISCORD_URL, DISTRIBUTION_LAUNCH_HREF, DISTRIBUTION_LIST } from "@/constants/links";
 import { distributionV1FactoryAbi } from "@/contracts/abis";
 import { showToast } from "@/hooks/useToast";
 import { viewTransactionAction } from "@/utils/explorer-utils";
 import { quickSqrtPriceX96 } from "@/lib/utils/sqrtPricex96";
 import { EMPTY_PERMIT2 } from "@/lib/utils/permit2";
 import { roundUnits } from "@/utils/round-units";
-import { chainToSlug } from "@/utils/chain-utils";
+import { chainToName, chainToSlug, isTestnet } from "@/utils/chain-utils";
+import { formatDateTime } from "@/utils/formatDate";
 
 type Step = "router" | "import" | "welcome" | "supply" | "release" | "rules" | "review" | "wallet" | "confirming" | "ready";
 type ReleaseType = "time" | "epoch";
@@ -355,9 +361,9 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
 
   const { address, isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
-  const publicClient = usePublicClient();
+  const { chainId, wrongChain, switchToSelected, select } = useSelectedChain();
+  const publicClient = usePublicClient({ chainId });
   const { openConnectModal } = useConnectModal();
-  const chainId = walletClient?.chain.id ?? publicClient?.chain.id;
 
   const [step, setStep] = useState<Step>(targetToken ? "welcome" : "router");
   const [token, setToken] = useState<TokenInfo | null>(null);
@@ -365,6 +371,10 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
   const [distributor, setDistributor] = useState<Address | null>(null);
   const importAddress = useInput("", undefined, addressValidator);
   const [importing, setImporting] = useState(false);
+  // Bumped whenever the address or chain changes so a late RPC response can't
+  // attach a token read on the previous chain/address to the current screen.
+  const importSeq = useRef(0);
+  const importChainRef = useRef(chainId);
 
   const assets = useMemo(() => (chainId ? getParticipationAssets(chainId) : []), [chainId]);
   const [assetIndex, setAssetIndex] = useState(0);
@@ -456,7 +466,9 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
   const founderReceiver = useInput("", undefined, addressValidator);
 
   const loadToken = async (addr: Address) => {
-    if (!publicClient) return;
+    if (!publicClient) return false;
+    const seq = ++importSeq.current;
+    const requestChainId = chainId;
     setImporting(true);
     setLoadError(null);
     try {
@@ -468,23 +480,45 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
         contract.read.totalSupply(),
         address ? contract.read.balanceOf([address]) : Promise.resolve(0n),
       ]);
+      if (seq !== importSeq.current || importChainRef.current !== requestChainId) return false;
       setToken({ address: addr, name, symbol, decimals: Number(decimals), totalSupply, balance });
       setDistributor(null);
-      // Reflect the imported token in the URL (shallow update, no remount): a
-      // refresh or re-open re-imports instead of dropping back to the router,
-      // and the half-configured wizard can be bookmarked/shared for support.
-      window.history.replaceState(null, "", `${DISTRIBUTION_LAUNCH_HREF}?token=${addr}`);
-      setStep("welcome");
+      return true;
     } catch (e) {
+      if (seq !== importSeq.current || importChainRef.current !== requestChainId) return false;
       console.error(e);
       setLoadError("Couldn't read that token on this network.");
+      return false;
     } finally {
-      setImporting(false);
+      if (seq === importSeq.current) setImporting(false);
     }
   };
 
+  // A chain switch invalidates any in-flight import and drops the imported
+  // token (it was read on the old chain). Send the user back to the import
+  // screen so they can re-import on the newly selected chain. The wallet /
+  // confirming / ready steps are left alone: a chain change there is either a
+  // wallet-side change or too late to restart the flow.
+  const previousImportChain = useRef(chainId);
   useEffect(() => {
-    if (targetToken) void loadToken(targetToken);
+    const changed = previousImportChain.current !== chainId;
+    // Remember the chain this effect last saw: it re-runs on every `step`
+    // change, and without this a single earlier chain switch would make it
+    // treat every later step change (e.g. import → welcome) as a new switch.
+    previousImportChain.current = chainId;
+    importChainRef.current = chainId;
+    if (!changed) return;
+    importSeq.current += 1;
+    if (step === "wallet" || step === "confirming" || step === "ready") return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setToken(null);
+    setLoadError(null);
+    setImporting(false);
+    setStep((s) => (s === "router" || s === "import" ? s : "import"));
+  }, [chainId, step]);
+
+  useEffect(() => {
+    if (targetToken) void loadToken(targetToken).then((ok) => ok && setStep("welcome"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetToken, publicClient]);
 
@@ -618,32 +652,32 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toDistribute.value, epochs.value, releaseTypeIdx]);
 
+  const startMs = useMemo(() => {
+    if (!startDate.value || !startTime.value) return null;
+    return Number(parseLocalToTimestampSec(startDate.value, startTime.value)) * 1000;
+  }, [startDate.value, startTime.value]);
+
+  // Time-based: the schedule runs to the start's time of day on the end date.
+  const timeBasedEndMs = useMemo(() => {
+    if (!endDate.value || !startTime.value) return null;
+    return Number(parseLocalToTimestampSec(endDate.value, startTime.value)) * 1000;
+  }, [endDate.value, startTime.value]);
+
   // Epoch / emission math
   const epochsCount = useMemo(() => {
     if (releaseTypeIdx === 0) {
-      if (!startDate.value || !startTime.value || !endDate.value) return 0;
-      const start = Number(parseUTCToTimestampSec(startDate.value, startTime.value));
-      const end = Number(parseUTCToTimestampSec(endDate.value));
-      const duration = EPOCH_DURATION_MS[epochDurationInput.value] / 1000;
-      return Math.max(0, Math.floor((end - start) / duration));
+      if (startMs === null || timeBasedEndMs === null) return 0;
+      const duration = EPOCH_DURATION_MS[epochDurationInput.value];
+      return Math.max(0, Math.floor((timeBasedEndMs - startMs) / duration));
     }
     return Math.floor(parseFloat(epochs.value.replace(/,/g, "")) || 0);
-  }, [releaseTypeIdx, startDate.value, startTime.value, endDate.value, epochDurationInput.value, epochs.value]);
+  }, [releaseTypeIdx, startMs, timeBasedEndMs, epochDurationInput.value, epochs.value]);
 
     // Epoch-based: when the schedule ends (start + epochs × duration)
   const epochBasedEndMs = useMemo(() => {
-    if (
-      releaseTypeIdx !== 1 ||
-      !startDate.value ||
-      !startTime.value ||
-      epochsCount < 1
-    )
-      return null;
-    return (
-      Number(parseUTCToTimestampSec(startDate.value, startTime.value)) * 1000 +
-      epochsCount * EPOCH_DURATION_MS[epochDurationInput.value]
-    );
-  }, [releaseTypeIdx, startDate.value, startTime.value, epochsCount, epochDurationInput.value]);
+    if (releaseTypeIdx !== 1 || startMs === null || epochsCount < 1) return null;
+    return startMs + epochsCount * EPOCH_DURATION_MS[epochDurationInput.value];
+  }, [releaseTypeIdx, startMs, epochsCount, epochDurationInput.value]);
 
 const totalDistributionAmount = useMemo(() => {
     if (!token) return 0n;
@@ -675,7 +709,7 @@ const totalDistributionAmount = useMemo(() => {
           // the contract requires startTimestamp >= block.timestamp; keep a small
           // buffer so it can't expire while the user signs
           const startSec = Number(
-            parseUTCToTimestampSec(startDate.value, startTime.value),
+            parseLocalToTimestampSec(startDate.value, startTime.value),
           );
           if (startSec > 0 && startSec < Math.floor(Date.now() / 1000) + START_TIME_BUFFER_SEC) {
             startDate.setError("Start must be in the future");
@@ -741,11 +775,15 @@ const totalDistributionAmount = useMemo(() => {
       openConnectModal?.();
       return;
     }
+    if (wrongChain) {
+      switchToSelected();
+      return;
+    }
 
     // Re-check the start time at confirm: it may have slipped into the past while
     // the user filled the form, and the contract reverts `start timestamp in the past`.
     // Compare against the chain's own block time, not the local clock.
-    const startTimestamp = parseUTCToTimestampSec(startDate.value, startTime.value);
+    const startTimestamp = parseLocalToTimestampSec(startDate.value, startTime.value);
     const chainNow = await latestChainSeconds();
     if (Number(startTimestamp) < chainNow + START_TIME_BUFFER_SEC) {
       startDate.setError("Start must be in the future");
@@ -930,62 +968,72 @@ if (asset.native) {
     }
   };
 
+  const header = <MainnetHeader ribbonStays={step === "import"} />;
+
   if (step === "router") {
-    return <RouterPage onImport={() => setStep("import")} />;
+    return (
+      <>
+        {header}
+        <RouterPage onImport={() => setStep("import")} />
+      </>
+    );
   }
 
   if (step === "wallet" || step === "confirming" || step === "ready") {
     return (
-      <WizardShell>
-        <Status step={step} distributor={distributor ?? undefined} chainId={walletClient?.chain.id} />
-      </WizardShell>
+      <>
+        {header}
+        <WizardShell>
+          <Status step={step} distributor={distributor ?? undefined} chainId={chainId} />
+        </WizardShell>
+      </>
     );
   }
 
   if (step === "import" || !token) {
     return (
-      <WizardShell closeHref="/">
-        {step === "import" && (
-          <div className="flex w-full flex-col gap-8">
-            <div className="flex w-full flex-col gap-2">
-              <h1 className="font-display text-h2 font-semibold tracking-[-0.01em] text-primary">
-                Import existing token
-              </h1>
-              <p className={`${bodyL} text-secondary`}>
-                Paste the contract address of the token you want to distribute.
-              </p>
-            </div>
-            <Input
-              state={importAddress}
-              label="Token contract address"
-              placeholder="0x…"
-              showPaste
-              onPaste={async () => {
-                try {
-                  importAddress.onChange((await navigator.clipboard.readText()).trim());
-                } catch {}
+      <>
+        {header}
+        <WizardShell closeHref="/" spacious>
+          {step === "import" && (
+            <ImportToken
+              address={importAddress}
+              onAddressChange={(v) => {
+                importAddress.onChange(v);
+                importSeq.current += 1;
+                setToken(null);
+                setLoadError(null);
+                setImporting(false);
+              }}
+              chainId={chainId}
+              onChainChange={(id) => {
+                if (id === chainId) return;
+                importSeq.current += 1;
+                setToken(null);
+                setLoadError(null);
+                setImporting(false);
+                select(id);
+              }}
+              token={token}
+              loading={importing}
+              error={loadError}
+              onImport={() => {
+                if (importAddress.validate()) void loadToken(importAddress.value.trim() as Address);
+              }}
+              onConfirm={() => {
+                // Reflect the token in the URL (shallow, no remount) so a refresh
+                // re-imports instead of dropping back to the router.
+                window.history.replaceState(
+                  null,
+                  "",
+                  `${DISTRIBUTION_LAUNCH_HREF}?token=${token!.address}&chain=${chainToSlug(chainId)}`,
+                );
+                setStep("welcome");
               }}
             />
-            {loadError && <p className={`${bodyM} text-danger`}>{loadError}</p>}
-            <Actions>
-              <Button variant="ghost" size="m" onClick={() => setStep("router")}>
-                Back
-              </Button>
-              <Button
-                variant="primary"
-                size="m"
-                disabled={importing}
-                onClick={() => {
-                  if (!importAddress.validate()) return;
-                  void loadToken(importAddress.value.trim() as Address);
-                }}
-              >
-                {importing ? "Loading…" : "Import token"}
-              </Button>
-            </Actions>
-          </div>
-        )}
-      </WizardShell>
+          )}
+        </WizardShell>
+      </>
     );
   }
 
@@ -993,457 +1041,481 @@ if (asset.native) {
   const split = { priceAnchorPct, founderSharePct: founderPct, protocolFeePct };
 
   return (
-    <WizardShell closeHref="/">
-      <div className="flex w-full flex-col gap-8">
-        {step === "welcome" && (
-          <>
-            <div className="flex w-full flex-col gap-2">
-              <h1 className="font-display text-h2 font-semibold tracking-[-0.01em] text-primary">
-                Welcome to Distribution
-              </h1>
-              <p className={`${bodyS} text-secondary`}>Here&apos;s how it works</p>
-            </div>
-            <div className={`${bodyL} flex w-full flex-col gap-6 text-primary`}>
-              <p>
-                Your token is released gradually, over timed windows called{" "}
-                <strong className="font-bold">epochs</strong>, not all at once. In each epoch, people
-                take part with funds. When it closes, that epoch&apos;s tokens are shared out
-                proportionally, at one price for everyone.
-              </p>
-              <p>
-                As it runs, your token <span className="text-accent">raises funds</span>, finds a{" "}
-                <span className="text-accent">fair price</span>, and builds{" "}
-                <span className="text-accent">locked liquidity</span>, all at once.
-              </p>
-            </div>
-            <Actions>
-              <Button variant="primary" size="l" className="flex-1 xl:flex-none" onClick={() => setStep("supply")}>
-                Start distribution
-              </Button>
-            </Actions>
-          </>
-        )}
-
-        {step === "supply" && (
-          <>
-            <StepHeader
-              title="Distribution"
-              index={0}
-              description={`Set how many ${token.symbol} go out across all epochs.`}
-            />
-            <div className="flex w-full flex-col gap-6">
-              <div className="flex w-full flex-col gap-4">
-                <SectionLabel>Initial price and liquidity pool creation</SectionLabel>
-                <div className="flex flex-col gap-1 xl:flex-row xl:items-center xl:gap-4">
-                  <p className={`${bodyL} text-secondary`}>Pair your token with</p>
-                  <Segmented
-                    items={assets.map((a) => a.symbol)}
-                    activeIndex={assetIndex}
-                    size="l"
-                    onChange={setAssetIndex}
-                  />
-                </div>
-                {assets.length === 0 && (
-                  <p className={`${bodyM} text-danger`}>
-                    No participation assets are configured for this network yet.
-                  </p>
-                )}
-                <div className="flex w-full flex-col gap-4 xl:flex-row">
-                  <div className="xl:flex-1">
-                    <Input
-                      state={initialSupply}
-                      onChange={onInitialSupplyChange}
-                      label="Initial token supply"
-                      placeholder="first epoch release amount"
-                      suffix={token.symbol}
-                    />
-                  </div>
-                  <div className="xl:w-71">
-                    <Input
-                      state={liquidity}
-                      label="Initial liquidity"
-                      placeholder="e.g. 10,000,000"
-                      suffix={asset?.symbol}
-                    />
-                  </div>
-                </div>
-                <p className="flex items-baseline gap-2 whitespace-nowrap">
-                  <span className={`${bodyM} text-secondary`}>
-                    Your token initial price will be
-                  </span>
-                  <span className={`${bodyM} text-primary`}>
-                    1 {token.symbol} ≈{" "}
-                    {initialPrice !== null
-                      ? fmtPrice(initialPrice)
-                      : "—"}{" "}
-                    {asset?.symbol}
-                  </span>
+    <>
+      {header}
+      <WizardShell closeHref="/">
+        <div className="flex w-full flex-col gap-8">
+          {step === "welcome" && (
+            <>
+              <div className="flex w-full flex-col gap-2">
+                <h1 className="font-display text-h2 font-semibold tracking-[-0.01em] text-primary">
+                  Welcome to Distribution
+                </h1>
+                <p className={`${bodyS} text-secondary`}>Here&apos;s how it works</p>
+              </div>
+              <div className={`${bodyL} flex w-full flex-col gap-6 text-primary`}>
+                <p>
+                  Your token is released gradually, over timed windows called{" "}
+                  <strong className="font-bold">epochs</strong>, not all at once. In each epoch, people
+                  take part with funds. When it closes, that epoch&apos;s tokens are shared out
+                  proportionally, at one price for everyone.
                 </p>
-                <p className={`flex items-center gap-1.5 ${bodyS} text-live`}>
-                  <IconAlertSquareRounded size={16} />
-                  LP token will be permanently burned
+                <p>
+                  As it runs, your token <span className="text-accent">raises funds</span>, finds a{" "}
+                  <span className="text-accent">fair price</span>, and builds{" "}
+                  <span className="text-accent">locked liquidity</span>, all at once.
                 </p>
               </div>
+              <Actions>
+                <Button variant="primary" size="l" className="flex-1 xl:flex-none" onClick={() => setStep("supply")}>
+                  Start distribution
+                </Button>
+              </Actions>
+            </>
+          )}
 
-              <Rule />
-
-              <div className="flex w-full flex-col gap-4">
-                <SectionLabel>Supply set up</SectionLabel>
-                <Input
-                  state={toDistribute}
-                  onChange={onToDistributeChange}
-                  label="Supply to distribute"
-                  placeholder="0"
-                  suffix={token.symbol}
-                />
-                <div className="flex w-full flex-col gap-2">
-                  <SupplySlider
-                    value={percent}
-                    disabled={availableBig <= 0n}
-                    onChange={(p) =>
-                      toDistribute.onChange(
-                        fmtAmount((availableBig * BigInt(p)) / 100n),
-                      )
-                    }
-                  />
-                  <div className="flex w-full items-start gap-2">
-                    <p className={`flex-1 ${bodyM} text-accent`}>
-                      {percent}% ≈ {distributedNum.toLocaleString("en-US")} {token.symbol}
+          {step === "supply" && (
+            <>
+              <StepHeader
+                title="Distribution"
+                index={0}
+                description={`Set how many ${token.symbol} go out across all epochs.`}
+              />
+              <div className="flex w-full flex-col gap-6">
+                <div className="flex w-full flex-col gap-4">
+                  <SectionLabel>Initial price and liquidity pool creation</SectionLabel>
+                  {isTestnet(chainId) && (
+                    <Alert
+                      title="You’ll need testnet ROOT"
+                      description="Running or joining a distribution on testnet takes ROOT. It's free, grab some in our Discord."
+                      action={
+                        <a
+                          href={CLAIM_ROOT_DISCORD_URL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="sqrt-btn sqrt-btn--ghost sqrt-btn--s"
+                        >
+                          <span className="sqrt-btn__label">Get ROOT on Discord</span>
+                          <span className="sqrt-btn__icon" aria-hidden="true">
+                            <IconChevronRight size={14} />
+                          </span>
+                        </a>
+                      }
+                    />
+                  )}
+                  <div className="flex flex-col gap-1 xl:flex-row xl:items-center xl:gap-4">
+                    <p className={`${bodyL} text-secondary`}>Pair your token with</p>
+                    <Segmented
+                      items={assets.map((a) => a.symbol)}
+                      activeIndex={assetIndex}
+                      size="l"
+                      onChange={setAssetIndex}
+                    />
+                  </div>
+                  {assets.length === 0 && (
+                    <p className={`${bodyM} text-danger`}>
+                      No participation assets are configured for this network yet.
                     </p>
-                    <div className="flex flex-1 flex-col items-end gap-1 xl:flex-row xl:items-baseline xl:justify-end">
-                      <p className={`${bodyS} text-secondary`}>Wallet balance</p>
-                      <p className={`${bodyM} text-primary`}>
-                        {roundUnits(token.balance, token.decimals)} {token.symbol}
+                  )}
+                  <div className="flex w-full flex-col gap-4 xl:flex-row">
+                    <div className="xl:flex-1">
+                      <Input
+                        state={initialSupply}
+                        onChange={onInitialSupplyChange}
+                        label="Initial token supply"
+                        placeholder="first epoch release amount"
+                        suffix={token.symbol}
+                      />
+                    </div>
+                    <div className="xl:w-71">
+                      <Input
+                        state={liquidity}
+                        label="Initial liquidity"
+                        placeholder="e.g. 10,000,000"
+                        suffix={asset?.symbol}
+                      />
+                    </div>
+                  </div>
+                  <p className="flex items-baseline gap-2 whitespace-nowrap">
+                    <span className={`${bodyM} text-secondary`}>
+                      Your token initial price will be
+                    </span>
+                    <span className={`${bodyM} text-primary`}>
+                      1 {token.symbol} ≈{" "}
+                      {initialPrice !== null
+                        ? fmtPrice(initialPrice)
+                        : "—"}{" "}
+                      {asset?.symbol}
+                    </span>
+                  </p>
+                  <p className={`flex items-center gap-1.5 ${bodyS} text-live`}>
+                    <IconAlertSquareRounded size={16} />
+                    LP token will be permanently burned
+                  </p>
+                </div>
+
+                <Rule />
+
+                <div className="flex w-full flex-col gap-4">
+                  <SectionLabel>Supply set up</SectionLabel>
+                  <Input
+                    state={toDistribute}
+                    onChange={onToDistributeChange}
+                    label="Supply to distribute"
+                    placeholder="0"
+                    suffix={token.symbol}
+                  />
+                  <div className="flex w-full flex-col gap-2">
+                    <SupplySlider
+                      value={percent}
+                      disabled={availableBig <= 0n}
+                      onChange={(p) =>
+                        toDistribute.onChange(
+                          fmtAmount((availableBig * BigInt(p)) / 100n),
+                        )
+                      }
+                    />
+                    <div className="flex w-full items-start gap-2">
+                      <p className={`flex-1 ${bodyM} text-accent`}>
+                        {percent}% ≈ {distributedNum.toLocaleString("en-US")} {token.symbol}
                       </p>
+                      <div className="flex flex-1 flex-col items-end gap-1 xl:flex-row xl:items-baseline xl:justify-end">
+                        <p className={`${bodyS} text-secondary`}>Wallet balance</p>
+                        <p className={`${bodyM} text-primary`}>
+                          {roundUnits(token.balance, token.decimals)} {token.symbol}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <BackContinue onBack={() => setStep("welcome")} onNext={goNext} />
-          </>
-        )}
+              <BackContinue onBack={() => setStep("welcome")} onNext={goNext} />
+            </>
+          )}
 
-        {step === "release" && (
-          <>
-            <StepHeader
-              title="Distribution"
-              index={1}
-              description="Set the distribution's timing and how supply releases across it."
-            />
-            <div className="flex w-full flex-col gap-6">
-              <div className="flex w-full flex-col gap-4">
-                <SectionLabel>Distribution start</SectionLabel>
-                <div className="flex w-full gap-4">
-                  <PickerField
-                    label="Start date"
-                    type="date"
-                    icon={<IconCalendarEvent size={16} />}
-                    value={startDate.value}
-                    onChange={startDate.onChange}
-                    error={startDate.error}
-                  />
-                  <PickerField
-                    label="Start time (UTC)"
-                    type="time"
-                    icon={<IconClockEdit size={16} />}
-                    value={startTime.value}
-                    onChange={startTime.onChange}
-                    error={startTime.error}
-                  />
+          {step === "release" && (
+            <>
+              <StepHeader
+                title="Distribution"
+                index={1}
+                description="Set the distribution's timing and how supply releases across it."
+              />
+              <div className="flex w-full flex-col gap-6">
+                <div className="flex w-full flex-col gap-4">
+                  <SectionLabel>Distribution start</SectionLabel>
+                  <div className="flex w-full gap-4">
+                    <PickerField
+                      label="Start date"
+                      type="date"
+                      icon={<IconCalendarEvent size={16} />}
+                      value={startDate.value}
+                      onChange={startDate.onChange}
+                      error={startDate.error}
+                    />
+                    <PickerField
+                      label="Start time"
+                      type="time"
+                      icon={<IconClockEdit size={16} />}
+                      value={startTime.value}
+                      onChange={startTime.onChange}
+                      error={startTime.error}
+                    />
+                  </div>
                 </div>
-              </div>
-              <Rule />
-              <div className="flex w-full flex-col gap-4">
-                <SectionLabel>Release strategy (Linear and Exponential coming soon)</SectionLabel>
-                <div className="flex w-full gap-4 overflow-x-auto">
-                  <ReleaseCard
-                    name="Flat curve"
-                    description="Release equal amount each epoch"
-                    icon={<IconEqualDouble size={24} />}
-                    state="selected"
-                    className="shrink-0"
-                  />
-                  <ReleaseCard
-                    name="Linear curve"
-                    description="Release decreasing or increasing amount"
-                    icon={<IconMathXDivideY2 size={24} />}
-                    state="disabled"
-                    className="shrink-0"
-                  />
-                  <ReleaseCard
-                    name="Exponential curve"
-                    description="Release scales sharply with participation."
-                    icon={<IconMathIntegralX size={24} />}
-                    state="disabled"
-                    className="shrink-0"
-                  />
-                </div>
-                <div className="flex w-full flex-col items-start gap-4">
-                  <Segmented
-                    items={["Time-based", "Epoch-based"]}
-                    activeIndex={releaseTypeIdx}
-                    size="l"
-                    onChange={setReleaseTypeIdx}
-                  />
-                  <p className={`${bodyM} text-primary`}>
-                    {releaseTypeIdx === 0
-                      ? "With this choice, the number of epochs is calculated automatically."
-                      : "With this choice, the distribution duration is calculated automatically."}
-                  </p>
-                  {releaseTypeIdx === 0 ? (
-                    <div className="flex w-full items-start gap-4">
-                      <PickerField
-                        label="End date"
-                        type="date"
-                        icon={<IconCalendarEvent size={16} />}
-                        value={endDate.value}
-                        onChange={endDate.onChange}
-                        error={endDate.error}
-                      />
-                      <div className="min-w-0 flex-1">
+                <Rule />
+                <div className="flex w-full flex-col gap-4">
+                  <SectionLabel>Release strategy (Linear and Exponential coming soon)</SectionLabel>
+                  <div className="flex w-full gap-4 overflow-x-auto">
+                    <ReleaseCard
+                      name="Flat curve"
+                      description="Release equal amount each epoch"
+                      icon={<IconEqualDouble size={24} />}
+                      state="selected"
+                      className="shrink-0"
+                    />
+                    <ReleaseCard
+                      name="Linear curve"
+                      description="Release decreasing or increasing amount"
+                      icon={<IconMathXDivideY2 size={24} />}
+                      state="disabled"
+                      className="shrink-0"
+                    />
+                    <ReleaseCard
+                      name="Exponential curve"
+                      description="Release scales sharply with participation."
+                      icon={<IconMathIntegralX size={24} />}
+                      state="disabled"
+                      className="shrink-0"
+                    />
+                  </div>
+                  <div className="flex w-full flex-col items-start gap-4">
+                    <Segmented
+                      items={["Time-based", "Epoch-based"]}
+                      activeIndex={releaseTypeIdx}
+                      size="l"
+                      onChange={setReleaseTypeIdx}
+                    />
+                    <p className={`${bodyM} text-primary`}>
+                      {releaseTypeIdx === 0
+                        ? "With this choice, the number of epochs is calculated automatically."
+                        : "With this choice, the distribution duration is calculated automatically."}
+                    </p>
+                    {releaseTypeIdx === 0 ? (
+                      <div className="flex w-full items-start gap-4">
+                        <PickerField
+                          label="End date"
+                          type="date"
+                          icon={<IconCalendarEvent size={16} />}
+                          value={endDate.value}
+                          onChange={endDate.onChange}
+                          error={endDate.error}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <DropDownInput
+                            state={epochDurationInput}
+                            options={EPOCH_DURATIONS}
+                            label="Epoch duration"
+                            placeholder="Select an option"
+                            onOptionChange={() => {
+                              // duration change invalidates the stale epoch-count error
+                              endDate.clearError();
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex w-full flex-col gap-4">
+                        <div className="flex w-full gap-4">
+                          <div className="min-w-0 flex-1">
+                            <Input
+                              state={epochs}
+                              onChange={epochsOnChange}
+                              label="Number of epochs"
+                              placeholder="e.g. 54"
+                              suffix="Epochs"
+                            />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <Input
+                              state={perEpoch}
+                              onChange={perEpochOnChange}
+                              label="Release per epoch"
+                              placeholder="e.g. 100"
+                              suffix={token.symbol}
+                            />
+                          </div>
+                        </div>
                         <DropDownInput
                           state={epochDurationInput}
                           options={EPOCH_DURATIONS}
                           label="Epoch duration"
                           placeholder="Select an option"
-                          onOptionChange={() => {
-                            // duration change invalidates the stale epoch-count error
-                            endDate.clearError();
-                          }}
                         />
                       </div>
+                    )}
+                    <p className={`flex w-full flex-wrap items-center gap-2 rounded-m border border-subtle bg-surface p-4 ${bodyM} text-secondary`}>
+                      This creates{" "}
+                      <strong className="font-bold text-primary">{epochsCount} total epochs</strong> releasing{" "}
+                      <strong className="font-bold text-primary">
+                        {roundUnits(releasePerEpoch, token.decimals)} {token.symbol}
+                      </strong>{" "}
+                      each.
+                      {releaseTypeIdx === 1 && epochBasedEndMs && (
+                        <>
+                          {" "}Ends{" "}
+                          <strong className="font-bold text-primary">
+                            {formatDateTime(epochBasedEndMs)} (
+                            {((epochsCount * EPOCH_DURATION_MS[epochDurationInput.value]) / 86400000).toFixed(1)} days
+                            later)
+                          </strong>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <BackContinue onBack={goBack} onNext={goNext} />
+            </>
+          )}
+
+          {step === "rules" && (
+            <>
+              <StepHeader title="Distribution" index={2} description="Optional guardrails on participation." />
+              <div className="flex w-full flex-col gap-6">
+                <div className="flex w-full flex-col gap-4">
+                  <SectionLabel>Epoch setup</SectionLabel>
+                  <div className="flex w-full flex-col gap-4 xl:flex-row">
+                    <div className="xl:flex-1">
+                      <Input
+                        state={minParticipation}
+                        label="Minimum participation (Optional)"
+                        placeholder="e.g. 0.5"
+                        suffix={asset?.symbol}
+                      />
                     </div>
-                  ) : (
-                    <div className="flex w-full flex-col gap-4">
-                      <div className="flex w-full gap-4">
-                        <div className="min-w-0 flex-1">
-                          <Input
-                            state={epochs}
-                            onChange={epochsOnChange}
-                            label="Number of epochs"
-                            placeholder="e.g. 54"
-                            suffix="Epochs"
-                          />
+                    <div className="xl:flex-1">
+                      <Input state={claimDelay} label="Claim delay" placeholder="e.g. 5" suffix="Days" />
+                    </div>
+                  </div>
+                </div>
+                <Rule />
+                <div className="flex w-full flex-col gap-4">
+                  <SectionLabel>After-epoch rules</SectionLabel>
+                  <div className="flex w-full flex-col gap-1">
+                    <div className="flex w-full gap-1 overflow-hidden rounded-s border border-strong p-1" aria-hidden="true">
+                      {/* Dynamic widths: founder/fee follow the live split; teal flexes over the rest. */}
+                      <span className="h-6 flex-1 bg-(--color-support-teal-900)" />
+                      <span
+                        className="h-6 shrink-0 bg-(--color-alpha-amber-45)"
+                        style={{ width: `${protocolFeePct}%` }}
+                      />
+                      {founderOn && founderPct > 0 && (
+                        <span
+                          className="h-6 shrink-0 bg-(--color-support-violet-700)"
+                          style={{ width: `${founderPct}%` }}
+                        />
+                      )}
+                    </div>
+                    <div className={`flex w-full flex-wrap gap-4 ${bodyS}`}>
+                      <span className="text-(--color-support-teal-300)">{priceAnchorPct}% Price anchor</span>
+                      <span className="text-(--color-support-violet-300)">{founderPct}% Founder share</span>
+                      <span className="text-accent">{protocolFeePct}% Protocol fee</span>
+                    </div>
+                  </div>
+                  <SettingCard
+                    title="Price anchor (Buy and burn)"
+                    desc={`The protocol buys your token from the pool and burns it, keeping the clear price aligned with the open market. Protocol minimum: ${minAnchorPct}%.`}
+                  />
+                  <Rule />
+                  <div className="flex w-full flex-col gap-2">
+                    <SettingCard
+                      title="Founder share"
+                      desc={`Sent to your address when the epoch closes. Capped at ${founderCapPct}% — anything above the protocol's ${minAnchorPct}% price-anchor minimum.`}
+                      action={<Switch on={founderOn} onChange={setFounderOn} className="shrink-0" />}
+                    />
+                    {founderOn && (
+                      <div className="flex w-full flex-col gap-2 xl:flex-row xl:gap-4">
+                        <div className="xl:w-40">
+                          <Input state={founderShare} placeholder="0" suffix="%" />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="xl:flex-1">
                           <Input
-                            state={perEpoch}
-                            onChange={perEpochOnChange}
-                            label="Release per epoch"
-                            placeholder="e.g. 100"
-                            suffix={token.symbol}
+                            state={founderReceiver}
+                            placeholder="Receiver address"
+                            showPaste
+                            onPaste={async () => {
+                              try {
+                                founderReceiver.onChange((await navigator.clipboard.readText()).trim());
+                              } catch {}
+                            }}
                           />
                         </div>
                       </div>
-                      <DropDownInput
-                        state={epochDurationInput}
-                        options={EPOCH_DURATIONS}
-                        label="Epoch duration"
-                        placeholder="Select an option"
-                      />
-                    </div>
-                  )}
-                  <p className={`flex w-full flex-wrap items-center gap-2 rounded-m border border-subtle bg-surface p-4 ${bodyM} text-secondary`}>
-                    This creates{" "}
-                    <strong className="font-bold text-primary">{epochsCount} total epochs</strong> releasing{" "}
-                    <strong className="font-bold text-primary">
-                      {roundUnits(releasePerEpoch, token.decimals)} {token.symbol}
-                    </strong>{" "}
-                    each.
-                    {releaseTypeIdx === 1 && epochBasedEndMs && (
-                      <>
-                        {" "}Ends{" "}
-                        <strong className="font-bold text-primary">
-                          {fmtDateTimeUtc(epochBasedEndMs)} (
-                          {((epochsCount * EPOCH_DURATION_MS[epochDurationInput.value]) / 86400000).toFixed(1)} days
-                          later)
-                        </strong>
-                      </>
                     )}
-                  </p>
+                  </div>
                 </div>
               </div>
-            </div>
-            <BackContinue onBack={goBack} onNext={goNext} />
-          </>
-        )}
+              <BackContinue onBack={goBack} onNext={goNext} />
+            </>
+          )}
 
-        {step === "rules" && (
-          <>
-            <StepHeader title="Distribution" index={2} description="Optional guardrails on participation." />
-            <div className="flex w-full flex-col gap-6">
+          {step === "review" && (
+            <>
+              <StepHeader title="Distribution review" index={3} />
               <div className="flex w-full flex-col gap-4">
-                <SectionLabel>Epoch setup</SectionLabel>
-                <div className="flex w-full flex-col gap-4 xl:flex-row">
-                  <div className="xl:flex-1">
-                    <Input
-                      state={minParticipation}
-                      label="Minimum participation (Optional)"
-                      placeholder="e.g. 0.5"
-                      suffix={asset?.symbol}
-                    />
-                  </div>
-                  <div className="xl:flex-1">
-                    <Input state={claimDelay} label="Claim delay" placeholder="e.g. 5" suffix="Days" />
-                  </div>
-                </div>
-              </div>
-              <Rule />
-              <div className="flex w-full flex-col gap-4">
-                <SectionLabel>After-epoch rules</SectionLabel>
-                <div className="flex w-full flex-col gap-1">
-                  <div className="flex w-full gap-1 overflow-hidden rounded-s border border-strong p-1" aria-hidden="true">
-                    {/* Dynamic widths: founder/fee follow the live split; teal flexes over the rest. */}
-                    <span className="h-6 flex-1 bg-(--color-support-teal-900)" />
-                    <span
-                      className="h-6 shrink-0 bg-(--color-alpha-amber-45)"
-                      style={{ width: `${protocolFeePct}%` }}
-                    />
-                    {founderOn && founderPct > 0 && (
-                      <span
-                        className="h-6 shrink-0 bg-(--color-support-violet-700)"
-                        style={{ width: `${founderPct}%` }}
-                      />
-                    )}
-                  </div>
-                  <div className={`flex w-full flex-wrap gap-4 ${bodyS}`}>
-                    <span className="text-(--color-support-teal-300)">{priceAnchorPct}% Price anchor</span>
-                    <span className="text-(--color-support-violet-300)">{founderPct}% Founder share</span>
-                    <span className="text-accent">{protocolFeePct}% Protocol fee</span>
-                  </div>
-                </div>
-                <SettingCard
-                  title="Price anchor (Buy and burn)"
-                  desc={`The protocol buys your token from the pool and burns it, keeping the clear price aligned with the open market. Protocol minimum: ${minAnchorPct}%.`}
+                <ReviewSection
+                  title="Supply and backing"
+                  onChange={() => setStep("supply")}
+                  rows={[
+                    ["Supply to distribute:", `${toDistribute.value || "0"} ${token.symbol}`],
+                    ["Initial liquidity:", `${liquidity.value || "0"} ${asset?.symbol ?? ""}`],
+                    [
+                      "Initial price:",
+                      initialPrice !== null
+                        ? `1 ${token.symbol} = ${fmtPrice(initialPrice)} ${asset?.symbol ?? ""}`
+                        : "—",
+                    ],
+                    [
+                      "Tokenomics:",
+                      token.totalSupply > 0n
+                        ? `${((distributedNum / Number(formatUnits(token.totalSupply, token.decimals))) * 100).toFixed(2)}% public distribution`
+                        : "—",
+                    ],
+                  ]}
                 />
                 <Rule />
-                <div className="flex w-full flex-col gap-2">
-                  <SettingCard
-                    title="Founder share"
-                    desc={`Sent to your address when the epoch closes. Capped at ${founderCapPct}% — anything above the protocol's ${minAnchorPct}% price-anchor minimum.`}
-                    action={<Switch on={founderOn} onChange={setFounderOn} className="shrink-0" />}
-                  />
-                  {founderOn && (
-                    <div className="flex w-full flex-col gap-2 xl:flex-row xl:gap-4">
-                      <div className="xl:w-40">
-                        <Input state={founderShare} placeholder="0" suffix="%" />
-                      </div>
-                      <div className="xl:flex-1">
-                        <Input
-                          state={founderReceiver}
-                          placeholder="Receiver address"
-                          showPaste
-                          onPaste={async () => {
-                            try {
-                              founderReceiver.onChange((await navigator.clipboard.readText()).trim());
-                            } catch {}
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <ReviewSection
+                  title="Release strategy"
+                  onChange={() => setStep("release")}
+                  rows={[
+                    ["Release starts at:", startMs !== null ? formatDateTime(startMs) : "—"],
+                    [
+                      "Release ends at:",
+                      releaseTypeIdx === 0
+                        ? timeBasedEndMs !== null
+                          ? formatDateTime(timeBasedEndMs)
+                          : "—"
+                        : epochBasedEndMs !== null
+                          ? formatDateTime(epochBasedEndMs)
+                          : "—",
+                    ],
+                    ["Number of epochs:", `${epochsCount}`],
+                    ["Release per epoch:", `${roundUnits(releasePerEpoch, token.decimals)} ${token.symbol}`],
+                    ["Release type:", releaseTypeIdx === 0 ? "Time-based" : "Epoch-based"],
+                    ["Epoch duration:", epochDurationInput.value],
+                  ]}
+                />
+                <Rule />
+                <ReviewSection
+                  title="Rules"
+                  onChange={() => setStep("rules")}
+                  rows={[
+                    ["Minimum participation:", minParticipation.value || "None"],
+                    ["Claim delay:", `${claimDelay.value || "0"} DAYS`],
+                    ["Allowlist:", "No one"],
+                    ...(founderOn
+                      ? ([
+                          [
+                            "Founder receiver:",
+                            founderReceiver.value ? shortAddress(founderReceiver.value) : "—",
+                          ],
+                        ] as [string, string][])
+                      : []),
+                  ]}
+                />
+                <Rule />
+                <ReviewSection
+                  title="Fund split"
+                  rows={[
+                    ["Price anchor:", `${split.priceAnchorPct}%`],
+                    ["Founder share:", `${split.founderSharePct}%`],
+                    ["Protocol fee:", `${split.protocolFeePct}%`],
+                  ]}
+                />
               </div>
-            </div>
-            <BackContinue onBack={goBack} onNext={goNext} />
-          </>
-        )}
-
-        {step === "review" && (
-          <>
-            <StepHeader title="Distribution review" index={3} />
-            <div className="flex w-full flex-col gap-4">
-              <ReviewSection
-                title="Supply and backing"
-                onChange={() => setStep("supply")}
-                rows={[
-                  ["Supply to distribute:", `${toDistribute.value || "0"} ${token.symbol}`],
-                  ["Initial liquidity:", `${liquidity.value || "0"} ${asset?.symbol ?? ""}`],
-                  [
-                    "Initial price:",
-                    initialPrice !== null
-                      ? `1 ${token.symbol} = ${fmtPrice(initialPrice)} ${asset?.symbol ?? ""}`
-                      : "—",
-                  ],
-                  [
-                    "Tokenomics:",
-                    token.totalSupply > 0n
-                      ? `${((distributedNum / Number(formatUnits(token.totalSupply, token.decimals))) * 100).toFixed(2)}% public distribution`
-                      : "—",
-                  ],
-                ]}
+              <BackContinue
+                onBack={goBack}
+                onNext={onConfirm}
+                nextLabel={wrongChain ? `Switch to ${chainToName(chainId)}` : "Confirm"}
               />
-              <Rule />
-              <ReviewSection
-                title="Release strategy"
-                onChange={() => setStep("release")}
-                rows={[
-                  ["Release starts at:", `${startDate.value} ${startTime.value} UTC`],
-                  [
-                    "Release ends at:",
-                    releaseTypeIdx === 0
-                      ? endDate.value
-                        ? `${endDate.value} ${startTime.value} UTC`
-                        : "—"
-                      : epochBasedEndMs
-                        ? fmtDateTimeUtc(epochBasedEndMs)
-                        : "—",
-                  ],
-                  ["Number of epochs:", `${epochsCount}`],
-                  ["Release per epoch:", `${roundUnits(releasePerEpoch, token.decimals)} ${token.symbol}`],
-                  ["Release type:", releaseTypeIdx === 0 ? "Time-based" : "Epoch-based"],
-                  ["Epoch duration:", epochDurationInput.value],
-                ]}
-              />
-              <Rule />
-              <ReviewSection
-                title="Rules"
-                onChange={() => setStep("rules")}
-                rows={[
-                  ["Minimum participation:", minParticipation.value || "None"],
-                  ["Claim delay:", `${claimDelay.value || "0"} DAYS`],
-                  ["Allowlist:", "No one"],
-                  ...(founderOn
-                    ? ([
-                        [
-                          "Founder receiver:",
-                          founderReceiver.value ? shortAddress(founderReceiver.value) : "—",
-                        ],
-                      ] as [string, string][])
-                    : []),
-                ]}
-              />
-              <Rule />
-              <ReviewSection
-                title="Fund split"
-                rows={[
-                  ["Price anchor:", `${split.priceAnchorPct}%`],
-                  ["Founder share:", `${split.founderSharePct}%`],
-                  ["Protocol fee:", `${split.protocolFeePct}%`],
-                ]}
-              />
-            </div>
-            <BackContinue onBack={goBack} onNext={onConfirm} nextLabel="Confirm" />
-          </>
-        )}
-      </div>
-    </WizardShell>
+            </>
+          )}
+        </div>
+      </WizardShell>
+    </>
   );
 };
 
-const parseUTCToTimestampSec = (date: string, time?: string) => {
+// Interprets the picker values in the browser's local time zone.
+const parseLocalToTimestampSec = (date: string, time?: string) => {
   const [year, month, day] = date.split("-").map(Number);
   const [hours, minutes] = time ? time.split(":").map(Number) : [0, 0];
-  const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
-  return BigInt(Math.floor(utcDate.getTime() / 1000));
+  const localDate = new Date(year, month - 1, day, hours, minutes, 0);
+  return BigInt(Math.floor(localDate.getTime() / 1000));
 };
 
 const fmtPrice = (n: number) =>
   n.toLocaleString("en-US", { maximumFractionDigits: 6 });
-
-const fmtDateTimeUtc = (ms: number) =>
-  `${new Date(ms).toISOString().slice(0, 16).replace("T", " ")} UTC`;
 
 const shortAddress = (a: string) =>
   a.length > 10 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a;

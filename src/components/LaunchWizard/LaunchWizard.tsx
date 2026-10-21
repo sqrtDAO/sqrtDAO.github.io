@@ -18,9 +18,13 @@ import Divider from "@/components/Divider/Divider";
 import { Button } from "@/components/Button/Button";
 import { IconButton } from "@/components/IconButton/IconButton";
 import { WizardShell, WizardTitle } from "@/components/WizardShell/WizardShell";
+import MainnetHeader from "@/components/MainnetHeader/MainnetHeader";
+import EcosystemPicker from "@/components/EcosystemPicker/EcosystemPicker";
 import TokenAvatar from "@/components/TokenAvatar/TokenAvatar";
 import AvatarCropDialog from "@/components/AvatarCropDialog/AvatarCropDialog";
 import { useInput } from "@/hooks/useInput";
+import { useSelectedChain } from "@/hooks/useActiveChain";
+import { chainToName, chainToSlug } from "@/utils/chain-utils";
 import {
   amountValidator,
   addressValidator,
@@ -40,7 +44,12 @@ import { DISTRIBUTION_LAUNCH_HREF } from "@/constants/links";
 import { showToast } from "@/hooks/useToast";
 import { viewTransactionAction } from "@/utils/explorer-utils";
 import { predictCid, requestUploadLink, uploadToIpfs } from "@/utils/avatar-api";
-import { AVATAR_ALLOWED_MIME_TYPES, AVATAR_MAX_FILE_SIZE } from "@/constants/avatar";
+import { buildTokenMetadataUri } from "@/utils/token-metadata";
+import {
+  AVATAR_ALLOWED_MIME_TYPES,
+  AVATAR_MAX_FILE_SIZE,
+  avatarHttpsUrl,
+} from "@/constants/avatar";
 
 type Step = "form" | "receiver" | "done";
 type AvatarStatus = "idle" | "pending" | "done" | "error" | "skipped";
@@ -113,7 +122,8 @@ const CopyRow = ({ label, value }: { label: string; value: string }) => (
 const LaunchWizard = () => {
   const { address, isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
-  const publicClient = usePublicClient();
+  const { chainId, wrongChain, switchToSelected, select } = useSelectedChain();
+  const publicClient = usePublicClient({ chainId });
   const { openConnectModal } = useConnectModal();
 
   const [step, setStep] = useState<Step>("form");
@@ -196,6 +206,10 @@ const LaunchWizard = () => {
       openConnectModal?.();
       return;
     }
+    if (wrongChain) {
+      switchToSelected();
+      return;
+    }
     if (!walletClient || !publicClient) return;
     if (!validateAll(name, symbol, supply)) {
       setStep("form");
@@ -204,7 +218,6 @@ const LaunchWizard = () => {
     if (changeReceiver && !receiver.validate()) return;
 
     setLaunching(true);
-    const chainId = walletClient.chain.id;
     const addresses = getAddresses(chainId);
     const totalSupply = parseUnits(supply.value.replace(/,/g, ""), 18);
 
@@ -218,8 +231,21 @@ const LaunchWizard = () => {
       }
     }
 
+    const avatar = cid ? `ipfs://${cid}` : "";
+
     const metadata = [
-      { key: "avatar", value: cid ? `ipfs://${cid}` : "" },
+      // reserved key — served by metadata()/contractURI()/tokenURI()
+      {
+        key: "metadata",
+        value: buildTokenMetadataUri({
+          name: name.value.trim(),
+          symbol: symbol.value.trim(),
+          description: description.value,
+          avatar,
+          website: website.value,
+        }),
+      },
+      { key: "avatar", value: avatar },
       { key: "description", value: description.value },
       { key: "website", value: website.value },
       { key: "github", value: github.value },
@@ -321,22 +347,25 @@ const LaunchWizard = () => {
 
   const onRetryAvatar = () => {
     if (!result || !avatarCid) return;
-    void uploadAvatar(result.token, avatarCid, walletClient!.chain.id);
+    void uploadAvatar(result.token, avatarCid, chainId);
   };
 
   return (
-    <WizardShell closeHref="/">
-      <div className="flex w-full flex-col gap-8">
-        {step === "form" && (
-          <>
-            <WizardTitle
-              title="Launch token"
-              description="Creating a new token is free and easy, but the actual fight is about its PRICE."
-            />
-            <div className="flex w-full items-start gap-6">
-              <AvatarUpload preview={preview} onPick={onPickFile} />
-              <div className="flex flex-1 flex-col gap-4">
+    <>
+      <MainnetHeader ribbonStays={step === "form"} />
+      <WizardShell closeHref="/">
+        <div className="flex w-full flex-col gap-8">
+          {step === "form" && (
+            <>
+              <WizardTitle
+                title="Launch token"
+                description="Creating a new token is free and easy, but the actual fight is about its PRICE."
+              />
+              {/* Figma 11254:94167 / 14411:84789 — one column: picker, avatar, then fields. */}
+              <div className="flex w-full flex-col gap-4">
+                <EcosystemPicker variant="rich" value={chainId} onChange={select} />
                 <SectionLabel>Primary informations</SectionLabel>
+                <AvatarUpload preview={preview} onPick={onPickFile} />
                 <Input state={name} label="Token Name" placeholder="The full name, e.g. Dev Protocol." />
                 <Input state={symbol} label="Token symbol" placeholder="The ticker, e.g. DEV." />
                 <Input
@@ -352,176 +381,180 @@ const LaunchWizard = () => {
                 <Input state={x} label="X link" placeholder="https://…" />
                 <Input state={discord} label="Discord link" placeholder="https://…" />
               </div>
-            </div>
-            <Actions>
-              <Link href="/" className="sqrt-btn sqrt-btn--outline sqrt-btn--m">
-                Cancel
-              </Link>
-              <Button
-                variant="primary"
-                size="m"
-                onClick={() => {
-                  if (!isConnected) {
-                    openConnectModal?.();
-                    return;
-                  }
-                  if (!validateAll(name, symbol, supply)) return;
-                  setStep("receiver");
-                }}
-              >
-                Continue
-              </Button>
-            </Actions>
-          </>
-        )}
+              <Actions>
+                <Link href="/" className="sqrt-btn sqrt-btn--outline sqrt-btn--m flex-1 xl:flex-none">
+                  Cancel
+                </Link>
+                <Button
+                  variant="primary"
+                  size="m"
+                  className="flex-1 xl:flex-none"
+                  onClick={() => {
+                    if (!isConnected) {
+                      openConnectModal?.();
+                      return;
+                    }
+                    if (!validateAll(name, symbol, supply)) return;
+                    setStep("receiver");
+                  }}
+                >
+                  Continue
+                </Button>
+              </Actions>
+            </>
+          )}
 
-        {step === "receiver" && (
-          <>
-            <WizardTitle
-              title="One more thing!"
-              description="Where do you want to have your new-born token?"
-            />
-            <div className="sqrt-input">
-              <div className="flex flex-col gap-1">
-                <label htmlFor="receiver" className="sqrt-input__label">
-                  Receiver address
-                </label>
-                <p className={`${bodyS} text-secondary`}>
-                  By default we’ll send it to your connected wallet. You can change the receiver here.
+          {step === "receiver" && (
+            <>
+              <WizardTitle
+                title="One more thing!"
+                description="Where do you want to have your new-born token?"
+              />
+              <div className="sqrt-input">
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="receiver" className="sqrt-input__label">
+                    Receiver address
+                  </label>
+                  <p className={`${bodyS} text-secondary`}>
+                    By default we’ll send it to your connected wallet. You can change the receiver here.
+                  </p>
+                </div>
+                <div className="sqrt-input__field">
+                  <input
+                    id="receiver"
+                    className="sqrt-input__el"
+                    value={changeReceiver ? receiver.value : ""}
+                    placeholder={address ?? "Connect wallet"}
+                    readOnly={!changeReceiver}
+                    onChange={(e) => receiver.onChange(e.target.value)}
+                    spellCheck={false}
+                    autoComplete="off"
+                  />
+                  <button
+                    type="button"
+                    className="sqrt-input__paste"
+                    onClick={() => setChangeReceiver(true)}
+                  >
+                    Change receiver
+                  </button>
+                </div>
+              </div>
+              <Actions>
+                <Button variant="outline" size="m" onClick={() => setStep("form")}>
+                  Back
+                </Button>
+                <Button
+                  variant="primary"
+                  size="m"
+                  leadingIcon={<IconRocket size={18} />}
+                  disabled={launching}
+                  onClick={onLaunch}
+                >
+                  {wrongChain ? `Switch to ${chainToName(chainId)}` : launching ? "Launching…" : "Launch"}
+                </Button>
+              </Actions>
+            </>
+          )}
+
+          {step === "done" && result && (
+            <>
+              <WizardTitle title="Token created!" />
+              <div className="flex w-full flex-col gap-4">
+                <div className="flex w-full items-start gap-2.5 rounded-m bg-surface p-4">
+                  <TokenAvatar
+                    seed={result.symbol}
+                    imageUrl={avatarStatus === "done" ? preview ?? undefined : undefined}
+                    size={72}
+                    className="shrink-0"
+                  />
+                  <div className="flex min-w-0 flex-1 flex-col gap-4">
+                    <p className="text-body-l leading-6 tracking-[0.02em] text-primary xl:text-h4 xl:font-medium">
+                      {result.name}
+                    </p>
+                    <div className={`flex items-center gap-4 ${bodyM} text-secondary`}>
+                      <span>{result.symbol}</span>
+                      <span className="w-px self-stretch bg-subtle" aria-hidden="true" />
+                      <span>{formatUnits(result.supply, 18)} {result.symbol}</span>
+                    </div>
+                    <CopyRow label="Token contract" value={result.token} />
+                    <CopyRow
+                      label="Receiver Address"
+                      value={receiverAddress ?? ""}
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="m"
+                        leadingIcon={<IconWallet size={18} />}
+                        onClick={async () => {
+                          if (!walletClient) return;
+                          await walletClient.watchAsset({
+                            type: "ERC20",
+                            options: {
+                              address: result.token,
+                              symbol: result.symbol,
+                              decimals: 18,
+                              image: avatarHttpsUrl(
+                                avatarCid ? `ipfs://${avatarCid}` : undefined,
+                              ),
+                            },
+                          });
+                        }}
+                      >
+                        Add to wallet
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {avatarStatus === "pending" && (
+                  <p className={`${bodyM} text-secondary`}>Uploading avatar…</p>
+                )}
+                {avatarStatus === "error" && (
+                  <div className="flex flex-col gap-2 rounded-m border border-danger bg-surface p-4">
+                    <p className={`${bodyM} text-danger`}>
+                      Avatar upload failed. Your token is live — retry or skip.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button variant="primary" size="s" onClick={onRetryAvatar}>
+                        Retry
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="s"
+                        onClick={() => setAvatarStatus("skipped")}
+                      >
+                        Skip
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <p className={`${bodyM} text-secondary`}>Next step:</p>
+                <p className="text-h4 leading-none font-medium text-primary">
+                  Now you just have to distribute your token.
                 </p>
               </div>
-              <div className="sqrt-input__field">
-                <input
-                  id="receiver"
-                  className="sqrt-input__el"
-                  value={changeReceiver ? receiver.value : ""}
-                  placeholder={address ?? "Connect wallet"}
-                  readOnly={!changeReceiver}
-                  onChange={(e) => receiver.onChange(e.target.value)}
-                  spellCheck={false}
-                  autoComplete="off"
-                />
-                <button
-                  type="button"
-                  className="sqrt-input__paste"
-                  onClick={() => setChangeReceiver(true)}
+              <Actions>
+                <Link
+                  href={`${DISTRIBUTION_LAUNCH_HREF}?token=${result.token}&chain=${chainToSlug(chainId)}`}
+                  className="sqrt-btn sqrt-btn--primary sqrt-btn--m flex-1 xl:flex-none"
                 >
-                  Change receiver
-                </button>
-              </div>
-            </div>
-            <Actions>
-              <Button variant="outline" size="m" onClick={() => setStep("form")}>
-                Back
-              </Button>
-              <Button
-                variant="primary"
-                size="m"
-                leadingIcon={<IconRocket size={18} />}
-                disabled={launching}
-                onClick={onLaunch}
-              >
-                {launching ? "Launching…" : "Launch"}
-              </Button>
-            </Actions>
-          </>
+                  <span className="sqrt-btn__icon" aria-hidden="true">
+                    <IconHammer size={18} />
+                  </span>
+                  <span className="sqrt-btn__label">Set up distribution</span>
+                </Link>
+              </Actions>
+            </>
+          )}
+        </div>
+
+        {cropSrc && (
+          <AvatarCropDialog src={cropSrc} onClose={() => setCropSrc(null)} onCropped={onCropped} />
         )}
-
-        {step === "done" && result && (
-          <>
-            <WizardTitle title="Token created!" />
-            <div className="flex w-full flex-col gap-4">
-              <div className="flex w-full items-start gap-2.5 rounded-m bg-surface p-4">
-                <TokenAvatar
-                  seed={result.symbol}
-                  imageUrl={avatarStatus === "done" ? preview ?? undefined : undefined}
-                  size={72}
-                  className="shrink-0"
-                />
-                <div className="flex min-w-0 flex-1 flex-col gap-4">
-                  <p className="text-body-l leading-6 tracking-[0.02em] text-primary xl:text-h4 xl:font-medium">
-                    {result.name}
-                  </p>
-                  <div className={`flex items-center gap-4 ${bodyM} text-secondary`}>
-                    <span>{result.symbol}</span>
-                    <span className="w-px self-stretch bg-subtle" aria-hidden="true" />
-                    <span>{formatUnits(result.supply, 18)} {result.symbol}</span>
-                  </div>
-                  <CopyRow label="Token contract" value={result.token} />
-                  <CopyRow
-                    label="Receiver Address"
-                    value={receiverAddress ?? ""}
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="m"
-                      leadingIcon={<IconWallet size={18} />}
-                      onClick={async () => {
-                        if (!walletClient) return;
-                        await walletClient.watchAsset({
-                          type: "ERC20",
-                          options: {
-                            address: result.token,
-                            symbol: result.symbol,
-                            decimals: 18,
-                          },
-                        });
-                      }}
-                    >
-                      Add to wallet
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {avatarStatus === "pending" && (
-                <p className={`${bodyM} text-secondary`}>Uploading avatar…</p>
-              )}
-              {avatarStatus === "error" && (
-                <div className="flex flex-col gap-2 rounded-m border border-danger bg-surface p-4">
-                  <p className={`${bodyM} text-danger`}>
-                    Avatar upload failed. Your token is live — retry or skip.
-                  </p>
-                  <div className="flex gap-2">
-                    <Button variant="primary" size="s" onClick={onRetryAvatar}>
-                      Retry
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="s"
-                      onClick={() => setAvatarStatus("skipped")}
-                    >
-                      Skip
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              <p className={`${bodyM} text-secondary`}>Next step:</p>
-              <p className="text-h4 leading-none font-medium text-primary">
-                Now you just have to distribute your token.
-              </p>
-            </div>
-            <Actions>
-              <Link
-                href={`${DISTRIBUTION_LAUNCH_HREF}?token=${result.token}`}
-                className="sqrt-btn sqrt-btn--primary sqrt-btn--m flex-1 xl:flex-none"
-              >
-                <span className="sqrt-btn__icon" aria-hidden="true">
-                  <IconHammer size={18} />
-                </span>
-                <span className="sqrt-btn__label">Set up distribution</span>
-              </Link>
-            </Actions>
-          </>
-        )}
-      </div>
-
-      {cropSrc && (
-        <AvatarCropDialog src={cropSrc} onClose={() => setCropSrc(null)} onCropped={onCropped} />
-      )}
-    </WizardShell>
+      </WizardShell>
+    </>
   );
 };
 

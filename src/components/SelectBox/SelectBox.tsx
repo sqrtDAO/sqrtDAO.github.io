@@ -1,65 +1,59 @@
 "use client";
 
-import "./SelectBox.css";
+import { BODY_M, BODY_S } from "@/constants/typography";
 
-export interface SelectBoxProps {
-  label?: React.ReactNode;
+export type SelectBoxProps = {
+  icon?: React.ReactNode;
+  label: string;
+  /** Rich variant only. */
   description?: string;
+  variant?: "rich" | "minimal";
   selected?: boolean;
   disabled?: boolean;
-  onChange?: (selected: boolean) => void;
-  showSlot?: boolean;
-  children?: React.ReactNode;
-  className?: string;
-}
+  onSelect?: () => void;
+};
 
-function RadioIcon({ selected, disabled }: { selected: boolean; disabled: boolean }) {
-  return selected ? (
-    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
-      <circle cx="11" cy="11" r="10" stroke="var(--sqrt-action-primary-rest)" strokeWidth="1.5" />
-      <circle cx="11" cy="11" r="5" fill="var(--sqrt-action-primary-rest)" />
-    </svg>
-  ) : (
-    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
-      <circle cx="11" cy="11" r="10" stroke={disabled ? "var(--sqrt-text-tertiary)" : "var(--sqrt-border-default)"} strokeWidth="1.5" />
-    </svg>
-  );
-}
-
-export default function SelectBox({
-  label = "Radio label" as React.ReactNode,
-  description = "Optional description",
+// Figma 16802:109610 — rich (card) and minimal (pill) radio options.
+const SelectBox = ({
+  icon,
+  label,
+  description,
+  variant = "rich",
   selected = false,
   disabled = false,
-  onChange,
-  showSlot = false,
-  children,
-  className,
-}: SelectBoxProps) {
+  onSelect,
+}: SelectBoxProps) => {
+  const rich = variant === "rich";
   return (
-    <div
-      className={`select-box${selected ? " is-selected" : ""}${disabled ? " is-disabled" : ""}${className ? ` ${className}` : ""}`}
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      disabled={disabled}
+      onClick={onSelect}
+      className={`flex shrink-0 rounded-m border text-left transition-colors duration-200 ${
+        rich ? "w-38.5 flex-col items-start gap-4 p-4" : "items-center gap-2 px-3 py-2"
+      } ${
+        disabled
+          ? "cursor-not-allowed border-subtle text-disabled"
+          : selected
+            ? "border-action bg-surface text-primary"
+            : "border-muted text-primary hover:bg-surface"
+      }`}
     >
-      <button
-        type="button"
-        role="radio"
-        aria-checked={selected}
-        aria-disabled={disabled}
-        disabled={disabled}
-        className="select-box__radio"
-        onClick={() => onChange?.(!selected)}
-      >
-        <RadioIcon selected={selected} disabled={disabled} />
-        <span className="select-box__radio-content">
-          <span className="select-box__label">{label}</span>
-          {description && (
-            <span className="select-box__description">{description}</span>
-          )}
+      <span className={`flex gap-2 ${rich ? "flex-col" : "items-center"}`}>
+        <span className={disabled ? "opacity-50" : undefined}>{icon}</span>
+        <span className={`${BODY_M} ${rich ? "" : "whitespace-nowrap"}`}>{label}</span>
+      </span>
+      {rich && description && (
+        <span
+          className={`h-10 ${BODY_S} ${disabled ? "text-disabled" : "text-secondary"}`}
+        >
+          {description}
         </span>
-      </button>
-      {showSlot && children && (
-        <div className="select-box__slot">{children}</div>
       )}
-    </div>
+    </button>
   );
-}
+};
+
+export default SelectBox;

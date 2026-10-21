@@ -12,7 +12,7 @@ import {
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { IconLoader2 } from "@tabler/icons-react";
 import { base, sepolia } from "viem/chains";
-import { chainNameToId, chainToName } from "@/utils/chain-utils";
+import { chainNameToId, chainToName, getExplorerUrl } from "@/utils/chain-utils";
 import MainnetDdp, { type MainnetDdpData } from "@/components/MainnetDdp/MainnetDdp";
 import MainnetHeader from "@/components/MainnetHeader/MainnetHeader";
 import MainnetFooter from "@/components/MainnetFooter/MainnetFooter";
@@ -28,6 +28,7 @@ import type {
   EpochInfo,
 } from "@/hooks/useDistributorData";
 import useTokenAvatar from "@/hooks/useTokenAvatar";
+import { avatarHttpsUrl } from "@/constants/avatar";
 import { useInput, type UseInputReturn } from "@/hooks/useInput";
 import {
   decimalOnlyModifier,
@@ -76,11 +77,6 @@ const absoluteUrl = (raw?: string): string | undefined => {
   if (/^https?:\/\//i.test(v)) return v;
   if (!/\.[a-z]{2,}/i.test(v)) return undefined; // not a plausible domain
   return `https://${v.replace(/^\/+/, "")}`;
-};
-
-const EXPLORER_URLS: Record<number, string> = {
-  [base.id]: "https://basescan.org",
-  [sepolia.id]: "https://sepolia.etherscan.io",
 };
 
 function buildEpochs(
@@ -664,10 +660,11 @@ const DistributionDetailV2 = ({
           address: contractInfo.distributionToken,
           symbol: tokenSymbol,
           decimals: tokenDecimals ?? 18,
+          image: avatarHttpsUrl(avatarUrl ?? undefined),
         },
       })
       .catch(() => {});
-  }, [walletClient, contractInfo, tokenSymbol, tokenDecimals]);
+  }, [walletClient, contractInfo, tokenSymbol, tokenDecimals, avatarUrl]);
 
   const onShare = useCallback(() => {
     navigator.clipboard
@@ -721,7 +718,7 @@ const DistributionDetailV2 = ({
     participationTokenSymbol === undefined ||
     participationTokenDecimals === undefined
   ) {
-    return <DdpLoading chainId={chainId} />;
+    return <DdpLoading />;
   }
 
   const claimable = claimData?.claimableAmount ?? 0n;
@@ -738,13 +735,13 @@ const DistributionDetailV2 = ({
       tokenAddress: contractInfo.distributionToken,
       distributionAddress: contractAddress,
       imageUrl: avatarUrl ?? undefined,
-      network: chainToName(chainId),
+      chainId,
       links: {
         website: absoluteUrl(metadata.website),
         x: absoluteUrl(metadata.x),
         github: absoluteUrl(metadata.github),
-        explorer: EXPLORER_URLS[chainId]
-          ? `${EXPLORER_URLS[chainId]}/token/${contractInfo.distributionToken}`
+        explorer: getExplorerUrl(chainId)
+          ? `${getExplorerUrl(chainId)}/token/${contractInfo.distributionToken}`
           : undefined,
         uniswap:
           chainId === base.id
@@ -867,7 +864,6 @@ const DistributionDetailV2 = ({
         variant={native ? "native" : "imported"}
         state={ddpState}
         connected={sameChain}
-        chainId={chainId}
         data={data}
         epochActions={{
           onParticipate: (epoch) => {
@@ -887,10 +883,10 @@ const DistributionDetailV2 = ({
 };
 
 // Full-page spinner shown until every read has resolved.
-function DdpLoading({ chainId }: { chainId: number }) {
+function DdpLoading() {
   return (
     <div className="flex h-dvh flex-col overflow-y-auto bg-canvas">
-      <MainnetHeader lockedChainId={chainId} />
+      <MainnetHeader />
       <div className="flex flex-1 items-center justify-center">
         <IconLoader2 size={32} className="animate-spin text-tertiary" />
       </div>

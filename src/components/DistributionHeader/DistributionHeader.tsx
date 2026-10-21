@@ -10,7 +10,7 @@ import {
 } from "@tabler/icons-react";
 import AddressTag from "@/components/AddressTag/AddressTag";
 import { IconButton } from "@/components/IconButton/IconButton";
-import NetworkTag from "@/components/NetworkTag/NetworkTag";
+import EcosystemLabel from "@/components/EcosystemLabel/EcosystemLabel";
 import Status, { type DistributionStatus } from "@/components/Status/Status";
 import TokenAvatar from "@/components/TokenAvatar/TokenAvatar";
 import { BODY_L, BODY_M } from "@/constants/typography";
@@ -31,8 +31,8 @@ export type DistributionHeaderProps = {
   creator: string;
   tokenAddress: string;
   distributionAddress: string;
-  /** Chain name shown in the "on X" tag; defaults to the connected chain. */
-  network?: string;
+  /** Chain shown in the "on X" label. */
+  chainId?: number;
   /** Absolute URLs. Anything missing simply isn't rendered. */
   links?: DistributionHeaderLinks;
   onShare?: () => void;
@@ -95,11 +95,11 @@ const Address = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
-const NameRow = ({ name, symbol, status, network }: DistributionHeaderProps) => (
+const NameRow = ({ name, symbol, status, chainId }: DistributionHeaderProps) => (
   <div className="flex flex-col gap-1 xl:gap-2">
     <div className="flex items-center gap-2 xl:items-end">
       <h1 className="text-h4 leading-none font-medium text-primary">{name}</h1>
-      <NetworkTag network={network} />
+      <EcosystemLabel chainId={chainId} />
       <Status status={status} className="shrink-0" />
     </div>
     <p className={`${BODY_L} text-secondary`}>{symbol}</p>
