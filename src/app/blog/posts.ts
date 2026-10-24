@@ -6,8 +6,10 @@ export type BlogPost = {
   /** ISO date (YYYY-MM-DD) */
   date: string;
   description: string;
-  /** JPEG shown on top of the post and used as its OG image */
+  /** JPEG shown on top of the post */
   image: string;
+  /** 1200x630 social crop of `image`, used for OG/Twitter cards */
+  ogImage: string;
 };
 
 const posts: BlogPost[] = [
@@ -18,6 +20,7 @@ const posts: BlogPost[] = [
     description:
       "Fund raising was broken: bots beat humans, whales take over, one-shot raises and instant dumps. We stretched the launch across epochs — here is how it works.",
     image: "/blog/how-we-fixed-fund-raising.jpg",
+    ogImage: "/blog/how-we-fixed-fund-raising-og.jpg",
   },
 ];
 export const blogPosts: BlogPost[] = [...posts].sort(

@@ -7,7 +7,7 @@ import { docMetadata } from "../metadata";
 export const metadata: Metadata = docMetadata(
   "/docs/buy-back-and-burn/",
   "Buy back & burn",
-  "How sqrtDAO turns epoch participation into permanent buy pressure: a configurable share of every drained epoch fund is swapped on Uniswap V3 and the proceeds are burned.",
+  "How sqrtDAO turns epoch participation into permanent buy pressure: a share of every drained epoch fund is swapped on Uniswap V3 and burned.",
 );
 
 export default function Page() {

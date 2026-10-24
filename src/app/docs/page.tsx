@@ -5,7 +5,7 @@ import { docMetadata } from "./metadata";
 export const metadata: Metadata = docMetadata(
   "/docs/",
   "Getting started",
-  "sqrtDAO is fair-launch infrastructure for tokens: slow pro-rata distribution across epochs, backing that can't be pulled, and no gatekeepers. Learn how a launch works and how to participate.",
+  "sqrtDAO is fair-launch infrastructure for tokens: slow pro-rata distribution across epochs, backing that can't be pulled, and no gatekeepers.",
 );
 
 export default function Page() {

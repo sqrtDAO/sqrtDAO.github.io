@@ -6,7 +6,7 @@ import { docMetadata } from "../metadata";
 export const metadata: Metadata = docMetadata(
   "/docs/epoch-distribution/",
   "Epoch-based distribution",
-  "How sqrtDAO distributes tokens: equal-length epochs, pro-rata participation, per-epoch emission curves, claim delays and drain hooks that route epoch funds onward.",
+  "How sqrtDAO distributes tokens: equal-length epochs, pro-rata participation, emission curves, claim delays and drain hooks that route funds onward.",
 );
 
 export default function Page() {

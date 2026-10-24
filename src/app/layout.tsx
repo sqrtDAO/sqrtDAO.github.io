@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Oxanium, IBM_Plex_Sans_Condensed } from "next/font/google";
 import RainbowKitRoot from "@/components/RainbowKitRoot/RainbowKitRoot";
 import ToastContainer from "@/components/ToastContainer/ToastContainer";
+import { SITE_NAME, SITE_URL } from "@/constants/site";
 import "./theme.css";
 import "./globals.css";
 
@@ -19,17 +20,19 @@ const ibmPlex = IBM_Plex_Sans_Condensed({
   display: "swap",
 });
 
+const DESCRIPTION =
+  "Fair-launch infrastructure for tokens: pro-rata distribution across epochs, backing that can't be pulled, and no gatekeepers.";
+
+const SOCIAL_DESCRIPTION =
+  "Fair-launch infrastructure for tokens. Slow, pro-rata distribution across epochs, backing that can't be pulled, and no gatekeepers.";
+
 export const metadata: Metadata = {
   title: {
-    default: "sqrtDAO | Launch and distribute infrastructure",
-    template: "%s | sqrtDAO docs",
+    default: `${SITE_NAME} | Launch and distribute infrastructure`,
+    template: `%s | ${SITE_NAME}`,
   },
-  description:
-    "Fair-launch infrastructure for tokens. Slow, pro-rata distribution across epochs, backing that can't be pulled, and no gatekeepers. Create a token or distribute an existing one | one fair engine, two ways in.",
-  metadataBase: new URL("https://sqrtdao.org"),
-  alternates: {
-    canonical: "/",
-  },
+  description: DESCRIPTION,
+  metadataBase: new URL(SITE_URL),
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },
@@ -38,26 +41,24 @@ export const metadata: Metadata = {
     apple: "/apple-icon.png",
   },
   openGraph: {
-    title: "sqrtDAO | Launch and distribute infrastructure",
-    description:
-      "Fair-launch infrastructure for tokens. Slow, pro-rata distribution across epochs, backing that can't be pulled, and no gatekeepers.",
-    url: "https://sqrtdao.org",
-    siteName: "sqrtDAO",
+    title: `${SITE_NAME} | Launch and distribute infrastructure`,
+    description: SOCIAL_DESCRIPTION,
+    url: SITE_URL,
+    siteName: SITE_NAME,
     images: [
       {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: "sqrtDAO — Launch and distribute infrastructure for tokens",
+        alt: `${SITE_NAME} — Launch and distribute infrastructure for tokens`,
       },
     ],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "sqrtDAO | Launch and distribute infrastructure",
-    description:
-      "Fair-launch infrastructure for tokens. Slow, pro-rata distribution across epochs, backing that can't be pulled, and no gatekeepers.",
+    title: `${SITE_NAME} | Launch and distribute infrastructure`,
+    description: SOCIAL_DESCRIPTION,
     images: ["/og.png"],
   },
   other: {
@@ -69,9 +70,6 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${oxanium.variable} ${ibmPlex.variable}`}>
-      <head>
-        <meta name="theme-color" content="#0B0D12" />
-      </head>
       <body>
         <RainbowKitRoot>{children}</RainbowKitRoot>
         <ToastContainer />

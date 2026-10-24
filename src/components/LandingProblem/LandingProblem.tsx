@@ -49,9 +49,9 @@ function ProblemMobile({ onTryItClick, ctas }: ProblemProps) {
             ]}
           />
 
-          <p className="absolute left-[36px] top-[89px] w-[340px] font-display text-h1 font-semibold leading-none tracking-[-0.48px] text-primary">
+          <h2 className="absolute left-[36px] top-[89px] w-[340px] font-display text-h1 font-semibold leading-none tracking-[-0.48px] text-primary">
             Most tokens never recover from their first minute.
-          </p>
+          </h2>
 
           <p className="absolute left-[83px] top-[378px] w-[239px] text-body text-primary">
             A normal launch puts your whole supply on the market at once.
@@ -93,7 +93,7 @@ function ProblemMobile({ onTryItClick, ctas }: ProblemProps) {
               below never collides with wrapped text — same fix desktop already
               needed for this exact card. */}
           <div className="mt-[72px] flex w-[358px] flex-col gap-6 rounded-none bg-black">
-            <p className="font-display text-h3 text-primary">Old-fashioned problems</p>
+            <h3 className="font-display text-h3 text-primary">Old-fashioned problems</h3>
             {PROBLEMS.map(({ Icon, size, text }) => (
               <div key={text} className="flex items-center gap-4">
                 <Icon size={size} stroke={1.5} className="shrink-0 text-primary" />
@@ -149,9 +149,9 @@ export default function LandingProblem({ onTryItClick, ctas }: ProblemProps) {
             </GlitchReveal>
 
             <GlitchReveal>
-              <p className="absolute left-[37px] top-[65px] w-[798px] font-display text-display-m font-semibold leading-none tracking-[-0.02em] text-primary">
+              <h2 className="absolute left-[37px] top-[65px] w-[798px] font-display text-display-m font-semibold leading-none tracking-[-0.02em] text-primary">
                 Most tokens never recover from their first minute.
-              </p>
+              </h2>
             </GlitchReveal>
             <GlitchReveal>
               <p className="absolute left-[37px] top-[258px] w-[440px] text-h4 text-primary">
@@ -212,7 +212,7 @@ export default function LandingProblem({ onTryItClick, ctas }: ProblemProps) {
 
             <GlitchReveal>
               <div className="mt-6 flex w-[511px] flex-col gap-8 rounded-none bg-black">
-                <p className="font-display text-h3 text-primary">Old-fashioned problems</p>
+                <h3 className="font-display text-h3 text-primary">Old-fashioned problems</h3>
                 {PROBLEMS.map(({ Icon, size, text }) => (
                   <div key={text} className="flex items-center gap-4">
                     <Icon size={size} stroke={1.5} className="shrink-0 text-primary" />
