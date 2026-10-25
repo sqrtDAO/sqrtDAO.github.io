@@ -261,7 +261,10 @@ const MainnetDdp = ({ variant, state, connected, data, epochActions }: MainnetDd
           quoteDecimals={data.quoteDecimals}
           claiming={data.claiming ?? false}
           onClose={() => setEdd(null)}
-          onParticipateClick={() => epochActions?.onParticipate?.(edd.epoch)}
+          onParticipateClick={() => {
+            epochActions?.onParticipate?.(edd.epoch);
+            setEdd(null);
+          }}
           onClaimClick={() => epochActions?.onClaim?.(edd.epoch)}
         />
       )}
