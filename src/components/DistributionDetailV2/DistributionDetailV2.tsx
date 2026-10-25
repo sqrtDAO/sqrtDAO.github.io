@@ -157,13 +157,23 @@ function computeShares(
   return { priceAnchorPct, founderSharePct, protocolFeePct };
 }
 
+type RangeField = "from" | "to" | "count";
+
+const RANGE_FIELD_LABEL: Record<RangeField, string> = {
+  from: "From epoch",
+  to: "To epoch",
+  count: "Spread across",
+};
+
 // Minimal UseInputReturn for derived/controlled inputs (no internal validation).
 const makeInput = (
   value: string,
   onChange: (v: string) => void,
+  onBlur?: () => void,
 ): UseInputReturn => ({
   value,
   onChange,
+  onBlur,
   error: null,
   setError: () => {},
   clearError: () => {},
@@ -361,48 +371,127 @@ const DistributionDetailV2 = ({
   // "Spread across" edits count, "From" edits start, "To" edits start+count-1,
   // and the +/- steppers edit count. All three inputs stay in lockstep.
   const minStartEpoch = Math.min(currentEpochDisplay ?? 1, Math.max(lastEpoch, 1));
+  const maxEpochNum = Math.max(lastEpoch, 1);
   const [rangeStart, setRangeStart] = useState<number | null>(null);
   const [rangeCount, setRangeCount] = useState<number | null>(null);
+  // Raw text of each field while it differs from the committed number. The
+  // committed range is still clamped/validated, but the visible value follows the
+  // keystrokes, so deleting the last digit ("12" → "1" → "") doesn't snap back
+  // mid-edit. Out-of-range text is clamped into the rules on blur; a field left
+  // empty stays empty (no placeholder, no refill) and reports itself as required.
+  const [rangeDrafts, setRangeDrafts] = useState<Record<RangeField, string | null>>({
+    from: null,
+    to: null,
+    count: null,
+  });
+  const [rangeRequired, setRangeRequired] = useState<Record<RangeField, boolean>>({
+    from: false,
+    to: false,
+    count: false,
+  });
 
   const fromEpochNum = Math.min(
     Math.max(rangeStart ?? minStartEpoch, minStartEpoch),
-    Math.max(lastEpoch, 1),
+    maxEpochNum,
   );
   const epochCountNum = Math.min(
     Math.max(rangeCount ?? 1, 1),
-    Math.max(lastEpoch - fromEpochNum + 1, 1),
+    Math.max(maxEpochNum - fromEpochNum + 1, 1),
   );
   const toEpochNum = fromEpochNum + epochCountNum - 1;
 
   const applyRange = useCallback(
     (start: number, count: number) => {
-      const s = Math.min(Math.max(start, minStartEpoch), Math.max(lastEpoch, 1));
-      const c = Math.min(Math.max(count, 1), Math.max(lastEpoch - s + 1, 1));
+      const s = Math.min(Math.max(start, minStartEpoch), maxEpochNum);
+      const c = Math.min(Math.max(count, 1), Math.max(maxEpochNum - s + 1, 1));
       setRangeStart(s);
       setRangeCount(c);
     },
-    [minStartEpoch, lastEpoch],
+    [minStartEpoch, maxEpochNum],
   );
 
-  const onFromEpochChange = (v: string) => {
-    const n = parseInt(numberOnlyModifier(v), 10);
-    if (!isNaN(n)) applyRange(n, epochCountNum);
-  };
-  const onToEpochChange = (v: string) => {
-    const n = parseInt(numberOnlyModifier(v), 10);
-    if (isNaN(n)) return;
-    const end = Math.min(Math.max(n, fromEpochNum), Math.max(lastEpoch, 1));
-    applyRange(fromEpochNum, end - fromEpochNum + 1);
-  };
-  const onCountChange = (v: string) => {
-    const n = parseInt(numberOnlyModifier(v), 10);
-    if (!isNaN(n)) applyRange(fromEpochNum, n);
-  };
-  const stepEpochs = (delta: number) => applyRange(fromEpochNum, epochCountNum + delta);
+  const maxCountNum = Math.max(maxEpochNum - fromEpochNum + 1, 1);
 
-  const fromEpochInput = makeInput(String(fromEpochNum), onFromEpochChange);
-  const toEpochInput = makeInput(String(toEpochNum), onToEpochChange);
-  const epochsInput = makeInput(String(epochCountNum), onCountChange);
+  // Rules for each field, kept exactly as before: from ∈ [minStartEpoch, maxEpochNum],
+  // to ∈ [from, maxEpochNum], count ∈ [1, remaining].
+  const isFieldInRange = (field: RangeField, n: number) => {
+    if (field === "from") return n >= minStartEpoch && n <= maxEpochNum;
+    if (field === "to") return n >= fromEpochNum && n <= maxEpochNum;
+    return n >= 1 && n <= maxCountNum;
+  };
+  const applyField = (field: RangeField, n: number) => {
+    if (field === "from") applyRange(n, epochCountNum);
+    else if (field === "to") applyRange(fromEpochNum, n - fromEpochNum + 1);
+    else applyRange(fromEpochNum, n);
+  };
+
+  const clearRangeDraft = (field: RangeField) => {
+    setRangeDrafts((d) => (d[field] === null ? d : { ...d, [field]: null }));
+    setRangeRequired((r) => (r[field] ? { ...r, [field]: false } : r));
+  };
+
+  const onRangeChange = (field: RangeField, v: string) => {
+    const text = numberOnlyModifier(v);
+    setRangeDrafts((d) => ({ ...d, [field]: text }));
+    setRangeRequired((r) => (r[field] ? { ...r, [field]: false } : r));
+    // valid values update the range live; incomplete/out-of-range text waits for blur
+    if (text === "") return;
+    const n = parseInt(text, 10);
+    if (!isNaN(n) && isFieldInRange(field, n)) applyField(field, n);
+  };
+
+  const onRangeBlur = (field: RangeField) => {
+    const text = rangeDrafts[field];
+    if (text === null) return;
+    if (text === "") {
+      // stay empty — don't silently put a number back; flag it as required instead
+      setRangeRequired((r) => (r[field] ? r : { ...r, [field]: true }));
+      return;
+    }
+    const n = parseInt(text, 10);
+    if (!isNaN(n)) applyField(field, n);
+    clearRangeDraft(field);
+  };
+
+  const stepEpochs = (delta: number) => {
+    clearRangeDraft("count");
+    applyRange(fromEpochNum, epochCountNum + delta);
+  };
+
+  // Required / out-of-range hint for the range row, shown once the field is left empty
+  // or while a typed value is outside the allowed range.
+  const rangeFieldError = (field: RangeField): string | null => {
+    if (rangeRequired[field]) return `${RANGE_FIELD_LABEL[field]} is required`;
+    const text = rangeDrafts[field];
+    if (text === null || text === "") return null;
+    const n = parseInt(text, 10);
+    if (isNaN(n) || isFieldInRange(field, n)) return null;
+    if (field === "from") return `Epoch must be between ${minStartEpoch} and ${maxEpochNum}`;
+    if (field === "to") return `End epoch must be between ${fromEpochNum} and ${maxEpochNum}`;
+    return `Spread across must be between 1 and ${maxCountNum} epoch${maxCountNum > 1 ? "s" : ""}`;
+  };
+  const rangeError =
+    rangeFieldError("from") ?? rangeFieldError("to") ?? rangeFieldError("count");
+  const rangeIncomplete = Object.values(rangeDrafts).some((text) => text === "");
+
+  const rangeValue = (field: RangeField, committed: string) =>
+    rangeDrafts[field] ?? committed;
+
+  const fromEpochInput = makeInput(
+    rangeValue("from", String(fromEpochNum)),
+    (v) => onRangeChange("from", v),
+    () => onRangeBlur("from"),
+  );
+  const toEpochInput = makeInput(
+    rangeValue("to", String(toEpochNum)),
+    (v) => onRangeChange("to", v),
+    () => onRangeBlur("to"),
+  );
+  const epochsInput = makeInput(
+    rangeValue("count", String(epochCountNum)),
+    (v) => onRangeChange("count", v),
+    () => onRangeBlur("count"),
+  );
 
   const amountIssues = useCallback(
     (parsed: bigint): string | null => {
@@ -546,6 +635,11 @@ const DistributionDetailV2 = ({
       showToast(ddpState === "upcoming" ? "participate.notStarted" : "participate.ended");
       return false;
     }
+    // an emptied range field has no committed number to fall back to
+    if (rangeIncomplete) {
+      showToast("participate.invalidRange");
+      return false;
+    }
     if (fromEpochNum - 1 < Number(currentEpoch ?? 0)) {
       showToast("participate.epochClosed", { params: { epoch: fromEpochNum } });
       return false;
@@ -644,6 +738,7 @@ const DistributionDetailV2 = ({
     epochCountNum,
     fromEpochNum,
     toEpochNum,
+    rangeIncomplete,
     contractAddress,
     refetch,
     sameChain,
@@ -800,8 +895,6 @@ const DistributionDetailV2 = ({
       quoteSymbol: participationTokenSymbol,
       walletBalance: `${roundUnits(participationTokenBalance ?? 0n, participationDecimals)} ${participationTokenSymbol}`,
       claimDelay: `${claimDelayDays} days`,
-      fromEpoch: String(fromEpochNum),
-      toEpoch: String(toEpochNum),
       perEpochEstimate:
         amountParsed && epochCountNum > 0
           ? `≈ ${roundUnits(amountParsed / BigInt(epochCountNum), participationDecimals)} ${participationTokenSymbol} per epoch`
@@ -811,7 +904,7 @@ const DistributionDetailV2 = ({
       rangeState: { from: fromEpochInput, to: toEpochInput },
       onStepEpochs: stepEpochs,
       amountError: amountLimitError ?? amountInput.error,
-      rangeError: null,
+      rangeError,
       onConnect: () => {
         if (isConnected && !sameChain) switchChain({ chainId });
         else openConnectModal?.();
@@ -867,6 +960,9 @@ const DistributionDetailV2 = ({
         data={data}
         epochActions={{
           onParticipate: (epoch) => {
+            // an explicit epoch pick replaces whatever was being typed, empties included
+            setRangeDrafts({ from: null, to: null, count: null });
+            setRangeRequired({ from: false, to: false, count: false });
             applyRange(epoch, 1);
           },
           onClaim: () => {

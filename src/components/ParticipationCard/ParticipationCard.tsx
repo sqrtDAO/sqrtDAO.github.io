@@ -24,9 +24,6 @@ export type ParticipationCardProps = {
   quoteSymbol: string;
   walletBalance: string;
   claimDelay: string;
-  /** Suggested epoch range, shown as the From/To placeholders. */
-  fromEpoch: string;
-  toEpoch: string;
   /** "≈ 20 USDT per epoch" — teammate computes from amount ÷ epochs. */
   perEpochEstimate: string;
   /** Opens the participation review dialog (connected only). */
@@ -50,12 +47,10 @@ const amountModifier = composeModifiers(decimalOnlyModifier, commaModifier);
 const RangeInput = ({
   state,
   label,
-  placeholder,
   error,
 }: {
   state: UseInputReturn;
   label: string;
-  placeholder: string;
   error?: string | null;
 }) => (
   <>
@@ -63,7 +58,7 @@ const RangeInput = ({
       aria-label={label}
       value={state.value}
       onChange={(e) => state.onChange(e.target.value)}
-      placeholder={placeholder}
+      onBlur={() => state.onBlur?.()}
       inputMode="numeric"
       autoComplete="off"
       className={`h-10 w-full min-w-0 rounded-m bg-surface px-2 ${BODY_S} text-primary outline-none placeholder:text-tertiary focus-visible:ring-1 focus-visible:ring-focus ${
@@ -103,17 +98,11 @@ const StepButtons = ({
 };
 
 const EpochRange = ({
-  fromEpoch,
-  toEpoch,
   rangeState,
   onStepEpochs,
-  rangeError,
 }: {
-  fromEpoch: string;
-  toEpoch: string;
   rangeState?: ParticipationRangeState;
   onStepEpochs?: (delta: number) => void;
-  rangeError?: string | null;
 }) => {
   const internalFrom = useInput("", numberOnlyModifier);
   const internalTo = useInput("", numberOnlyModifier);
@@ -125,12 +114,12 @@ const EpochRange = ({
         From #epoch
       </span>
       <div className="col-span-2">
-        <RangeInput state={from} label="From epoch" placeholder={fromEpoch} />
+        <RangeInput state={from} label="From epoch" />
       </div>
       <span className={`${BODY_M} whitespace-nowrap text-secondary`}>
         To #epoch
       </span>
-      <RangeInput state={to} label="To epoch" placeholder={toEpoch} />
+      <RangeInput state={to} label="To epoch" />
       <div>
         <span className="hidden xl:block">
           <StepButtons size="m" onStep={onStepEpochs} />
@@ -139,9 +128,6 @@ const EpochRange = ({
           <StepButtons size="s" onStep={onStepEpochs} />
         </span>
       </div>
-      {rangeError && (
-        <p className={`col-span-3 ${BODY_S} text-danger`}>{rangeError}</p>
-      )}
     </div>
   );
 };
@@ -153,8 +139,6 @@ const ParticipationCard = ({
   quoteSymbol,
   walletBalance,
   claimDelay,
-  fromEpoch,
-  toEpoch,
   perEpochEstimate,
   onParticipate,
   amountState,
@@ -207,15 +191,12 @@ const ParticipationCard = ({
           disabled={disabled}
           slotWhen="filled"
           slot={
-            <EpochRange
-              fromEpoch={fromEpoch}
-              toEpoch={toEpoch}
-              rangeState={rangeState}
-              onStepEpochs={onStepEpochs}
-              rangeError={rangeError}
-            />
+            <EpochRange rangeState={rangeState} onStepEpochs={onStepEpochs} />
           }
         />
+        {rangeError && (
+          <p className={`${BODY_S} text-danger`}>{rangeError}</p>
+        )}
         {amount.value && epochs.value && (
           <p className="text-body leading-6 font-medium tracking-[0.02em] text-accent">
             {perEpochEstimate}

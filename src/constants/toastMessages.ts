@@ -30,6 +30,7 @@ export type ToastMessageKey =
   | "participate.ended"
   | "participate.notStarted"
   | "participate.invalidAmount"
+  | "participate.invalidRange"
   | "claim.pending"
   | "claim.success"
   | "claim.failed"
@@ -110,6 +111,10 @@ export const TOAST_MESSAGES: Record<ToastMessageKey, ToastMessageDef> = {
   "participate.invalidAmount": {
     type: "error",
     copy: "Enter a valid participation amount first.",
+  },
+  "participate.invalidRange": {
+    type: "error",
+    copy: "Enter a valid epoch range first.",
   },
 
   "claim.pending": { type: "pending", copy: "Claiming your {symbol}…" },
