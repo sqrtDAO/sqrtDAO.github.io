@@ -62,6 +62,8 @@ export type MainnetDdpData = {
     ParticipationCardProps,
     "connected" | "disabled" | "onParticipate"
   >;
+  /** Validate the participation form; returning false keeps the review dialog closed. */
+  onBeforeParticipate?: () => boolean;
   review: Omit<
     React.ComponentProps<typeof ParticipationReviewDialogV2>,
     "imported" | "onClose"
@@ -118,7 +120,11 @@ const MainnetDdp = ({ variant, state, connected, data, epochActions }: MainnetDd
     ...data.participation,
     connected,
     disabled: state !== "live",
-    onParticipate: () => setDialog("review"),
+    onParticipate: () => {
+      // surface form errors on the card first; don't open the dialog on invalid input
+      if (data.onBeforeParticipate && !data.onBeforeParticipate()) return;
+      setDialog("review");
+    },
   };
 
   return (

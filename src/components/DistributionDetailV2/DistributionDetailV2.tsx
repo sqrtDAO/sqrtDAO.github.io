@@ -822,6 +822,15 @@ const DistributionDetailV2 = ({
     sameChain &&
     (claimable > 0n || claimState === "done" || claimState === "error");
 
+  // Run the form checks on the card (amount + epoch range) before opening the
+  // review dialog, so an invalid form shows its error in place instead of
+  // letting the user get all the way to "Confirm & sign".
+  const validateParticipation = () => {
+    const amountOk = amountInput.validate();
+    if (!amountOk) return false;
+    return !rangeIncomplete;
+  };
+
   const data: MainnetDdpData = {
     header: {
       name: tokenName ?? "—",
@@ -915,6 +924,7 @@ const DistributionDetailV2 = ({
           : undefined,
       state: participateState,
     },
+    onBeforeParticipate: validateParticipation,
     review: {
       amount:
         amountParsed !== null
