@@ -184,6 +184,8 @@ const MainnetDdp = ({ variant, state, connected, data, epochActions }: MainnetDd
                       epochs={data.comboEpochs ?? data.epochs}
                       quoteSymbol={data.quoteSymbol}
                       tokenSymbol={data.tokenSymbol}
+                      quoteDecimals={data.quoteDecimals}
+                      tokenDecimals={data.tokenDecimals}
                       onHoverEpoch={setHovered}
                       onSelectEpoch={setEdd}
                       onVisibleRange={data.onComboRangeChange}
@@ -197,6 +199,8 @@ const MainnetDdp = ({ variant, state, connected, data, epochActions }: MainnetDd
                     epochs={data.epochs}
                     quoteSymbol={data.quoteSymbol}
                     tokenSymbol={data.tokenSymbol}
+                    quoteDecimals={data.quoteDecimals}
+                    tokenDecimals={data.tokenDecimals}
                     onSelectEpoch={setEdd}
                   />
                 </EpochChartLegend>

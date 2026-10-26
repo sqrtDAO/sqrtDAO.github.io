@@ -36,8 +36,8 @@ export interface EpochComboChartProps {
   epochs: EpochData[];
   quoteSymbol?: string;
   tokenSymbol?: string;
-  quoteDecimals?: number;
-  tokenDecimals?: number;
+  quoteDecimals: number;
+  tokenDecimals: number;
   className?: string;
   /** Fires with the hovered bar's epoch, or null once the pointer leaves the chart. */
   onHoverEpoch?: (epoch: EpochData | null) => void;
@@ -129,7 +129,7 @@ export default function EpochComboChart({
     time: timeOf(e),
     value: unitsToNumber(
       e.participationAmount,
-      fmtRef.current.quoteDecimals ?? 18,
+      fmtRef.current.quoteDecimals,
     ),
     state: e.state,
     mine: e.participated,
@@ -248,7 +248,7 @@ export default function EpochComboChart({
         return rec
           ? unitsToNumber(
               rec.participationAmount,
-              fmtRef.current.quoteDecimals ?? 18,
+              fmtRef.current.quoteDecimals,
             )
           : undefined;
       },
@@ -303,13 +303,13 @@ export default function EpochComboChart({
     tooltipRef.current = tooltip;
 
     const fmtVol = (raw: bigint) =>
-      `${roundUnits(raw, fmtRef.current.quoteDecimals ?? 18)} ${fmtRef.current.quoteSymbol}`;
+      `${roundUnits(raw, fmtRef.current.quoteDecimals)} ${fmtRef.current.quoteSymbol}`;
     const fmtPrice = (p: number | null) =>
       p == null
         ? "—"
         : `${parseFloat(p.toFixed(4)).toString()} ${fmtRef.current.quoteSymbol}`;
     const fmtSupply = (raw: bigint) =>
-      `${roundUnits(raw, fmtRef.current.tokenDecimals ?? 18)} ${fmtRef.current.tokenSymbol}`;
+      `${roundUnits(raw, fmtRef.current.tokenDecimals)} ${fmtRef.current.tokenSymbol}`;
 
     const onCrosshairMove = (param: MouseEventParams<Time>) => {
       const rec =
@@ -393,7 +393,7 @@ export default function EpochComboChart({
       getVolume: (e) =>
         unitsToNumber(
           e.participationAmount,
-          fmtRef.current.quoteDecimals ?? 18,
+          fmtRef.current.quoteDecimals,
         ),
       introDurationMs: LOCKED.introMs,
       reducedMotion,
