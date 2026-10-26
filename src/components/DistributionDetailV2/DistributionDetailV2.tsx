@@ -351,13 +351,22 @@ const DistributionDetailV2 = ({
     }
     const closed = epochs.filter((e) => e.state === "passed");
     const last = closed.length > 0 ? closed[closed.length - 1] : null;
+    const distributedSupplyAmount =
+      BigInt(Math.max(closedCount - closedInWindow, 0)) * supplyPerEpoch +
+      windowClosedSupply;
+    // The live epoch has not released its tokens yet, so it counts as remaining.
+    // `remainingCount` stays future-only for the "Epochs left" label.
+    const remainingSupplyAmount =
+      contractInfo &&
+      contractInfo.totalDistributionAmount > distributedSupplyAmount
+        ? contractInfo.totalDistributionAmount - distributedSupplyAmount
+        : 0n;
     return {
       totalEpochs: total,
       remainingCount,
       supplyPerEpoch,
-      distributedSupplyAmount:
-        BigInt(Math.max(closedCount - closedInWindow, 0)) * supplyPerEpoch +
-        windowClosedSupply,
+      distributedSupplyAmount,
+      remainingSupplyAmount,
       current: epochs.find((e) => e.state === "current") ?? null,
       last,
     };
@@ -924,7 +933,7 @@ const DistributionDetailV2 = ({
         { label: "Epoch duration", value: formatDuration(Number(contractInfo.epochDuration)) },
         { label: "Unique participants", value: fmtInt(Number(contractInfo.totalUniqueParticipants)) },
       ],
-      supplyRemaining: `${roundUnits(stats.supplyPerEpoch * BigInt(Math.max(stats.remainingCount, 0)), tokenDecimals)} ${tokenSymbol}`,
+      supplyRemaining: `${roundUnits(stats.remainingSupplyAmount, tokenDecimals)} ${tokenSymbol}`,
       epochsLeft: fmtInt(Math.max(stats.remainingCount, 0)),
     },
     epochs,
