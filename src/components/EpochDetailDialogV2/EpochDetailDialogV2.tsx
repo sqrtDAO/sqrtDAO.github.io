@@ -40,15 +40,19 @@ const StatusChip = ({ live }: { live: boolean }) => (
 );
 
 const TimeSegments = ({
+  days,
   hours,
   minutes,
   seconds,
 }: {
+  days: number;
   hours: number;
   minutes: number;
   seconds: number;
 }) => {
   const segments: [string, number][] = [
+    // Epochs can be longer than a day; only show the day slot when needed.
+    ...(days > 0 ? ([["D", days]] as [string, number][]) : []),
     ["H", hours],
     ["M", minutes],
     ["S", seconds],
@@ -131,7 +135,7 @@ const EpochDetailDialogV2 = ({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const { hours, minutes, seconds } = useCountdown(epochEndMs);
+  const { days, hours, minutes, seconds } = useCountdown(epochEndMs);
 
   const isCurrent = epoch.state === "current";
   const isFuture = epoch.state === "future";
@@ -191,6 +195,7 @@ const EpochDetailDialogV2 = ({
               <StatusChip live={isCurrent} />
               {isCurrent && (
                 <TimeSegments
+                  days={days}
                   hours={hours}
                   minutes={minutes}
                   seconds={seconds}

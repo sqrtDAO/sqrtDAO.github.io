@@ -271,7 +271,7 @@ const MainnetDdp = ({ variant, state, connected, data, epochActions }: MainnetDd
       {edd && (
         <EpochDetailDialogV2
           epoch={edd}
-          epochEndMs={data.countdownTargetMs}
+          epochEndMs={edd.timestamp + data.epochDurationSec * 1000}
           epochDurationSec={data.epochDurationSec}
           lastClearPrice={data.lastClearPrice}
           tokenSymbol={data.tokenSymbol}
