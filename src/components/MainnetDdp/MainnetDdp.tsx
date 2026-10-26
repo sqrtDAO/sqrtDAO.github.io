@@ -50,6 +50,14 @@ export type MainnetDdpData = {
   epochStats: Omit<EpochStatsCardProps, "children" | "epochLabel">;
   legend: React.ComponentProps<typeof EpochChartLegend>;
   epochs: EpochData[];
+  /**
+   * Combo-chart window. It grows as the user scrolls the chart, so it may hold
+   * more epochs than `epochs` (which stays the block chart's fixed window).
+   * Falls back to `epochs` when omitted.
+   */
+  comboEpochs?: EpochData[];
+  /** The combo chart is nearing an edge — load more (inclusive, 0-based). */
+  onComboRangeChange?: (fromEpochIndex: number, toEpochIndex: number) => void;
   tokenSymbol: string;
   tokenDecimals: number;
   quoteSymbol: string;
@@ -173,11 +181,12 @@ const MainnetDdp = ({ variant, state, connected, data, epochActions }: MainnetDd
                     }
                   >
                     <EpochComboChart
-                      epochs={data.epochs}
+                      epochs={data.comboEpochs ?? data.epochs}
                       quoteSymbol={data.quoteSymbol}
                       tokenSymbol={data.tokenSymbol}
                       onHoverEpoch={setHovered}
                       onSelectEpoch={setEdd}
+                      onVisibleRange={data.onComboRangeChange}
                     />
                   </EpochStatsCard>
                 </div>

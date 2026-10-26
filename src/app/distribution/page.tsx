@@ -74,7 +74,15 @@ function DistributionContent() {
     );
   }
 
-  return <DistributionDetailV2 contractAddress={address} chainSlug={chain} />;
+  // A different distribution (or chain) is a different page: remount so no
+  // contract-scoped state — chart pages, forms, claims — leaks across.
+  return (
+    <DistributionDetailV2
+      key={`${chain}:${address}`}
+      contractAddress={address}
+      chainSlug={chain}
+    />
+  );
 }
 
 export default function DistributionPage() {

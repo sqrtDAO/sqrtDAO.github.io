@@ -43,6 +43,12 @@ export interface EpochComboChartProps {
   onHoverEpoch?: (epoch: EpochData | null) => void;
   /** Fires when an epoch's bar is clicked/tapped. */
   onSelectEpoch?: (epoch: EpochData) => void;
+  /**
+   * Fires (debounced) as the user pans/zooms, with the inclusive 0-based epoch
+   * indices it needs loaded — the visible window plus a prefetch margin. The
+   * caller pages more `epochs` in; the viewport stays where it is.
+   */
+  onVisibleRange?: (fromEpochIndex: number, toEpochIndex: number) => void;
 }
 
 /** Locked values — see sqrtdao-epoch-chart-v4-locked.html. Do not retune here. */
@@ -53,6 +59,12 @@ const LOCKED = {
   dotThresholdPx: 18,
   introMs: 750,
 };
+
+/** Bars of history/runway asked for beyond the viewport, so paging triggers
+ * before the user actually hits the edge. */
+const PREFETCH_BARS = 48;
+/** Wait for the scrolling to settle before asking for another page. */
+const RANGE_REPORT_DEBOUNCE_MS = 140;
 
 function readVar(el: HTMLElement, name: string): string {
   return getComputedStyle(el).getPropertyValue(name).trim();
@@ -71,10 +83,13 @@ export default function EpochComboChart({
   className,
   onHoverEpoch,
   onSelectEpoch,
+  onVisibleRange,
 }: EpochComboChartProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const chartElRef = useRef<HTMLDivElement | null>(null);
   const skipFirstSyncRef = useRef(true);
+  /** Latest dataset, for callbacks that outlive a render. */
+  const epochsRef = useRef<EpochData[]>(epochs);
 
   const chartRef = useRef<IChartApi | null>(null);
   const barsRef = useRef<ISeriesApi<"Custom"> | null>(null);
@@ -105,6 +120,10 @@ export default function EpochComboChart({
   useEffect(() => {
     onSelectEpochRef.current = onSelectEpoch;
   }, [onSelectEpoch]);
+  const onVisibleRangeRef = useRef(onVisibleRange);
+  useEffect(() => {
+    onVisibleRangeRef.current = onVisibleRange;
+  }, [onVisibleRange]);
 
   const toBarItem = (e: EpochData): RoundedBarsData => ({
     time: timeOf(e),
@@ -239,6 +258,33 @@ export default function EpochComboChart({
     });
     bars.attachPrimitive(hoverPrim);
 
+    // ---- lazy paging on scroll --------------------------------------------
+    // The chart can never scroll past its own data, so reaching an edge (or
+    // the prefetch margin before it) is what asks the caller for more epochs.
+    // Debounced: a fling fires dozens of range changes but only the resting
+    // position matters, so at most one page is requested per gesture.
+    let reportTimer: ReturnType<typeof setTimeout> | null = null;
+    const reportVisibleRange = () => {
+      if (reportTimer !== null) clearTimeout(reportTimer);
+      reportTimer = setTimeout(() => {
+        reportTimer = null;
+        const data = epochsRef.current;
+        const cb = onVisibleRangeRef.current;
+        if (!cb || data.length === 0) return;
+        const r = chart.timeScale().getVisibleLogicalRange();
+        if (!r) return;
+        const lastIndex = data.length - 1;
+        const epochIndexAt = (logical: number) => {
+          const i = Math.min(Math.max(Math.round(logical), 0), lastIndex);
+          return data[i].epoch - 1;
+        };
+        cb(
+          Math.max(0, epochIndexAt(r.from) - PREFETCH_BARS),
+          epochIndexAt(r.to) + PREFETCH_BARS,
+        );
+      }, RANGE_REPORT_DEBOUNCE_MS);
+    };
+
     // ---- dots on zoom-in --------------------------------------------------
     let dotsOn = false;
     chart.timeScale().subscribeVisibleLogicalRangeChange((r) => {
@@ -249,6 +295,7 @@ export default function EpochComboChart({
         dotsOn = want;
         line.applyOptions({ pointMarkersVisible: want });
       }
+      reportVisibleRange();
     });
 
     // ---- tooltip + hover ---------------------------------------------------
@@ -365,6 +412,7 @@ export default function EpochComboChart({
     skipFirstSyncRef.current = epochs.length > 0;
 
     return () => {
+      if (reportTimer !== null) clearTimeout(reportTimer);
       chartEl.removeEventListener("pointerdown", cancelIntro);
       chartEl.removeEventListener("wheel", cancelIntro);
       chartEl.removeEventListener("mouseleave", onMouseLeave);
@@ -381,8 +429,10 @@ export default function EpochComboChart({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---- epoch data updates after mount (real-time epoch closes etc.) -----
+  // ---- epoch data updates after mount (epoch closes, paging) ------------
   useEffect(() => {
+    const prev = epochsRef.current;
+    epochsRef.current = epochs;
     if (skipFirstSyncRef.current) {
       skipFirstSyncRef.current = false;
       return;
@@ -391,11 +441,40 @@ export default function EpochComboChart({
       epochs.map((e) => [timeOf(e) as unknown as number, e]),
     );
     introRef.current?.setEpochs(epochs);
-    if (!introRef.current?.isRunning() && barsRef.current && lineRef.current) {
-      barsRef.current.setData(epochs.map(toBarItem));
-      lineRef.current.setData(
-        epochs.filter((e) => e.state === "passed").map(toLinePoint),
-      );
+    const chart = chartRef.current;
+    const bars = barsRef.current;
+    const line = lineRef.current;
+    if (!chart || !bars || !line || introRef.current?.isRunning()) return;
+
+    // The pager hands its first window over one tick after mount, so the chart
+    // can be born empty. Play the intro now rather than snapping to a static
+    // chart — same reveal as a chart that mounted with data.
+    if (prev.length === 0 && epochs.length > 0) {
+      introRef.current?.run();
+      return;
+    }
+
+    // Paging shifts every logical index: remember the viewport and re-apply it
+    // shifted by however many points landed before the old first epoch, so the
+    // bars on screen don't jump while loading. Re-applying on appends too keeps
+    // the chart from following the new last bar, which would leave the view
+    // pinned to the edge and chain another page on every load.
+    const timeScale = chart.timeScale();
+    const visible = timeScale.getVisibleLogicalRange();
+    const prepended =
+      prev.length > 0 && epochs.length > 0
+        ? epochs.findIndex((e) => e.epoch === prev[0].epoch)
+        : -1;
+
+    bars.setData(epochs.map(toBarItem));
+    line.setData(epochs.filter((e) => e.state === "passed").map(toLinePoint));
+
+    if (visible) {
+      const shifted = prepended > 0 ? prepended : 0;
+      timeScale.setVisibleLogicalRange({
+        from: visible.from + shifted,
+        to: visible.to + shifted,
+      });
     }
   }, [epochs]);
 

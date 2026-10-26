@@ -27,6 +27,7 @@ import type {
   DistributorContractInfo,
   EpochInfo,
 } from "@/hooks/useDistributorData";
+import { useEpochPages } from "@/hooks/useEpochPages";
 import useTokenAvatar from "@/hooks/useTokenAvatar";
 import { avatarHttpsUrl } from "@/constants/avatar";
 import { useInput, type UseInputReturn } from "@/hooks/useInput";
@@ -279,6 +280,48 @@ const DistributionDetailV2 = ({
           )
         : [],
     [contractInfo, currentEpoch, epochsInfo, epochsFrom, tokenDecimals, participationTokenDecimals],
+  );
+
+  // ---- combo chart paging ----
+  // The window above is what the page opens with; the combo chart pages in
+  // more epochs, one page per user scroll at either edge. The seed is handed
+  // over as-is, so opening the chart never costs an extra RPC call.
+  const epochSeed = useMemo(
+    () =>
+      epochsInfo && epochsInfo.length > 0
+        ? { from: Number(epochsFrom), infos: epochsInfo }
+        : undefined,
+    [epochsInfo, epochsFrom],
+  );
+  const epochPages = useEpochPages({
+    publicClient,
+    contractAddress: contractAddress as Address,
+    user: address,
+    total: contractInfo ? Number(contractInfo.numberOfEpochs) : 0,
+    seed: epochSeed,
+  });
+
+  const comboEpochs = useMemo(
+    () =>
+      contractInfo && currentEpoch !== undefined
+        ? epochPages.pages.flatMap(({ from, infos }) =>
+            buildEpochs(
+              contractInfo,
+              currentEpoch,
+              infos,
+              BigInt(from),
+              tokenDecimals ?? 18,
+              participationTokenDecimals ?? 18,
+            ),
+          )
+        : [],
+    [
+      contractInfo,
+      currentEpoch,
+      epochPages.pages,
+      tokenDecimals,
+      participationTokenDecimals,
+    ],
   );
 
   const currentEpochDisplay =
@@ -885,6 +928,8 @@ const DistributionDetailV2 = ({
       epochsLeft: fmtInt(Math.max(stats.remainingCount, 0)),
     },
     epochs,
+    comboEpochs,
+    onComboRangeChange: epochPages.ensureRange,
     tokenSymbol,
     tokenDecimals,
     quoteSymbol: participationTokenSymbol,
