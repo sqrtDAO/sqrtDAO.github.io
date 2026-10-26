@@ -211,9 +211,7 @@ export default function EpochBlockChart({
         },
         {
           label: "Participation vol",
-          value: epoch.participationAmount
-            ? `${roundUnits(epoch.participationAmount, quoteDecimals)} ${quoteSymbol}`
-            : "—",
+          value: `${roundUnits(epoch.participationAmount, quoteDecimals)} ${quoteSymbol}`,
         },
       ],
       e.clientX - hostRect.left + host.scrollLeft,
