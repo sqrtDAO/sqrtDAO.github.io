@@ -57,6 +57,10 @@
 }
 .sqrt-input__el::placeholder { color: var(--sqrt-text-tertiary); }
 
+/* read-only (Figma "input" read-only state): label + value go disabled-grey */
+.sqrt-input__el:disabled,
+.sqrt-input:has(.sqrt-input__el:disabled) .sqrt-input__label { color: var(--sqrt-text-disabled); }
+
 .sqrt-input__suffix {
   flex-shrink: 0;
   font-family: var(--font-sans), system-ui, sans-serif;
