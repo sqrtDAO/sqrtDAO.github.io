@@ -419,6 +419,17 @@ const DistributionDetailV2 = ({
   // ---- participation inputs ----
   const participationDecimals = participationTokenDecimals ?? 18;
 
+  // ETH-paired distributions use WETH as the participation token on-chain, but
+  // the balance shown to the user (and the router) is native ETH.
+  const isEthParticipation =
+    chainId !== undefined &&
+    contractInfo !== undefined &&
+    contractInfo.participationToken.toLowerCase() ===
+      getAddresses(chainId).weth.toLowerCase();
+  const quoteDisplaySymbol = isEthParticipation
+    ? "ETH"
+    : (participationTokenSymbol ?? "");
+
   // ---- synced epoch range: one source of truth = (start, count) ----
   // "Spread across" edits count, "From" edits start, "To" edits start+count-1,
   // and the +/- steppers edit count. All three inputs stay in lockstep.
@@ -555,7 +566,7 @@ const DistributionDetailV2 = ({
         return `Minimum participation is ${roundUnits(
           contractInfo.minParticipation,
           participationDecimals,
-        )} ${participationTokenSymbol ?? ""} per epoch`;
+        )} ${quoteDisplaySymbol} per epoch`;
       }
       if (
         isConnected &&
@@ -570,7 +581,7 @@ const DistributionDetailV2 = ({
       contractInfo,
       epochCountNum,
       participationDecimals,
-      participationTokenSymbol,
+      quoteDisplaySymbol,
       isConnected,
       participationTokenBalance,
     ],
@@ -911,7 +922,7 @@ const DistributionDetailV2 = ({
       totalSupply: roundUnits(contractInfo.totalDistributionAmount, tokenDecimals),
       tokenSymbol,
       totalParticipation: roundUnits(contractInfo.totalParticipation, participationDecimals),
-      quoteSymbol: participationTokenSymbol,
+      quoteSymbol: quoteDisplaySymbol,
       periodDate: formatDateTime(ddpState === "upcoming" ? startTimestampMs : endTimestampMs),
     },
     countdownTargetMs,
@@ -921,7 +932,7 @@ const DistributionDetailV2 = ({
       lastClearPrice: formatPrice(lastClearPrice),
       participation: roundUnits(displayEpoch?.participationAmount ?? 0n, participationDecimals),
       participants: String(displayEpoch?.participants ?? 0),
-      quoteSymbol: participationTokenSymbol,
+      quoteSymbol: quoteDisplaySymbol,
     },
     legend: {
       stats: [
@@ -941,7 +952,7 @@ const DistributionDetailV2 = ({
     onComboRangeChange: epochPages.ensureRange,
     tokenSymbol,
     tokenDecimals,
-    quoteSymbol: participationTokenSymbol,
+    quoteSymbol: quoteDisplaySymbol,
     quoteDecimals: participationDecimals,
     claiming: claimState === "claiming",
     split,
@@ -955,12 +966,15 @@ const DistributionDetailV2 = ({
         }
       : undefined,
     participation: {
-      quoteSymbol: participationTokenSymbol,
-      walletBalance: `${roundUnits(participationTokenBalance ?? 0n, participationDecimals)} ${participationTokenSymbol}`,
+      quoteSymbol: quoteDisplaySymbol,
+      walletBalance:
+        isConnected && participationTokenBalance !== undefined
+          ? `${roundUnits(participationTokenBalance, participationDecimals)} ${quoteDisplaySymbol}`
+          : "—",
       claimDelay: `${claimDelayDays} days`,
       perEpochEstimate:
         amountParsed && epochCountNum > 0
-          ? `≈ ${roundUnits(amountParsed / BigInt(epochCountNum), participationDecimals)} ${participationTokenSymbol} per epoch`
+          ? `≈ ${roundUnits(amountParsed / BigInt(epochCountNum), participationDecimals)} ${quoteDisplaySymbol} per epoch`
           : "",
       amountState: amountInput,
       epochsState: epochsInput,
@@ -982,8 +996,8 @@ const DistributionDetailV2 = ({
     review: {
       amount:
         amountParsed !== null
-          ? `${roundUnits(amountParsed, participationDecimals)} ${participationTokenSymbol}`
-          : `0 ${participationTokenSymbol}`,
+          ? `${roundUnits(amountParsed, participationDecimals)} ${quoteDisplaySymbol}`
+          : `0 ${quoteDisplaySymbol}`,
       fromEpoch: fromEpochNum,
       toEpoch: toEpochNum,
       tokenSymbol,
