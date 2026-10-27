@@ -25,6 +25,7 @@ import {
   type TooltipController,
 } from "@/lib/charts/tooltipController";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
+import { formatPrice } from "@/utils/epoch-format";
 import { roundUnits, unitsToNumber } from "@/utils/round-units";
 import type { EpochData } from "@/lib/charts/types";
 import "@/components/ChartTooltip/ChartTooltip.css";
@@ -207,7 +208,7 @@ export default function EpochBlockChart({
           value:
             epoch.clearPrice == null
               ? "—"
-              : `${parseFloat(epoch.clearPrice.toFixed(4))} ${quoteSymbol}`,
+              : `${formatPrice(epoch.clearPrice)} ${quoteSymbol}`,
         },
         {
           label: "Participation vol",

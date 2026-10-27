@@ -33,6 +33,9 @@ export const formatEpochTimestamp = (
   return `${day} ${month}, ${d.getFullYear()}`;
 };
 
-/** Clear price, trailing zeros stripped ("0.002"). Null → "—". */
-export const formatPrice = (price: number | null): string =>
-  price == null ? "—" : parseFloat(price.toFixed(4)).toString();
+/** Clear price, trailing zeros stripped ("0.002"). Small values → "<0.001". Null → "—". */
+export const formatPrice = (price: number | null): string => {
+  if (price == null) return "—";
+  if (price > 0 && price < 0.001) return "<0.001";
+  return parseFloat(price.toFixed(4)).toString();
+};

@@ -27,6 +27,7 @@ import {
   type TooltipController,
 } from "@/lib/charts/tooltipController";
 import type { EpochData } from "@/lib/charts/types";
+import { formatPrice } from "@/utils/epoch-format";
 import { roundUnits, unitsToNumber } from "@/utils/round-units";
 import "@/components/ChartTooltip/ChartTooltip.css";
 import "./EpochComboChart.css";
@@ -305,9 +306,7 @@ export default function EpochComboChart({
     const fmtVol = (raw: bigint) =>
       `${roundUnits(raw, fmtRef.current.quoteDecimals)} ${fmtRef.current.quoteSymbol}`;
     const fmtPrice = (p: number | null) =>
-      p == null
-        ? "—"
-        : `${parseFloat(p.toFixed(4)).toString()} ${fmtRef.current.quoteSymbol}`;
+      p == null ? "—" : `${formatPrice(p)} ${fmtRef.current.quoteSymbol}`;
     const fmtSupply = (raw: bigint) =>
       `${roundUnits(raw, fmtRef.current.tokenDecimals)} ${fmtRef.current.tokenSymbol}`;
 

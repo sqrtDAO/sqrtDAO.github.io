@@ -8,11 +8,12 @@ import { IconButton } from "@/components/IconButton/IconButton";
 import type { EpochDetailDialogProps } from "@/components/EpochDetailDialog/EpochDetailDialog";
 import { useCountdown } from "@/hooks/useCountdown";
 import { formatDuration } from "@/utils/formatDuration";
+import { formatPrice } from "@/utils/epoch-format";
 import { roundUnits } from "@/utils/round-units";
 import { fmtInt } from "@/utils/formatInt";
 import { BODY_L, BODY_M, BODY_S } from "@/constants/typography";
 
-// ponytail: fmtGrouped/fmtPrice duplicated from EpochDetailDialog (V1 stays untouched); dedupe when V1 is retired.
+// ponytail: fmtGrouped duplicated from EpochDetailDialog (V1 stays untouched); dedupe when V1 is retired.
 const fmtGrouped = (amount: bigint, decimals: number): string => {
   const str = roundUnits(amount, decimals);
   if (str.startsWith("<") || str === "0") return str;
@@ -20,9 +21,6 @@ const fmtGrouped = (amount: bigint, decimals: number): string => {
   const grouped = Number(intPart).toLocaleString("en-US");
   return rest ? `${grouped}.${rest}` : grouped;
 };
-
-const fmtPrice = (price: number | null): string =>
-  price == null ? "—" : parseFloat(price.toFixed(4)).toString();
 
 const StatusChip = ({ live }: { live: boolean }) => (
   <div
@@ -283,7 +281,7 @@ const EpochDetailDialogV2 = ({
             <StatRow
               label={isCurrent ? "Last clear price" : "Epoch clear price"}
             >
-              <Value>{fmtPrice(priceValue)}</Value>
+              <Value>{formatPrice(priceValue)}</Value>
               {priceValue != null && <Unit>{quoteSymbol}</Unit>}
             </StatRow>
           )}
