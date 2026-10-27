@@ -101,8 +101,10 @@ const loadRows = async (
     const currentEpoch = getCurrentEpoch(info, nowSec);
     const totalEpochs = Number(info.numberOfEpochs);
     const epochsCompleted = getEpochsCompleted(currentEpoch, totalEpochs);
-    const tokenDecimals = Number(m[2]!.result) || 18;
-    const participationTokenDecimals = Number(m[4]!.result) || 18;
+    const tokenDecimals =
+      m[2]!.status === "success" ? Number(m[2]!.result) : 18;
+    const participationTokenDecimals =
+      m[4]!.status === "success" ? Number(m[4]!.result) : 18;
     const native = (m[5]!.result as Address) !== zeroAddress;
 
     let lastClearPrice: number | null = null;
@@ -114,7 +116,7 @@ const loadRows = async (
         formatUnits(m[7]!.result as bigint, participationTokenDecimals),
       );
       if (rewardHuman > 0 && participationHuman > 0) {
-        lastClearPrice = rewardHuman / participationHuman;
+        lastClearPrice = participationHuman / rewardHuman;
       }
     }
 

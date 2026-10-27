@@ -117,7 +117,7 @@ function buildEpochs(
       info.rewardAmount > 0n ? info.rewardAmount : supplyPerEpochAmount;
     const clearPrice =
       state === "passed" && volume > 0 && rewardAmount > 0
-        ? rewardAmount / volume
+        ? volume / rewardAmount
         : null;
 
     epochs.push({
