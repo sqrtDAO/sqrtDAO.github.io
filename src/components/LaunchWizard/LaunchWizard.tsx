@@ -1,13 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   IconCopy,
   IconHammer,
   IconRocket,
-  IconUpload,
   IconWallet,
 } from "@tabler/icons-react";
 import { decodeEventLog, formatUnits, parseUnits, type Address } from "viem";
@@ -22,6 +20,9 @@ import MainnetHeader from "@/components/MainnetHeader/MainnetHeader";
 import EcosystemPicker from "@/components/EcosystemPicker/EcosystemPicker";
 import TokenAvatar from "@/components/TokenAvatar/TokenAvatar";
 import AvatarCropDialog from "@/components/AvatarCropDialog/AvatarCropDialog";
+import AvatarUpload from "@/components/AvatarUpload/AvatarUpload";
+import TextArea from "@/components/TextArea/TextArea";
+import { useAvatarPicker } from "@/hooks/useAvatarPicker";
 import { useInput } from "@/hooks/useInput";
 import { useSelectedChain } from "@/hooks/useActiveChain";
 import { chainToName, chainToSlug } from "@/utils/chain-utils";
@@ -29,8 +30,10 @@ import {
   amountValidator,
   addressValidator,
   requiredValidator,
+  urlValidator,
   validateAll,
 } from "@/utils/validator";
+import { normalizeUrl } from "@/utils/url";
 import {
   commaModifier,
   composeModifiers,
@@ -44,12 +47,8 @@ import { DISTRIBUTION_LAUNCH_HREF } from "@/constants/links";
 import { showToast } from "@/hooks/useToast";
 import { viewTransactionAction } from "@/utils/explorer-utils";
 import { predictCid, requestUploadLink, uploadToIpfs } from "@/utils/avatar-api";
-import { buildTokenMetadataUri } from "@/utils/token-metadata";
-import {
-  AVATAR_ALLOWED_MIME_TYPES,
-  AVATAR_MAX_FILE_SIZE,
-  avatarHttpsUrl,
-} from "@/constants/avatar";
+import { tokenMetadataEntries } from "@/utils/token-metadata";
+import { avatarHttpsUrl } from "@/constants/avatar";
 
 type Step = "form" | "receiver" | "done";
 type AvatarStatus = "idle" | "pending" | "done" | "error" | "skipped";
@@ -68,34 +67,6 @@ const SectionLabel = ({ children }: { children: string }) => (
 
 const Actions = ({ children }: { children: React.ReactNode }) => (
   <div className="flex w-full items-center justify-end gap-4">{children}</div>
-);
-
-const AvatarUpload = ({
-  preview,
-  onPick,
-}: {
-  preview: string | null;
-  onPick: (file: File | undefined) => void;
-}) => (
-  <label className="relative flex size-41 shrink-0 cursor-pointer flex-col items-center justify-center gap-4 overflow-hidden rounded-(--radius-l) border border-dashed border-subtle bg-surface hover:border-muted">
-    <input
-      type="file"
-      accept={AVATAR_ALLOWED_MIME_TYPES.join(",")}
-      className="sr-only"
-      onChange={(e) => {
-        onPick(e.target.files?.[0]);
-        e.target.value = "";
-      }}
-    />
-    {preview ? (
-      <Image src={preview} alt="Token avatar" fill unoptimized className="object-cover" />
-    ) : (
-      <>
-        <IconUpload size={20} className="text-primary" />
-        <span className={`${bodyS} text-primary`}>Upload token avatar</span>
-      </>
-    )}
-  </label>
 );
 
 const CopyRow = ({ label, value }: { label: string; value: string }) => (
@@ -128,9 +99,7 @@ const LaunchWizard = () => {
 
   const [step, setStep] = useState<Step>("form");
   const [launching, setLaunching] = useState(false);
-  const [cropSrc, setCropSrc] = useState<string | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const { cropSrc, file: avatarFile, preview, pick, closeCrop, onCropped } = useAvatarPicker();
   const [result, setResult] = useState<{
     token: Address;
     name: string;
@@ -148,10 +117,10 @@ const LaunchWizard = () => {
     amountValidator,
   );
   const description = useInput("");
-  const website = useInput("");
-  const github = useInput("");
-  const x = useInput("");
-  const discord = useInput("");
+  const website = useInput("", undefined, urlValidator("Website"));
+  const github = useInput("", undefined, urlValidator("Github"));
+  const x = useInput("", undefined, urlValidator("X"));
+  const discord = useInput("", undefined, urlValidator("Discord"));
   const [changeReceiver, setChangeReceiver] = useState(false);
   const receiver = useInput(
     "",
@@ -163,28 +132,6 @@ const LaunchWizard = () => {
     () => (changeReceiver && receiver.value.trim() ? (receiver.value.trim() as Address) : address),
     [changeReceiver, receiver.value, address],
   );
-
-  const onPickFile = (file: File | undefined) => {
-    if (!file) return;
-    if (
-      !AVATAR_ALLOWED_MIME_TYPES.includes(file.type) ||
-      file.size > AVATAR_MAX_FILE_SIZE
-    ) {
-      showToast("generic.error");
-      return;
-    }
-    setCropSrc(URL.createObjectURL(file));
-  };
-
-  const onCropped = (file: File) => {
-    if (cropSrc) URL.revokeObjectURL(cropSrc);
-    setCropSrc(null);
-    setPreview((old) => {
-      if (old) URL.revokeObjectURL(old);
-      return URL.createObjectURL(file);
-    });
-    setAvatarFile(file);
-  };
 
   const uploadAvatar = async (token: Address, cid: string, chainId: number) => {
     setAvatarStatus("pending");
@@ -211,7 +158,7 @@ const LaunchWizard = () => {
       return;
     }
     if (!walletClient || !publicClient) return;
-    if (!validateAll(name, symbol, supply)) {
+    if (!validateAll(name, symbol, supply, website, github, x, discord)) {
       setStep("form");
       return;
     }
@@ -233,25 +180,14 @@ const LaunchWizard = () => {
 
     const avatar = cid ? `ipfs://${cid}` : "";
 
-    const metadata = [
-      // reserved key — served by metadata()/contractURI()/tokenURI()
-      {
-        key: "metadata",
-        value: buildTokenMetadataUri({
-          name: name.value.trim(),
-          symbol: symbol.value.trim(),
-          description: description.value,
-          avatar,
-          website: website.value,
-        }),
-      },
-      { key: "avatar", value: avatar },
-      { key: "description", value: description.value },
-      { key: "website", value: website.value },
-      { key: "github", value: github.value },
-      { key: "x", value: x.value },
-      { key: "discord", value: discord.value },
-    ].filter((entry) => entry.value.trim() !== "");
+    const metadata = tokenMetadataEntries(name.value.trim(), symbol.value.trim(), {
+      avatar,
+      description: description.value.trim(),
+      website: normalizeUrl(website.value),
+      github: normalizeUrl(github.value),
+      x: normalizeUrl(x.value),
+      discord: normalizeUrl(discord.value),
+    }).filter((entry) => entry.value.trim() !== "");
 
     const config = {
       name: name.value.trim(),
@@ -365,7 +301,7 @@ const LaunchWizard = () => {
               <div className="flex w-full flex-col gap-4">
                 <EcosystemPicker variant="rich" value={chainId} onChange={select} />
                 <SectionLabel>Primary informations</SectionLabel>
-                <AvatarUpload preview={preview} onPick={onPickFile} />
+                <AvatarUpload image={preview} onPick={pick} />
                 <Input state={name} label="Token Name" placeholder="The full name, e.g. Dev Protocol." />
                 <Input state={symbol} label="Token symbol" placeholder="The ticker, e.g. DEV." />
                 <Input
@@ -375,7 +311,7 @@ const LaunchWizard = () => {
                   suffix={symbol.value || undefined}
                 />
                 <SectionLabel>Optional informations</SectionLabel>
-                <Input state={description} label="Description" placeholder="Briefly describe your token" />
+                <TextArea state={description} label="Description" placeholder="Briefly describe your token" />
                 <Input state={website} label="Website link" placeholder="https://…" />
                 <Input state={github} label="Github link" placeholder="https://…" />
                 <Input state={x} label="X link" placeholder="https://…" />
@@ -394,7 +330,7 @@ const LaunchWizard = () => {
                       openConnectModal?.();
                       return;
                     }
-                    if (!validateAll(name, symbol, supply)) return;
+                    if (!validateAll(name, symbol, supply, website, github, x, discord)) return;
                     setStep("receiver");
                   }}
                 >
@@ -551,7 +487,7 @@ const LaunchWizard = () => {
         </div>
 
         {cropSrc && (
-          <AvatarCropDialog src={cropSrc} onClose={() => setCropSrc(null)} onCropped={onCropped} />
+          <AvatarCropDialog src={cropSrc} onClose={closeCrop} onCropped={onCropped} />
         )}
       </WizardShell>
     </>

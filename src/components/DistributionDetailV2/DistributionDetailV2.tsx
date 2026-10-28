@@ -27,8 +27,10 @@ import type {
   DistributorContractInfo,
   EpochInfo,
 } from "@/hooks/useDistributorData";
-import useTokenAvatar from "@/hooks/useTokenAvatar";
+import { useEpochPages } from "@/hooks/useEpochPages";
 import { avatarHttpsUrl } from "@/constants/avatar";
+import { mergeMetadata } from "@/utils/token-metadata";
+import { normalizeAvatarValue } from "@/utils/avatar-api";
 import { useInput, type UseInputReturn } from "@/hooks/useInput";
 import {
   decimalOnlyModifier,
@@ -116,7 +118,7 @@ function buildEpochs(
       info.rewardAmount > 0n ? info.rewardAmount : supplyPerEpochAmount;
     const clearPrice =
       state === "passed" && volume > 0 && rewardAmount > 0
-        ? rewardAmount / volume
+        ? volume / rewardAmount
         : null;
 
     epochs.push({
@@ -157,13 +159,23 @@ function computeShares(
   return { priceAnchorPct, founderSharePct, protocolFeePct };
 }
 
+type RangeField = "from" | "to" | "count";
+
+const RANGE_FIELD_LABEL: Record<RangeField, string> = {
+  from: "From epoch",
+  to: "To epoch",
+  count: "Spread across",
+};
+
 // Minimal UseInputReturn for derived/controlled inputs (no internal validation).
 const makeInput = (
   value: string,
   onChange: (v: string) => void,
+  onBlur?: () => void,
 ): UseInputReturn => ({
   value,
   onChange,
+  onBlur,
   error: null,
   setError: () => {},
   clearError: () => {},
@@ -208,9 +220,8 @@ const DistributionDetailV2 = ({
     refetch,
   } = useDistributorData(contractAddress as Address, chainId);
 
-  const avatarUrl = useTokenAvatar(contractInfo?.distributionToken, chainId);
-
   const [metadata, setMetadata] = useState<Record<string, string>>({});
+  const avatarUrl = normalizeAvatarValue(metadata.avatar) ?? undefined;
   // optimistic default: only claim "Created on sqrtDAO" once creatorOf confirms it
   const [native, setNative] = useState(false);
   const [claimState, setClaimState] = useState<
@@ -223,13 +234,21 @@ const DistributionDetailV2 = ({
 
   useEffect(() => {
     if (!publicClient || !contractInfo) return;
-    getTokenV1Contract(publicClient, contractInfo.distributionToken)
-      .read.getAllMetadata()
-      .then((entries) =>
-        setMetadata(Object.fromEntries(entries.map((e) => [e.key, e.value]))),
-      )
-      .catch(() => {});
-  }, [publicClient, contractInfo?.distributionToken]);
+    let active = true;
+    Promise.all([
+      getTokenV1Contract(publicClient, contractInfo.distributionToken)
+        .read.getAllMetadata()
+        .catch(() => []),
+      getDistributorV1Contract(publicClient, contractAddress as Address)
+        .read.getAllMetadata()
+        .catch(() => []),
+    ]).then(([tokenEntries, distributionEntries]) => {
+      if (active) setMetadata(mergeMetadata(tokenEntries, distributionEntries));
+    });
+    return () => {
+      active = false;
+    };
+  }, [publicClient, contractInfo?.distributionToken, contractAddress]);
 
   useEffect(() => {
     if (!publicClient || !contractInfo || chainId === undefined) return;
@@ -271,6 +290,48 @@ const DistributionDetailV2 = ({
     [contractInfo, currentEpoch, epochsInfo, epochsFrom, tokenDecimals, participationTokenDecimals],
   );
 
+  // ---- combo chart paging ----
+  // The window above is what the page opens with; the combo chart pages in
+  // more epochs, one page per user scroll at either edge. The seed is handed
+  // over as-is, so opening the chart never costs an extra RPC call.
+  const epochSeed = useMemo(
+    () =>
+      epochsInfo && epochsInfo.length > 0
+        ? { from: Number(epochsFrom), infos: epochsInfo }
+        : undefined,
+    [epochsInfo, epochsFrom],
+  );
+  const epochPages = useEpochPages({
+    publicClient,
+    contractAddress: contractAddress as Address,
+    user: address,
+    total: contractInfo ? Number(contractInfo.numberOfEpochs) : 0,
+    seed: epochSeed,
+  });
+
+  const comboEpochs = useMemo(
+    () =>
+      contractInfo && currentEpoch !== undefined
+        ? epochPages.pages.flatMap(({ from, infos }) =>
+            buildEpochs(
+              contractInfo,
+              currentEpoch,
+              infos,
+              BigInt(from),
+              tokenDecimals ?? 18,
+              participationTokenDecimals ?? 18,
+            ),
+          )
+        : [],
+    [
+      contractInfo,
+      currentEpoch,
+      epochPages.pages,
+      tokenDecimals,
+      participationTokenDecimals,
+    ],
+  );
+
   const currentEpochDisplay =
     currentEpoch !== undefined ? Number(currentEpoch) + 1 : null;
   const lastEpoch = contractInfo ? Number(contractInfo.numberOfEpochs) : 0;
@@ -298,13 +359,22 @@ const DistributionDetailV2 = ({
     }
     const closed = epochs.filter((e) => e.state === "passed");
     const last = closed.length > 0 ? closed[closed.length - 1] : null;
+    const distributedSupplyAmount =
+      BigInt(Math.max(closedCount - closedInWindow, 0)) * supplyPerEpoch +
+      windowClosedSupply;
+    // The live epoch has not released its tokens yet, so it counts as remaining.
+    // `remainingCount` stays future-only for the "Epochs left" label.
+    const remainingSupplyAmount =
+      contractInfo &&
+      contractInfo.totalDistributionAmount > distributedSupplyAmount
+        ? contractInfo.totalDistributionAmount - distributedSupplyAmount
+        : 0n;
     return {
       totalEpochs: total,
       remainingCount,
       supplyPerEpoch,
-      distributedSupplyAmount:
-        BigInt(Math.max(closedCount - closedInWindow, 0)) * supplyPerEpoch +
-        windowClosedSupply,
+      distributedSupplyAmount,
+      remainingSupplyAmount,
       current: epochs.find((e) => e.state === "current") ?? null,
       last,
     };
@@ -357,52 +427,142 @@ const DistributionDetailV2 = ({
   // ---- participation inputs ----
   const participationDecimals = participationTokenDecimals ?? 18;
 
+  // ETH-paired distributions use WETH as the participation token on-chain, but
+  // the balance shown to the user (and the router) is native ETH.
+  const isEthParticipation =
+    chainId !== undefined &&
+    contractInfo !== undefined &&
+    contractInfo.participationToken.toLowerCase() ===
+      getAddresses(chainId).weth.toLowerCase();
+  const quoteDisplaySymbol = isEthParticipation
+    ? "ETH"
+    : (participationTokenSymbol ?? "");
+
   // ---- synced epoch range: one source of truth = (start, count) ----
   // "Spread across" edits count, "From" edits start, "To" edits start+count-1,
   // and the +/- steppers edit count. All three inputs stay in lockstep.
   const minStartEpoch = Math.min(currentEpochDisplay ?? 1, Math.max(lastEpoch, 1));
+  const maxEpochNum = Math.max(lastEpoch, 1);
   const [rangeStart, setRangeStart] = useState<number | null>(null);
   const [rangeCount, setRangeCount] = useState<number | null>(null);
+  // Raw text of each field while it differs from the committed number. The
+  // committed range is still clamped/validated, but the visible value follows the
+  // keystrokes, so deleting the last digit ("12" → "1" → "") doesn't snap back
+  // mid-edit. Out-of-range text is clamped into the rules on blur; a field left
+  // empty stays empty (no placeholder, no refill) and reports itself as required.
+  const [rangeDrafts, setRangeDrafts] = useState<Record<RangeField, string | null>>({
+    from: null,
+    to: null,
+    count: null,
+  });
+  const [rangeRequired, setRangeRequired] = useState<Record<RangeField, boolean>>({
+    from: false,
+    to: false,
+    count: false,
+  });
 
   const fromEpochNum = Math.min(
     Math.max(rangeStart ?? minStartEpoch, minStartEpoch),
-    Math.max(lastEpoch, 1),
+    maxEpochNum,
   );
   const epochCountNum = Math.min(
     Math.max(rangeCount ?? 1, 1),
-    Math.max(lastEpoch - fromEpochNum + 1, 1),
+    Math.max(maxEpochNum - fromEpochNum + 1, 1),
   );
   const toEpochNum = fromEpochNum + epochCountNum - 1;
 
   const applyRange = useCallback(
     (start: number, count: number) => {
-      const s = Math.min(Math.max(start, minStartEpoch), Math.max(lastEpoch, 1));
-      const c = Math.min(Math.max(count, 1), Math.max(lastEpoch - s + 1, 1));
+      const s = Math.min(Math.max(start, minStartEpoch), maxEpochNum);
+      const c = Math.min(Math.max(count, 1), Math.max(maxEpochNum - s + 1, 1));
       setRangeStart(s);
       setRangeCount(c);
     },
-    [minStartEpoch, lastEpoch],
+    [minStartEpoch, maxEpochNum],
   );
 
-  const onFromEpochChange = (v: string) => {
-    const n = parseInt(numberOnlyModifier(v), 10);
-    if (!isNaN(n)) applyRange(n, epochCountNum);
-  };
-  const onToEpochChange = (v: string) => {
-    const n = parseInt(numberOnlyModifier(v), 10);
-    if (isNaN(n)) return;
-    const end = Math.min(Math.max(n, fromEpochNum), Math.max(lastEpoch, 1));
-    applyRange(fromEpochNum, end - fromEpochNum + 1);
-  };
-  const onCountChange = (v: string) => {
-    const n = parseInt(numberOnlyModifier(v), 10);
-    if (!isNaN(n)) applyRange(fromEpochNum, n);
-  };
-  const stepEpochs = (delta: number) => applyRange(fromEpochNum, epochCountNum + delta);
+  const maxCountNum = Math.max(maxEpochNum - fromEpochNum + 1, 1);
 
-  const fromEpochInput = makeInput(String(fromEpochNum), onFromEpochChange);
-  const toEpochInput = makeInput(String(toEpochNum), onToEpochChange);
-  const epochsInput = makeInput(String(epochCountNum), onCountChange);
+  // Rules for each field, kept exactly as before: from ∈ [minStartEpoch, maxEpochNum],
+  // to ∈ [from, maxEpochNum], count ∈ [1, remaining].
+  const isFieldInRange = (field: RangeField, n: number) => {
+    if (field === "from") return n >= minStartEpoch && n <= maxEpochNum;
+    if (field === "to") return n >= fromEpochNum && n <= maxEpochNum;
+    return n >= 1 && n <= maxCountNum;
+  };
+  const applyField = (field: RangeField, n: number) => {
+    if (field === "from") applyRange(n, epochCountNum);
+    else if (field === "to") applyRange(fromEpochNum, n - fromEpochNum + 1);
+    else applyRange(fromEpochNum, n);
+  };
+
+  const clearRangeDraft = (field: RangeField) => {
+    setRangeDrafts((d) => (d[field] === null ? d : { ...d, [field]: null }));
+    setRangeRequired((r) => (r[field] ? { ...r, [field]: false } : r));
+  };
+
+  const onRangeChange = (field: RangeField, v: string) => {
+    const text = numberOnlyModifier(v);
+    setRangeDrafts((d) => ({ ...d, [field]: text }));
+    setRangeRequired((r) => (r[field] ? { ...r, [field]: false } : r));
+    // valid values update the range live; incomplete/out-of-range text waits for blur
+    if (text === "") return;
+    const n = parseInt(text, 10);
+    if (!isNaN(n) && isFieldInRange(field, n)) applyField(field, n);
+  };
+
+  const onRangeBlur = (field: RangeField) => {
+    const text = rangeDrafts[field];
+    if (text === null) return;
+    if (text === "") {
+      // stay empty — don't silently put a number back; flag it as required instead
+      setRangeRequired((r) => (r[field] ? r : { ...r, [field]: true }));
+      return;
+    }
+    const n = parseInt(text, 10);
+    if (!isNaN(n)) applyField(field, n);
+    clearRangeDraft(field);
+  };
+
+  const stepEpochs = (delta: number) => {
+    clearRangeDraft("count");
+    applyRange(fromEpochNum, epochCountNum + delta);
+  };
+
+  // Required / out-of-range hint for the range row, shown once the field is left empty
+  // or while a typed value is outside the allowed range.
+  const rangeFieldError = (field: RangeField): string | null => {
+    if (rangeRequired[field]) return `${RANGE_FIELD_LABEL[field]} is required`;
+    const text = rangeDrafts[field];
+    if (text === null || text === "") return null;
+    const n = parseInt(text, 10);
+    if (isNaN(n) || isFieldInRange(field, n)) return null;
+    if (field === "from") return `Epoch must be between ${minStartEpoch} and ${maxEpochNum}`;
+    if (field === "to") return `End epoch must be between ${fromEpochNum} and ${maxEpochNum}`;
+    return `Spread across must be between 1 and ${maxCountNum} epoch${maxCountNum > 1 ? "s" : ""}`;
+  };
+  const rangeError =
+    rangeFieldError("from") ?? rangeFieldError("to") ?? rangeFieldError("count");
+  const rangeIncomplete = Object.values(rangeDrafts).some((text) => text === "");
+
+  const rangeValue = (field: RangeField, committed: string) =>
+    rangeDrafts[field] ?? committed;
+
+  const fromEpochInput = makeInput(
+    rangeValue("from", String(fromEpochNum)),
+    (v) => onRangeChange("from", v),
+    () => onRangeBlur("from"),
+  );
+  const toEpochInput = makeInput(
+    rangeValue("to", String(toEpochNum)),
+    (v) => onRangeChange("to", v),
+    () => onRangeBlur("to"),
+  );
+  const epochsInput = makeInput(
+    rangeValue("count", String(epochCountNum)),
+    (v) => onRangeChange("count", v),
+    () => onRangeBlur("count"),
+  );
 
   const amountIssues = useCallback(
     (parsed: bigint): string | null => {
@@ -414,7 +574,7 @@ const DistributionDetailV2 = ({
         return `Minimum participation is ${roundUnits(
           contractInfo.minParticipation,
           participationDecimals,
-        )} ${participationTokenSymbol ?? ""} per epoch`;
+        )} ${quoteDisplaySymbol} per epoch`;
       }
       if (
         isConnected &&
@@ -429,7 +589,7 @@ const DistributionDetailV2 = ({
       contractInfo,
       epochCountNum,
       participationDecimals,
-      participationTokenSymbol,
+      quoteDisplaySymbol,
       isConnected,
       participationTokenBalance,
     ],
@@ -546,6 +706,11 @@ const DistributionDetailV2 = ({
       showToast(ddpState === "upcoming" ? "participate.notStarted" : "participate.ended");
       return false;
     }
+    // an emptied range field has no committed number to fall back to
+    if (rangeIncomplete) {
+      showToast("participate.invalidRange");
+      return false;
+    }
     if (fromEpochNum - 1 < Number(currentEpoch ?? 0)) {
       showToast("participate.epochClosed", { params: { epoch: fromEpochNum } });
       return false;
@@ -644,6 +809,7 @@ const DistributionDetailV2 = ({
     epochCountNum,
     fromEpochNum,
     toEpochNum,
+    rangeIncomplete,
     contractAddress,
     refetch,
     sameChain,
@@ -727,6 +893,15 @@ const DistributionDetailV2 = ({
     sameChain &&
     (claimable > 0n || claimState === "done" || claimState === "error");
 
+  // Run the form checks on the card (amount + epoch range) before opening the
+  // review dialog, so an invalid form shows its error in place instead of
+  // letting the user get all the way to "Confirm & sign".
+  const validateParticipation = () => {
+    const amountOk = amountInput.validate();
+    if (!amountOk) return false;
+    return !rangeIncomplete;
+  };
+
   const data: MainnetDdpData = {
     header: {
       name: tokenName ?? "—",
@@ -755,7 +930,7 @@ const DistributionDetailV2 = ({
       totalSupply: roundUnits(contractInfo.totalDistributionAmount, tokenDecimals),
       tokenSymbol,
       totalParticipation: roundUnits(contractInfo.totalParticipation, participationDecimals),
-      quoteSymbol: participationTokenSymbol,
+      quoteSymbol: quoteDisplaySymbol,
       periodDate: formatDateTime(ddpState === "upcoming" ? startTimestampMs : endTimestampMs),
     },
     countdownTargetMs,
@@ -765,7 +940,7 @@ const DistributionDetailV2 = ({
       lastClearPrice: formatPrice(lastClearPrice),
       participation: roundUnits(displayEpoch?.participationAmount ?? 0n, participationDecimals),
       participants: String(displayEpoch?.participants ?? 0),
-      quoteSymbol: participationTokenSymbol,
+      quoteSymbol: quoteDisplaySymbol,
     },
     legend: {
       stats: [
@@ -777,13 +952,15 @@ const DistributionDetailV2 = ({
         { label: "Epoch duration", value: formatDuration(Number(contractInfo.epochDuration)) },
         { label: "Unique participants", value: fmtInt(Number(contractInfo.totalUniqueParticipants)) },
       ],
-      supplyRemaining: `${roundUnits(stats.supplyPerEpoch * BigInt(Math.max(stats.remainingCount, 0)), tokenDecimals)} ${tokenSymbol}`,
+      supplyRemaining: `${roundUnits(stats.remainingSupplyAmount, tokenDecimals)} ${tokenSymbol}`,
       epochsLeft: fmtInt(Math.max(stats.remainingCount, 0)),
     },
     epochs,
+    comboEpochs,
+    onComboRangeChange: epochPages.ensureRange,
     tokenSymbol,
     tokenDecimals,
-    quoteSymbol: participationTokenSymbol,
+    quoteSymbol: quoteDisplaySymbol,
     quoteDecimals: participationDecimals,
     claiming: claimState === "claiming",
     split,
@@ -797,21 +974,22 @@ const DistributionDetailV2 = ({
         }
       : undefined,
     participation: {
-      quoteSymbol: participationTokenSymbol,
-      walletBalance: `${roundUnits(participationTokenBalance ?? 0n, participationDecimals)} ${participationTokenSymbol}`,
+      quoteSymbol: quoteDisplaySymbol,
+      walletBalance:
+        isConnected && participationTokenBalance !== undefined
+          ? `${roundUnits(participationTokenBalance, participationDecimals)} ${quoteDisplaySymbol}`
+          : "—",
       claimDelay: `${claimDelayDays} days`,
-      fromEpoch: String(fromEpochNum),
-      toEpoch: String(toEpochNum),
       perEpochEstimate:
         amountParsed && epochCountNum > 0
-          ? `≈ ${roundUnits(amountParsed / BigInt(epochCountNum), participationDecimals)} ${participationTokenSymbol} per epoch`
+          ? `≈ ${roundUnits(amountParsed / BigInt(epochCountNum), participationDecimals)} ${quoteDisplaySymbol} per epoch`
           : "",
       amountState: amountInput,
       epochsState: epochsInput,
       rangeState: { from: fromEpochInput, to: toEpochInput },
       onStepEpochs: stepEpochs,
       amountError: amountLimitError ?? amountInput.error,
-      rangeError: null,
+      rangeError,
       onConnect: () => {
         if (isConnected && !sameChain) switchChain({ chainId });
         else openConnectModal?.();
@@ -822,11 +1000,12 @@ const DistributionDetailV2 = ({
           : undefined,
       state: participateState,
     },
+    onBeforeParticipate: validateParticipation,
     review: {
       amount:
         amountParsed !== null
-          ? `${roundUnits(amountParsed, participationDecimals)} ${participationTokenSymbol}`
-          : `0 ${participationTokenSymbol}`,
+          ? `${roundUnits(amountParsed, participationDecimals)} ${quoteDisplaySymbol}`
+          : `0 ${quoteDisplaySymbol}`,
       fromEpoch: fromEpochNum,
       toEpoch: toEpochNum,
       tokenSymbol,
@@ -867,6 +1046,9 @@ const DistributionDetailV2 = ({
         data={data}
         epochActions={{
           onParticipate: (epoch) => {
+            // an explicit epoch pick replaces whatever was being typed, empties included
+            setRangeDrafts({ from: null, to: null, count: null });
+            setRangeRequired({ from: false, to: false, count: false });
             applyRange(epoch, 1);
           },
           onClaim: () => {

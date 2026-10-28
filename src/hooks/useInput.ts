@@ -7,6 +7,8 @@ import { useState, useCallback } from "react";
 export type UseInputReturn = {
   value: string;
   onChange: (value: string) => void;
+  /** Optional blur hook for inputs whose value is derived/normalized by the owner. */
+  onBlur?: () => void;
   error: string | null;
   setError: (error: string | null) => void;
   clearError: () => void;

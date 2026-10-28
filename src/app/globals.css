@@ -202,3 +202,99 @@ h1, h2, h3 { font-family: var(--font-family-display), system-ui, sans-serif; mar
     animation: none !important;
   }
 }
+
+/* ── Blog: "Two ways in" SVG diagram (distribution-setup post) ─────────────
+   Both token doors flow down into the same distribution engine. On scroll
+   into view (TwoWaysDiagram toggles .in) the door paths draw themselves
+   (stroke-dashoffset → 0, the second door lags .25s), then the SMIL runner
+   dots loop along the paths forever. Reduced motion: paths render fully
+   drawn from the start and the runners are hidden. */
+.doors svg { display: block; width: 100%; height: auto; }
+.doors text { font-family: var(--font-family-display), system-ui, sans-serif; }
+.doors .door-box {
+  fill: var(--sqrt-bg-raised);
+  stroke: var(--sqrt-border-focus);
+  transition: stroke-width 0.15s ease;
+}
+.doors a:hover .door-box { stroke-width: 2; }
+.doors .kicker { fill: var(--sqrt-text-tertiary); font-size: 13px; }
+.doors .door-title { fill: var(--sqrt-text-primary); font-size: 20px; font-weight: 600; }
+.doors .door-path-marker { stroke: var(--sqrt-text-tertiary); }
+.doors .door-path {
+  fill: none;
+  stroke: var(--sqrt-text-tertiary);
+  stroke-width: 2;
+  stroke-dasharray: 260;
+  stroke-dashoffset: 260;
+  transition: stroke-dashoffset 1s ease;
+}
+.doors.in .door-path { stroke-dashoffset: 0; }
+.doors.in .door-path.b { transition-delay: 0.25s; }
+.doors .runner {
+  fill: var(--sqrt-text-secondary);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.doors.in .runner { opacity: 1; }
+.doors .engine-box {
+  fill: var(--sqrt-action-primary-glow);
+  stroke: var(--sqrt-action-primary-rest);
+  stroke-width: 1.6;
+}
+.doors .engine-title { fill: var(--sqrt-text-primary); font-size: 19px; font-weight: 600; }
+.doors .engine-sub { fill: var(--sqrt-text-accent); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) {
+  .doors .door-path { stroke-dashoffset: 0; transition: none; }
+  .doors .runner { display: none; }
+}
+
+/* ── Blog: runs / founder-share / trust panels (distribution-setup post) ───
+   Same one-way reveal as .doors above: useInView adds .in on first viewport
+   entry. RunsPanel bars grow bottom-up, staggered 40ms apart (per-bar delay
+   set inline); FounderSharePanel fills grow to their data width staged in
+   --target-width, rows staggered 150ms; TrustPanel lights its checks one by
+   one (state-driven in TrustPanel.tsx) while the meter fills stepwise with
+   them. Reduced motion: final state immediately, no transitions. */
+.runs .bar {
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.runs.in .bar { transform: scaleY(1); }
+
+.share .fill {
+  width: 0;
+  transition: width 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.share.in .fill { width: var(--target-width); }
+
+.trust .checks li { opacity: 0.35; transition: opacity 0.4s ease; }
+.trust .checks li.on { opacity: 1; }
+.trust .checks .box {
+  border: 1.5px solid var(--sqrt-border-focus);
+  color: var(--sqrt-bg-canvas);
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+.trust .checks li.on .box {
+  background: var(--sqrt-state-success);
+  border-color: var(--sqrt-state-success);
+}
+.trust .meter .lvl {
+  background: linear-gradient(
+    0deg,
+    var(--sqrt-state-success),
+    color-mix(in srgb, var(--sqrt-state-success) 55%, white)
+  );
+  transition: height 0.5s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .runs .bar { transform: none; transition: none; }
+  .share .fill { width: var(--target-width); transition: none; }
+  .trust .checks li { opacity: 1; transition: none; }
+  .trust .checks .box {
+    background: var(--sqrt-state-success);
+    border-color: var(--sqrt-state-success);
+    transition: none;
+  }
+  .trust .meter .lvl { transition: none; }
+}

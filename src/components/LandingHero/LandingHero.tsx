@@ -83,9 +83,9 @@ function HeroIllustration({ onTryItClick, ctas }: HeroProps) {
       </Glitch>
 
       <Glitch>
-        <p className="absolute left-[3px] top-[66px] w-[917px] font-display text-display-xl font-semibold leading-none tracking-[-0.03em] text-primary">
+        <h1 className="absolute left-[3px] top-[66px] w-[917px] font-display text-display-xl font-semibold leading-none tracking-[-0.03em] text-primary">
           Token distribution that funds itself
-        </p>
+        </h1>
       </Glitch>
 
       {ctas ? (
@@ -165,9 +165,9 @@ function HeroMobile({ onTryItClick, ctas }: HeroProps) {
 
           {/* Headline sits flush against the background frame's left edge — both
               start at left-16, zero horizontal padding between shape and text. */}
-          <p className="absolute left-[16px] top-[129px] w-[341px] font-display text-display-m font-semibold leading-none tracking-[-0.02em] text-primary">
+          <h1 className="absolute left-[16px] top-[129px] w-[341px] font-display text-display-m font-semibold leading-none tracking-[-0.02em] text-primary">
             Token distribution that funds itself
-          </p>
+          </h1>
 
           <div className="absolute right-0 top-0 flex flex-col items-start rounded-none bg-black px-2 pb-3 pt-6">
             <p className="text-[18px] font-bold leading-none text-primary">Create token easily</p>

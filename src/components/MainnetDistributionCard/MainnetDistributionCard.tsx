@@ -7,7 +7,6 @@ import type { Address } from "viem";
 import EcosystemLabel from "@/components/EcosystemLabel/EcosystemLabel";
 import Logo from "@/components/Logo/Logo";
 import Status, { type DistributionStatus } from "@/components/Status/Status";
-import useTokenAvatar from "@/hooks/useTokenAvatar";
 import { useAvatarImage } from "@/hooks/useAvatarImage";
 import { BODY_L, BODY_M, BODY_S } from "@/constants/typography";
 
@@ -65,10 +64,9 @@ const Metric = ({
 
 // Figma 15438:138449 — rest / hovered+pressed × desktop (392) / mobile (358).
 const MainnetDistributionCard = (props: MainnetDistributionCardProps) => {
-  const avatar = useTokenAvatar(props.tokenAddress, props.chainId);
   // Avatar metadata is usually `ipfs://<cid>`; resolve it through gateways
   // (never hand ipfs:// to <img>) and fall back to the branded placeholder.
-  const { src, onError } = useAvatarImage(avatar ?? props.imageUrl);
+  const { src, onError } = useAvatarImage(props.imageUrl);
   const imageUrl = src ?? "/mainnet/token-avatar-placeholder.png";
   return (
     <Link

@@ -30,6 +30,7 @@ export type ToastMessageKey =
   | "participate.ended"
   | "participate.notStarted"
   | "participate.invalidAmount"
+  | "participate.invalidRange"
   | "claim.pending"
   | "claim.success"
   | "claim.failed"
@@ -40,6 +41,8 @@ export type ToastMessageKey =
   | "release.success"
   | "release.failed"
   | "wrap.pending"
+  | "avatar.failed"
+  | "avatar.predictionFailed"
   | "tx.reverted"
   | "copy.link"
   | "copy.address"
@@ -111,6 +114,10 @@ export const TOAST_MESSAGES: Record<ToastMessageKey, ToastMessageDef> = {
     type: "error",
     copy: "Enter a valid participation amount first.",
   },
+  "participate.invalidRange": {
+    type: "error",
+    copy: "Enter a valid epoch range first.",
+  },
 
   "claim.pending": { type: "pending", copy: "Claiming your {symbol}…" },
   "claim.success": { type: "success", copy: "Claimed — {amount} {symbol} is in your wallet." },
@@ -124,6 +131,14 @@ export const TOAST_MESSAGES: Record<ToastMessageKey, ToastMessageDef> = {
   "release.failed": { type: "error", copy: "Release didn't go through. Please try again." },
 
   "wrap.pending": { type: "pending", copy: "Wrapping {asset} into WETH…" },
+  "avatar.predictionFailed": {
+    type: "error",
+    copy: "Couldn't read that avatar image. The distribution will use the current avatar.",
+  },
+  "avatar.failed": {
+    type: "error",
+    copy: "Your distribution is live, but the avatar upload failed. Retry from this screen.",
+  },
 
   "tx.reverted": { type: "error", copy: "Can't launch: {reason}" },
 

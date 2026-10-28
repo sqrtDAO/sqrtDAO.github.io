@@ -25,6 +25,7 @@ import {
   type TooltipController,
 } from "@/lib/charts/tooltipController";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
+import { formatPrice } from "@/utils/epoch-format";
 import { roundUnits, unitsToNumber } from "@/utils/round-units";
 import type { EpochData } from "@/lib/charts/types";
 import "@/components/ChartTooltip/ChartTooltip.css";
@@ -35,8 +36,8 @@ export interface EpochBlockChartProps {
   epochs: EpochData[];
   quoteSymbol?: string;
   tokenSymbol?: string;
-  quoteDecimals?: number;
-  tokenDecimals?: number;
+  quoteDecimals: number;
+  tokenDecimals: number;
   className?: string;
   /** Fires when an epoch's block is clicked/tapped. */
   onSelectEpoch?: (epoch: EpochData) => void;
@@ -84,7 +85,7 @@ export default function EpochBlockChart({
   }, []);
 
   const volumeOf = useCallback(
-    (e: EpochData) => unitsToNumber(e.participationAmount, quoteDecimals ?? 18),
+    (e: EpochData) => unitsToNumber(e.participationAmount, quoteDecimals),
     [quoteDecimals],
   );
 
@@ -200,20 +201,18 @@ export default function EpochBlockChart({
         { label: "Epoch num", value: `#${epoch.epoch}` },
         {
           label: "Epoch supply",
-          value: `${roundUnits(epoch.supplyAmount ?? 0n, tokenDecimals ?? 18)} ${tokenSymbol}`,
+          value: `${roundUnits(epoch.supplyAmount ?? 0n, tokenDecimals)} ${tokenSymbol}`,
         },
         {
           label: "Clear price",
           value:
             epoch.clearPrice == null
               ? "—"
-              : `${parseFloat(epoch.clearPrice.toFixed(4))} ${quoteSymbol}`,
+              : `${formatPrice(epoch.clearPrice)} ${quoteSymbol}`,
         },
         {
           label: "Participation vol",
-          value: epoch.participationAmount
-            ? `${roundUnits(epoch.participationAmount, quoteDecimals ?? 18)} ${quoteSymbol}`
-            : "—",
+          value: `${roundUnits(epoch.participationAmount, quoteDecimals)} ${quoteSymbol}`,
         },
       ],
       e.clientX - hostRect.left + host.scrollLeft,

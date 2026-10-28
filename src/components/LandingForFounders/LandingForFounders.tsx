@@ -53,11 +53,11 @@ function ForFoundersMobile() {
 
           <p className="absolute left-[16px] top-[23px] text-body text-accent">For Founders, builders, token owners</p>
 
-          <p className="absolute left-[16px] top-[45px] w-[327px] font-display text-h2 font-semibold leading-none tracking-[-0.36px] text-primary">
+          <h2 className="absolute left-[16px] top-[45px] w-[327px] font-display text-h2 font-semibold leading-none tracking-[-0.36px] text-primary">
             Launch once,
             <br />
             Then get back to work.
-          </p>
+          </h2>
         </div>
 
         <div className="flex w-full flex-col gap-2 px-4">
@@ -105,9 +105,9 @@ export default function LandingForFounders() {
               <p className="absolute left-[62px] top-[106px] text-h4 text-accent">For Founders, builders, token owners</p>
             </GlitchReveal>
             <GlitchReveal>
-              <p className="absolute left-[62px] top-[138px] w-[674px] font-display text-h1 font-semibold leading-tight tracking-[-0.01em] text-primary">
+              <h2 className="absolute left-[62px] top-[138px] w-[674px] font-display text-h1 font-semibold leading-tight tracking-[-0.01em] text-primary">
                 Launch once, Then get back to work.
-              </p>
+              </h2>
             </GlitchReveal>
 
             <GlitchReveal>

@@ -50,6 +50,14 @@ export type MainnetDdpData = {
   epochStats: Omit<EpochStatsCardProps, "children" | "epochLabel">;
   legend: React.ComponentProps<typeof EpochChartLegend>;
   epochs: EpochData[];
+  /**
+   * Combo-chart window. It grows as the user scrolls the chart, so it may hold
+   * more epochs than `epochs` (which stays the block chart's fixed window).
+   * Falls back to `epochs` when omitted.
+   */
+  comboEpochs?: EpochData[];
+  /** The combo chart is nearing an edge — load more (inclusive, 0-based). */
+  onComboRangeChange?: (fromEpochIndex: number, toEpochIndex: number) => void;
   tokenSymbol: string;
   tokenDecimals: number;
   quoteSymbol: string;
@@ -62,6 +70,8 @@ export type MainnetDdpData = {
     ParticipationCardProps,
     "connected" | "disabled" | "onParticipate"
   >;
+  /** Validate the participation form; returning false keeps the review dialog closed. */
+  onBeforeParticipate?: () => boolean;
   review: Omit<
     React.ComponentProps<typeof ParticipationReviewDialogV2>,
     "imported" | "onClose"
@@ -118,7 +128,11 @@ const MainnetDdp = ({ variant, state, connected, data, epochActions }: MainnetDd
     ...data.participation,
     connected,
     disabled: state !== "live",
-    onParticipate: () => setDialog("review"),
+    onParticipate: () => {
+      // surface form errors on the card first; don't open the dialog on invalid input
+      if (data.onBeforeParticipate && !data.onBeforeParticipate()) return;
+      setDialog("review");
+    },
   };
 
   return (
@@ -167,11 +181,14 @@ const MainnetDdp = ({ variant, state, connected, data, epochActions }: MainnetDd
                     }
                   >
                     <EpochComboChart
-                      epochs={data.epochs}
+                      epochs={data.comboEpochs ?? data.epochs}
                       quoteSymbol={data.quoteSymbol}
                       tokenSymbol={data.tokenSymbol}
+                      quoteDecimals={data.quoteDecimals}
+                      tokenDecimals={data.tokenDecimals}
                       onHoverEpoch={setHovered}
                       onSelectEpoch={setEdd}
+                      onVisibleRange={data.onComboRangeChange}
                     />
                   </EpochStatsCard>
                 </div>
@@ -182,18 +199,22 @@ const MainnetDdp = ({ variant, state, connected, data, epochActions }: MainnetDd
                     epochs={data.epochs}
                     quoteSymbol={data.quoteSymbol}
                     tokenSymbol={data.tokenSymbol}
+                    quoteDecimals={data.quoteDecimals}
+                    tokenDecimals={data.tokenDecimals}
                     onSelectEpoch={setEdd}
                   />
                 </EpochChartLegend>
               </div>
             </section>
 
-            <section className="flex flex-col gap-2.5 px-4 py-6 xl:px-6 xl:py-5">
-              <h2 className="font-display text-h3 text-primary">
-                About this project
-              </h2>
-              <p className={`${BODY_M} text-secondary`}>{data.about}</p>
-            </section>
+            {data.about.trim() && (
+              <section className="flex flex-col gap-2.5 px-4 py-6 xl:px-6 xl:py-5">
+                <h2 className="font-display text-h3 text-primary">
+                  About this project
+                </h2>
+                <p className={`${BODY_M} text-secondary`}>{data.about}</p>
+              </section>
+            )}
 
             <FaqSection />
           </div>
@@ -252,7 +273,7 @@ const MainnetDdp = ({ variant, state, connected, data, epochActions }: MainnetDd
       {edd && (
         <EpochDetailDialogV2
           epoch={edd}
-          epochEndMs={data.countdownTargetMs}
+          epochEndMs={edd.timestamp + data.epochDurationSec * 1000}
           epochDurationSec={data.epochDurationSec}
           lastClearPrice={data.lastClearPrice}
           tokenSymbol={data.tokenSymbol}
@@ -261,7 +282,10 @@ const MainnetDdp = ({ variant, state, connected, data, epochActions }: MainnetDd
           quoteDecimals={data.quoteDecimals}
           claiming={data.claiming ?? false}
           onClose={() => setEdd(null)}
-          onParticipateClick={() => epochActions?.onParticipate?.(edd.epoch)}
+          onParticipateClick={() => {
+            epochActions?.onParticipate?.(edd.epoch);
+            setEdd(null);
+          }}
           onClaimClick={() => epochActions?.onClaim?.(edd.epoch)}
         />
       )}

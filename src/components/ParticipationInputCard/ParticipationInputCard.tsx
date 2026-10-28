@@ -57,6 +57,7 @@ const ParticipationInputCard = ({
               id={id}
               value={state.value}
               onChange={(e) => state.onChange(e.target.value)}
+              onBlur={() => state.onBlur?.()}
               placeholder={placeholder}
               disabled={disabled}
               inputMode="decimal"

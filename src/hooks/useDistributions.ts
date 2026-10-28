@@ -10,6 +10,8 @@ import {
   tokenV1FactoryAbi,
 } from "@/contracts/abis";
 import { getAddresses } from "@/contracts/contract-addresses";
+import { mergeMetadata } from "@/utils/token-metadata";
+import { normalizeAvatarValue } from "@/utils/avatar-api";
 import type {
   Distribution,
   DistributionStatus,
@@ -91,18 +93,30 @@ const loadRows = async (
           functionName: "epochTotalParticipation" as const,
           args: [lastEpochIdx] as const,
         },
+        {
+          address: item.addr,
+          abi: distributorV1Abi,
+          functionName: "getAllMetadata" as const,
+        },
+        {
+          address: item.info.distributionToken,
+          abi: tokenV1Abi,
+          functionName: "getAllMetadata" as const,
+        },
       ];
     }),
   });
 
   return items.map((item, i) => {
     const info = item.info;
-    const m = metadata.slice(i * 8, i * 8 + 8);
+    const m = metadata.slice(i * 10, i * 10 + 10);
     const currentEpoch = getCurrentEpoch(info, nowSec);
     const totalEpochs = Number(info.numberOfEpochs);
     const epochsCompleted = getEpochsCompleted(currentEpoch, totalEpochs);
-    const tokenDecimals = Number(m[2]!.result) || 18;
-    const participationTokenDecimals = Number(m[4]!.result) || 18;
+    const tokenDecimals =
+      m[2]!.status === "success" ? Number(m[2]!.result) : 18;
+    const participationTokenDecimals =
+      m[4]!.status === "success" ? Number(m[4]!.result) : 18;
     const native = (m[5]!.result as Address) !== zeroAddress;
 
     let lastClearPrice: number | null = null;
@@ -114,7 +128,7 @@ const loadRows = async (
         formatUnits(m[7]!.result as bigint, participationTokenDecimals),
       );
       if (rewardHuman > 0 && participationHuman > 0) {
-        lastClearPrice = rewardHuman / participationHuman;
+        lastClearPrice = participationHuman / rewardHuman;
       }
     }
 
@@ -123,6 +137,13 @@ const loadRows = async (
       (Number(info.startingTimestamp) +
         totalEpochs * Number(info.epochDuration)) *
       1000;
+
+    const distributionEntries =
+      m[8]?.status === "success" ? m[8].result : [];
+    const tokenEntries = m[9]?.status === "success" ? m[9].result : [];
+    const avatar = normalizeAvatarValue(
+      mergeMetadata(tokenEntries, distributionEntries).avatar,
+    );
 
     return {
       chainId: item.chainId,
@@ -140,6 +161,7 @@ const loadRows = async (
       totalEpochs,
       native,
       lastClearPrice,
+      avatar,
     };
   });
 };

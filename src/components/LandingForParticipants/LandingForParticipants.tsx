@@ -52,9 +52,9 @@ function ForParticipantsMobile() {
 
           <p className="absolute left-[16px] top-[36px] text-body text-accent">For participants, believers, investors</p>
 
-          <p className="absolute left-[16px] top-[69px] w-[337px] font-display text-h2 font-semibold leading-none tracking-[-0.36px] text-primary">
+          <h2 className="absolute left-[16px] top-[69px] w-[337px] font-display text-h2 font-semibold leading-none tracking-[-0.36px] text-primary">
             Nobody gets in ahead of you.
-          </p>
+          </h2>
         </div>
 
         <div className="flex w-full flex-col gap-2 px-2">
@@ -100,9 +100,9 @@ export default function LandingForParticipants() {
               <p className="absolute left-[24px] top-[24px] text-h4 text-accent">For participants, believers, investors</p>
             </GlitchReveal>
             <GlitchReveal>
-              <p className="absolute left-[24px] top-[57px] w-[674px] font-display text-h1 font-semibold leading-tight tracking-[-0.01em] text-primary">
+              <h2 className="absolute left-[24px] top-[57px] w-[674px] font-display text-h1 font-semibold leading-tight tracking-[-0.01em] text-primary">
                 Nobody gets in ahead of you.
-              </p>
+              </h2>
             </GlitchReveal>
 
             <GlitchReveal>

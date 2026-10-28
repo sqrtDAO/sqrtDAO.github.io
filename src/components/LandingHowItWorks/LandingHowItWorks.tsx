@@ -41,13 +41,13 @@ function HowItWorksMobile() {
             heights, for the same reason. */}
         <div className="relative w-full">
           <div className="relative left-[16px] h-[126px] w-[374px] rounded-none bg-black">
-            <p className="absolute left-0 top-[8px] w-[357px] font-display text-h2 font-semibold leading-none tracking-[-0.36px] text-primary">
+            <h2 className="absolute left-0 top-[8px] w-[357px] font-display text-h2 font-semibold leading-none tracking-[-0.36px] text-primary">
               One launch, spread across many epochs
-            </p>
+            </h2>
           </div>
 
           <div className="relative left-[68px] w-[306px] rounded-none bg-black py-6 pl-[31px] pr-6">
-            <p className="font-display text-h3 text-tertiary">How It Works</p>
+            <h3 className="font-display text-h3 text-tertiary">How It Works</h3>
             <div className="mt-2 flex w-full flex-col items-start gap-2">
               {STEPS.map((s) => (
                 <div key={s.n} className="flex w-full items-start gap-4">
@@ -135,14 +135,14 @@ export default function LandingHowItWorks() {
           </GlitchReveal>
 
           <GlitchReveal>
-            <p className="absolute left-[212px] top-[148px] w-[431px] font-display text-display-m font-semibold leading-none tracking-[-0.02em] text-primary">
+            <h2 className="absolute left-[212px] top-[148px] w-[431px] font-display text-display-m font-semibold leading-none tracking-[-0.02em] text-primary">
               One launch, spread across many epochs
-            </p>
+            </h2>
           </GlitchReveal>
 
           <GlitchReveal>
             <div className="absolute left-[657px] top-[228px] w-[333px]">
-              <p className="font-display text-h3 text-tertiary">How It Works</p>
+              <h3 className="font-display text-h3 text-tertiary">How It Works</h3>
               <div className="mt-6 flex flex-col gap-6">
                 {STEPS.map((s) => (
                   <div key={s.n} className="flex gap-4">
