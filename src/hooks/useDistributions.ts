@@ -10,6 +10,8 @@ import {
   tokenV1FactoryAbi,
 } from "@/contracts/abis";
 import { getAddresses } from "@/contracts/contract-addresses";
+import { mergeMetadata } from "@/utils/token-metadata";
+import { normalizeAvatarValue } from "@/utils/avatar-api";
 import type {
   Distribution,
   DistributionStatus,
@@ -91,13 +93,23 @@ const loadRows = async (
           functionName: "epochTotalParticipation" as const,
           args: [lastEpochIdx] as const,
         },
+        {
+          address: item.addr,
+          abi: distributorV1Abi,
+          functionName: "getAllMetadata" as const,
+        },
+        {
+          address: item.info.distributionToken,
+          abi: tokenV1Abi,
+          functionName: "getAllMetadata" as const,
+        },
       ];
     }),
   });
 
   return items.map((item, i) => {
     const info = item.info;
-    const m = metadata.slice(i * 8, i * 8 + 8);
+    const m = metadata.slice(i * 10, i * 10 + 10);
     const currentEpoch = getCurrentEpoch(info, nowSec);
     const totalEpochs = Number(info.numberOfEpochs);
     const epochsCompleted = getEpochsCompleted(currentEpoch, totalEpochs);
@@ -126,6 +138,13 @@ const loadRows = async (
         totalEpochs * Number(info.epochDuration)) *
       1000;
 
+    const distributionEntries =
+      m[8]?.status === "success" ? m[8].result : [];
+    const tokenEntries = m[9]?.status === "success" ? m[9].result : [];
+    const avatar = normalizeAvatarValue(
+      mergeMetadata(tokenEntries, distributionEntries).avatar,
+    );
+
     return {
       chainId: item.chainId,
       address: item.addr,
@@ -142,6 +161,7 @@ const loadRows = async (
       totalEpochs,
       native,
       lastClearPrice,
+      avatar,
     };
   });
 };

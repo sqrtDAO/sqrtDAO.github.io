@@ -41,8 +41,8 @@ export type ToastMessageKey =
   | "release.success"
   | "release.failed"
   | "wrap.pending"
-  | "profile.pending"
   | "avatar.failed"
+  | "avatar.predictionFailed"
   | "tx.reverted"
   | "copy.link"
   | "copy.address"
@@ -131,10 +131,13 @@ export const TOAST_MESSAGES: Record<ToastMessageKey, ToastMessageDef> = {
   "release.failed": { type: "error", copy: "Release didn't go through. Please try again." },
 
   "wrap.pending": { type: "pending", copy: "Wrapping {asset} into WETH…" },
-  "profile.pending": { type: "pending", copy: "Saving your project profile…" },
+  "avatar.predictionFailed": {
+    type: "error",
+    copy: "Couldn't read that avatar image. The distribution will use the current avatar.",
+  },
   "avatar.failed": {
     type: "error",
-    copy: "Avatar upload failed. Your profile is saved, but the image may not show yet.",
+    copy: "Your distribution is live, but the avatar upload failed. Retry from this screen.",
   },
 
   "tx.reverted": { type: "error", copy: "Can't launch: {reason}" },

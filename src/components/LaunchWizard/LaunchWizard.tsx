@@ -30,8 +30,10 @@ import {
   amountValidator,
   addressValidator,
   requiredValidator,
+  urlValidator,
   validateAll,
 } from "@/utils/validator";
+import { normalizeUrl } from "@/utils/url";
 import {
   commaModifier,
   composeModifiers,
@@ -115,10 +117,10 @@ const LaunchWizard = () => {
     amountValidator,
   );
   const description = useInput("");
-  const website = useInput("");
-  const github = useInput("");
-  const x = useInput("");
-  const discord = useInput("");
+  const website = useInput("", undefined, urlValidator("Website"));
+  const github = useInput("", undefined, urlValidator("Github"));
+  const x = useInput("", undefined, urlValidator("X"));
+  const discord = useInput("", undefined, urlValidator("Discord"));
   const [changeReceiver, setChangeReceiver] = useState(false);
   const receiver = useInput(
     "",
@@ -156,7 +158,7 @@ const LaunchWizard = () => {
       return;
     }
     if (!walletClient || !publicClient) return;
-    if (!validateAll(name, symbol, supply)) {
+    if (!validateAll(name, symbol, supply, website, github, x, discord)) {
       setStep("form");
       return;
     }
@@ -180,11 +182,11 @@ const LaunchWizard = () => {
 
     const metadata = tokenMetadataEntries(name.value.trim(), symbol.value.trim(), {
       avatar,
-      description: description.value,
-      website: website.value,
-      github: github.value,
-      x: x.value,
-      discord: discord.value,
+      description: description.value.trim(),
+      website: normalizeUrl(website.value),
+      github: normalizeUrl(github.value),
+      x: normalizeUrl(x.value),
+      discord: normalizeUrl(discord.value),
     }).filter((entry) => entry.value.trim() !== "");
 
     const config = {
@@ -328,7 +330,7 @@ const LaunchWizard = () => {
                       openConnectModal?.();
                       return;
                     }
-                    if (!validateAll(name, symbol, supply)) return;
+                    if (!validateAll(name, symbol, supply, website, github, x, discord)) return;
                     setStep("receiver");
                   }}
                 >

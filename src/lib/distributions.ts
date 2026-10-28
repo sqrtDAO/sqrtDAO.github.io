@@ -21,4 +21,6 @@ export type Distribution = {
   native: boolean;
   /** Last closed epoch's clear price, or null if none has closed. */
   lastClearPrice: number | null;
+  /** Distribution avatar first, token avatar as fallback (`ipfs://…` or https). */
+  avatar: string | null;
 };

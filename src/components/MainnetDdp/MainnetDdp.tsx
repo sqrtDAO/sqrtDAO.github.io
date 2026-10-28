@@ -207,12 +207,14 @@ const MainnetDdp = ({ variant, state, connected, data, epochActions }: MainnetDd
               </div>
             </section>
 
-            <section className="flex flex-col gap-2.5 px-4 py-6 xl:px-6 xl:py-5">
-              <h2 className="font-display text-h3 text-primary">
-                About this project
-              </h2>
-              <p className={`${BODY_M} text-secondary`}>{data.about}</p>
-            </section>
+            {data.about.trim() && (
+              <section className="flex flex-col gap-2.5 px-4 py-6 xl:px-6 xl:py-5">
+                <h2 className="font-display text-h3 text-primary">
+                  About this project
+                </h2>
+                <p className={`${BODY_M} text-secondary`}>{data.about}</p>
+              </section>
+            )}
 
             <FaqSection />
           </div>

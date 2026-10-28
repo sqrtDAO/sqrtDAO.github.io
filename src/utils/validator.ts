@@ -1,4 +1,5 @@
 import { UseInputReturn } from "@/hooks/useInput";
+import { isValidHttpUrl } from "@/utils/url";
 import { parseEther } from "viem";
 
 // undefined means OK, returned string is error message
@@ -78,4 +79,11 @@ export const positiveNumberValidator = (label: string): InputValidator => {
     if (isNaN(n) || n <= 0) return `${label} must be greater than 0`;
     return null; // OK
   };
+};
+
+/** Optional link field: empty is valid, otherwise must be http(s). */
+export const urlValidator = (label: string): InputValidator => (value) => {
+  const v = value.trim();
+  if (!v) return null;
+  return isValidHttpUrl(v) ? null : `${label} must be a valid URL`;
 };

@@ -1,7 +1,6 @@
 import { IconChevronRight } from "@tabler/icons-react";
 import TableCell from "@/components/TableCell/TableCell";
 import TokenAvatar from "@/components/TokenAvatar/TokenAvatar";
-import useTokenAvatar from "@/hooks/useTokenAvatar";
 import type { Distribution } from "@/lib/distributions";
 import { formatDate } from "@/utils/formatDate";
 import { roundUnits } from "@/utils/round-units";
@@ -21,7 +20,6 @@ const cellBorder = "h-16 align-middle border-y border-muted group-hover:border-t
 
 export default function TableRow({ distribution }: TableRowProps) {
   const chainId = useChainId();
-  const tokenAvatarUrl = useTokenAvatar(distribution.tokenAddress, chainId);
 
   return (
     <tr
@@ -38,7 +36,7 @@ export default function TableRow({ distribution }: TableRowProps) {
         <div className="flex w-full items-center justify-center px-2 py-3">
           <TokenAvatar
             seed={`${distribution.tokenName} ${distribution.tokenSymbol}`}
-            imageUrl={tokenAvatarUrl ?? undefined}
+            imageUrl={distribution.avatar ?? undefined}
             size={40}
             className="!rounded-full"
           />

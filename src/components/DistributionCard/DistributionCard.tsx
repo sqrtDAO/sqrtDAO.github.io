@@ -6,7 +6,6 @@ import { IconChevronRight } from "@tabler/icons-react";
 import type { Distribution } from "@/lib/distributions";
 import Status from "@/components/Status/Status";
 import TokenAvatar from "@/components/TokenAvatar/TokenAvatar";
-import useTokenAvatar from "@/hooks/useTokenAvatar";
 import { formatDate } from "@/utils/formatDate";
 import { roundUnits } from "@/utils/round-units";
 import { chainToSlug } from "@/utils/chain-utils";
@@ -36,7 +35,6 @@ export default function DistributionCard({
   className,
 }: DistributionCardProps) {
   const chainId = useChainId();
-  const tokenAvatarUrl = useTokenAvatar(distribution.tokenAddress, chainId);
 
   return (
     <div
@@ -52,7 +50,7 @@ export default function DistributionCard({
       <div className="flex items-center gap-2">
         <TokenAvatar
           seed={`${distribution.tokenName} ${distribution.tokenSymbol}`}
-          imageUrl={tokenAvatarUrl ?? undefined}
+          imageUrl={distribution.avatar ?? undefined}
           size={40}
           className="!rounded-full shrink-0"
         />

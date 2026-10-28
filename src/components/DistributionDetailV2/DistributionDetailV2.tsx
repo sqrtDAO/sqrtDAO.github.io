@@ -28,8 +28,9 @@ import type {
   EpochInfo,
 } from "@/hooks/useDistributorData";
 import { useEpochPages } from "@/hooks/useEpochPages";
-import useTokenAvatar from "@/hooks/useTokenAvatar";
 import { avatarHttpsUrl } from "@/constants/avatar";
+import { mergeMetadata } from "@/utils/token-metadata";
+import { normalizeAvatarValue } from "@/utils/avatar-api";
 import { useInput, type UseInputReturn } from "@/hooks/useInput";
 import {
   decimalOnlyModifier,
@@ -219,9 +220,8 @@ const DistributionDetailV2 = ({
     refetch,
   } = useDistributorData(contractAddress as Address, chainId);
 
-  const avatarUrl = useTokenAvatar(contractInfo?.distributionToken, chainId);
-
   const [metadata, setMetadata] = useState<Record<string, string>>({});
+  const avatarUrl = normalizeAvatarValue(metadata.avatar) ?? undefined;
   // optimistic default: only claim "Created on sqrtDAO" once creatorOf confirms it
   const [native, setNative] = useState(false);
   const [claimState, setClaimState] = useState<
@@ -234,13 +234,21 @@ const DistributionDetailV2 = ({
 
   useEffect(() => {
     if (!publicClient || !contractInfo) return;
-    getTokenV1Contract(publicClient, contractInfo.distributionToken)
-      .read.getAllMetadata()
-      .then((entries) =>
-        setMetadata(Object.fromEntries(entries.map((e) => [e.key, e.value]))),
-      )
-      .catch(() => {});
-  }, [publicClient, contractInfo?.distributionToken]);
+    let active = true;
+    Promise.all([
+      getTokenV1Contract(publicClient, contractInfo.distributionToken)
+        .read.getAllMetadata()
+        .catch(() => []),
+      getDistributorV1Contract(publicClient, contractAddress as Address)
+        .read.getAllMetadata()
+        .catch(() => []),
+    ]).then(([tokenEntries, distributionEntries]) => {
+      if (active) setMetadata(mergeMetadata(tokenEntries, distributionEntries));
+    });
+    return () => {
+      active = false;
+    };
+  }, [publicClient, contractInfo?.distributionToken, contractAddress]);
 
   useEffect(() => {
     if (!publicClient || !contractInfo || chainId === undefined) return;

@@ -60,6 +60,7 @@ function DistributionListContent() {
     status: d.status,
     tokenAddress: d.tokenAddress,
     chainId: d.chainId,
+    imageUrl: d.avatar ?? undefined,
     native: d.native,
     totalParticipation: roundUnits(
       d.totalParticipation,

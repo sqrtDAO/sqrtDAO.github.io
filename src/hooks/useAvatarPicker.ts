@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { showToast } from "@/hooks/useToast";
 import { AVATAR_ALLOWED_MIME_TYPES, AVATAR_MAX_FILE_SIZE } from "@/constants/avatar";
 
@@ -34,12 +34,21 @@ export const useAvatarPicker = () => {
   };
 
   const reset = () => {
+    closeCrop();
     setPreview((old) => {
       if (old) URL.revokeObjectURL(old);
       return null;
     });
     setFile(null);
   };
+
+  // Revoke blob URLs when they're replaced or the wizard unmounts.
+  useEffect(() => () => {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+  }, [cropSrc]);
+  useEffect(() => () => {
+    if (preview) URL.revokeObjectURL(preview);
+  }, [preview]);
 
   return { cropSrc, file, preview, pick, closeCrop, onCropped, reset };
 };

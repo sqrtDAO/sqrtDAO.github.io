@@ -56,6 +56,48 @@ export const requestUploadLink = async (
   return res.json();
 };
 
+const isTransientGateError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  return /not committed|not created through the official distribution factory|on-chain verification failed/i.test(
+    message,
+  );
+};
+
+/**
+ * Distribution avatars are committed in the creation tx, so the link can only
+ * be requested after it. The RPC may be a block behind; retry briefly.
+ */
+export const requestDistributionUploadLink = async (
+  distributor: Address,
+  cid: string,
+  chainId: number,
+  attempts = 3,
+): Promise<UploadLinkResponse> => {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const params = new URLSearchParams({
+        distributor,
+        cid,
+        chain_id: String(chainId),
+      });
+      const res = await fetch(
+        `${AVATAR_API_BASE}/distribution-avatar/get-upload-link/?${params.toString()}`,
+      );
+      if (!res.ok) throw await toError(res);
+      return res.json();
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts && isTransientGateError(error)) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw lastError;
+};
+
 export const uploadToIpfs = async (
   file: File,
   uploadUrl: string,
@@ -68,6 +110,14 @@ export const uploadToIpfs = async (
   return data.cid;
 };
 
+/** Normalizes a stored avatar value; TokenAvatar resolves ipfs:// with fallback. */
+export const normalizeAvatarValue = (avatar?: string | null): string | null => {
+  const value = avatar?.trim();
+  if (!value) return null;
+  if (value.startsWith("ipfs://") || /^https?:\/\//i.test(value)) return value;
+  return `ipfs://${value}`;
+};
+
 /** Reads the `avatar` entry from the token's on-chain metadata. */
 export const readTokenAvatar = async (
   publicClient: PublicClient,
@@ -78,9 +128,6 @@ export const readTokenAvatar = async (
     abi: tokenV1Abi,
     functionName: "getAllMetadata",
   });
-  const avatar = entries.find((entry) => entry.key === "avatar")?.value?.trim();
-  if (!avatar) return null;
-  // return the raw value; TokenAvatar resolves ipfs:// via gateways with fallback
-  if (avatar.startsWith("ipfs://") || /^https?:\/\//i.test(avatar)) return avatar;
-  return `ipfs://${avatar}`;
+  const avatar = entries.find((entry) => entry.key === "avatar")?.value;
+  return normalizeAvatarValue(avatar);
 };

@@ -44,8 +44,19 @@ import TextArea from "@/components/TextArea/TextArea";
 import AvatarUpload from "@/components/AvatarUpload/AvatarUpload";
 import AvatarCropDialog from "@/components/AvatarCropDialog/AvatarCropDialog";
 import { useAvatarPicker } from "@/hooks/useAvatarPicker";
-import { EMPTY_PROFILE, tokenMetadataEntries, type TokenProfile } from "@/utils/token-metadata";
-import { predictCid, requestUploadLink, uploadToIpfs } from "@/utils/avatar-api";
+import {
+  EMPTY_PROFILE,
+  isTokenProfileKey,
+  tokenMetadataEntries,
+  type TokenProfile,
+} from "@/utils/token-metadata";
+import {
+  normalizeAvatarValue,
+  predictCid,
+  requestDistributionUploadLink,
+  uploadToIpfs,
+} from "@/utils/avatar-api";
+import { normalizeUrl } from "@/utils/url";
 import { useSelectedChain } from "@/hooks/useActiveChain";
 import { useInput } from "@/hooks/useInput";
 import {
@@ -60,6 +71,7 @@ import {
   addressValidator,
   positiveNumberValidator,
   requiredValidator,
+  urlValidator,
   validateAll,
   type InputValidator,
 } from "@/utils/validator";
@@ -68,7 +80,7 @@ import {
   getTokenV1Contract,
   getWethContract,
 } from "@/contracts/contracts";
-import { tokenV1Abi, transferToHookAbi } from "@/contracts/abis";
+import { transferToHookAbi } from "@/contracts/abis";
 import { getAddresses } from "@/contracts/contract-addresses";
 import { getParticipationAssets, type ParticipationAsset } from "@/contracts/participation-assets";
 import { CLAIM_ROOT_DISCORD_URL, DISTRIBUTION_LAUNCH_HREF, DISTRIBUTION_LIST } from "@/constants/links";
@@ -83,6 +95,7 @@ import { formatDateTime } from "@/utils/formatDate";
 
 type Step = "router" | "import" | "welcome" | "details" | "supply" | "release" | "rules" | "review" | "wallet" | "confirming" | "ready";
 type ReleaseType = "time" | "epoch";
+type AvatarStatus = "idle" | "pending" | "done" | "error" | "skipped";
 
 type TokenInfo = {
   address: Address;
@@ -91,8 +104,8 @@ type TokenInfo = {
   decimals: number;
   totalSupply: bigint;
   balance: bigint;
-  /** null when the token has no sqrtDAO metadata store (e.g. an imported plain ERC20). */
-  meta: { profile: TokenProfile; owner: Address; locked: boolean } | null;
+  /** Token metadata is only used to prefill the distribution profile. */
+  profile: TokenProfile;
 };
 
 const FORM_STEPS: Step[] = ["details", "supply", "release", "rules", "review"];
@@ -306,10 +319,16 @@ const Status = ({
   step,
   distributor,
   chainId,
+  avatarStatus,
+  onRetryAvatar,
+  onSkipAvatar,
 }: {
   step: "wallet" | "confirming" | "ready";
   distributor?: Address;
   chainId?: number;
+  avatarStatus?: AvatarStatus;
+  onRetryAvatar?: () => void;
+  onSkipAvatar?: () => void;
 }) => (
   <div className="flex w-full flex-col items-center gap-8 text-center">
     <Image
@@ -345,6 +364,24 @@ const Status = ({
           <p className={`w-full text-left ${bodyM} text-tertiary`}>
             Distribution address: {distributor}
           </p>
+        )}
+        {avatarStatus === "pending" && (
+          <p className={`w-full text-left ${bodyM} text-secondary`}>Uploading avatar…</p>
+        )}
+        {avatarStatus === "error" && (
+          <div className="flex w-full flex-col gap-2 rounded-m border border-danger bg-surface p-4">
+            <p className={`${bodyM} text-danger`}>
+              Avatar upload failed. Your distribution is live — retry or skip.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="primary" size="s" onClick={onRetryAvatar}>
+                Retry
+              </Button>
+              <Button variant="outline" size="s" onClick={onSkipAvatar}>
+                Skip
+              </Button>
+            </div>
+          </div>
         )}
         <div className="flex w-full flex-col gap-4 xl:flex-row xl:justify-center">
           <Link
@@ -409,19 +446,15 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
   const tokenSupply = useInput("");
   const profileInputs = {
     description: useInput(""),
-    website: useInput(""),
-    github: useInput(""),
-    x: useInput(""),
-    discord: useInput(""),
-  };
+    website: useInput("", undefined, urlValidator("Website")),
+    github: useInput("", undefined, urlValidator("Github")),
+    x: useInput("", undefined, urlValidator("X")),
+    discord: useInput("", undefined, urlValidator("Discord")),
+  } satisfies Record<(typeof PROFILE_FIELDS)[number], ReturnType<typeof useInput>>;
   const avatar = useAvatarPicker();
-  const profileLockReason = !token?.meta
-    ? "This token doesn't support an on-chain profile, so it can't be edited here."
-    : token.meta.locked
-      ? "This token's profile is locked and can't be changed."
-      : token.meta.owner.toLowerCase() !== address?.toLowerCase()
-        ? "Only the token owner can edit the profile. Connect the owner wallet to make changes."
-        : null;
+  const [avatarStatus, setAvatarStatus] = useState<AvatarStatus>("idle");
+  const [avatarCid, setAvatarCid] = useState<string | null>(null);
+  const [avatarChainId, setAvatarChainId] = useState<number | null>(null);
 
   // form state
   const initialSupply = useInput("", tokenModifier, positiveNumberValidator("Initial token supply"));
@@ -502,36 +535,38 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
     setLoadError(null);
     try {
       const contract = getTokenV1Contract(publicClient, addr);
-      const [name, symbol, decimals, totalSupply, balance, meta] = await Promise.all([
+      const [name, symbol, decimals, totalSupply, balance, profile] = await Promise.all([
         contract.read.name(),
         contract.read.symbol(),
         contract.read.decimals(),
         contract.read.totalSupply(),
         address ? contract.read.balanceOf([address]) : Promise.resolve(0n),
-        Promise.all([
-          contract.read.getAllMetadata(),
-          contract.read.owner(),
-          contract.read.metadataLocked(),
-        ])
-          .then(([entries, owner, locked]) => ({
-            profile: {
+        contract.read
+          .getAllMetadata()
+          .then((entries) => {
+            const loaded = {
               ...EMPTY_PROFILE,
               ...Object.fromEntries(
-                entries.filter((e) => e.key in EMPTY_PROFILE).map((e) => [e.key, e.value.trim()]),
+                entries.filter((e) => isTokenProfileKey(e.key)).map((e) => [e.key, e.value.trim()]),
               ),
-            },
-            owner,
-            locked,
-          }))
-          .catch(() => null),
+            };
+            return {
+              ...loaded,
+              avatar: normalizeAvatarValue(loaded.avatar) ?? "",
+            } satisfies TokenProfile;
+          })
+          .catch(() => ({ ...EMPTY_PROFILE })),
       ]);
       if (seq !== importSeq.current || importChainRef.current !== requestChainId) return false;
-      setToken({ address: addr, name, symbol, decimals: Number(decimals), totalSupply, balance, meta });
+      setToken({ address: addr, name, symbol, decimals: Number(decimals), totalSupply, balance, profile });
       tokenName.onChange(name);
       tokenSymbol.onChange(symbol);
       tokenSupply.onChange(`${commaModifier(formatUnits(totalSupply, Number(decimals)))} ${symbol}`);
-      for (const key of PROFILE_FIELDS) profileInputs[key].onChange(meta?.profile[key] ?? "");
+      for (const key of PROFILE_FIELDS) profileInputs[key].onChange(profile[key] ?? "");
       avatar.reset();
+      setAvatarStatus("idle");
+      setAvatarCid(null);
+      setAvatarChainId(null);
       setDistributor(null);
       return true;
     } catch (e) {
@@ -744,6 +779,13 @@ const totalDistributionAmount = useMemo(() => {
 
   const stepValidation = (): boolean => {
     switch (step) {
+      case "details":
+        return validateAll(
+          profileInputs.website,
+          profileInputs.github,
+          profileInputs.x,
+          profileInputs.discord,
+        );
       case "supply": {
         if (!validateAll(initialSupply, liquidity, toDistribute)) return false;
         const need = initialNum + distributedNum;
@@ -816,41 +858,49 @@ const totalDistributionAmount = useMemo(() => {
     }
   }, [publicClient]);
 
-  // Writes only the changed profile entries (plus the derived reserved "metadata"
-  // one) to the token, then pins a new avatar. No-op when nothing changed.
-  const saveProfile = async (toastId: string) => {
-    if (!token?.meta || profileLockReason || !walletClient || !publicClient) return;
-    const current = token.meta.profile;
-    const cid = avatar.file ? await predictCid(avatar.file) : null;
-    const next: TokenProfile = {
-      avatar: cid ? `ipfs://${cid}` : current.avatar,
-      ...(Object.fromEntries(
-        PROFILE_FIELDS.map((key) => [key, profileInputs[key].value.trim()]),
-      ) as Omit<TokenProfile, "avatar">),
+  // The profile is distribution metadata: token metadata only prefills it.
+  const buildDistributionMetadata = (avatarFileCid: string | null) => {
+    if (!token) return [];
+    const profile: TokenProfile = {
+      avatar: avatarFileCid ? `ipfs://${avatarFileCid}` : token.profile.avatar,
+      description: profileInputs.description.value.trim(),
+      website: normalizeUrl(profileInputs.website.value),
+      github: normalizeUrl(profileInputs.github.value),
+      x: normalizeUrl(profileInputs.x.value),
+      discord: normalizeUrl(profileInputs.discord.value),
     };
-    const changed = tokenMetadataEntries(token.name, token.symbol, next).filter(
-      (e) => e.key === "metadata" || e.value !== current[e.key as keyof TokenProfile],
+    return tokenMetadataEntries(token.name, token.symbol, profile).filter(
+      (entry) => entry.value.trim() !== "",
     );
-    if (changed.length === 1) return;
+  };
 
-    showToast("profile.pending", { id: toastId });
-    const hash = await getTokenV1Contract(walletClient, token.address).write.setMetadataMany([changed], {
-      account: walletClient.account,
-      chain: walletClient.chain,
-    });
-    const receipt = await publicClient.waitForTransactionReceipt({ hash });
-    if (receipt.status === "reverted") throw new Error("profile update reverted");
-    // saved: a retried Confirm must not resend it
-    setToken((t) => (t?.meta ? { ...t, meta: { ...t.meta, profile: next } } : t));
-
-    if (!cid || !avatar.file) return;
+  // The distributor must exist (and its metadata must be on-chain) before the
+  // avatar API issues a link, so this runs after the distribution transaction.
+  const uploadDistributionAvatar = async (
+    distributorAddress: Address,
+    chainIdForUpload: number,
+    cid: string,
+    file: File,
+  ) => {
+    setAvatarStatus("pending");
     try {
-      const { upload_url } = await requestUploadLink(token.address, cid, walletClient.chain.id);
-      if ((await uploadToIpfs(avatar.file, upload_url)) !== cid) throw new Error("CID mismatch");
+      const { upload_url } = await requestDistributionUploadLink(
+        distributorAddress,
+        cid,
+        chainIdForUpload,
+      );
+      if ((await uploadToIpfs(file, upload_url)) !== cid) throw new Error("CID mismatch");
+      setAvatarStatus("done");
     } catch (e) {
       console.error(e);
+      setAvatarStatus("error");
       showToast("avatar.failed");
     }
+  };
+
+  const retryAvatar = () => {
+    if (!distributor || !avatarCid || !avatarChainId || !avatar.file) return;
+    void uploadDistributionAvatar(distributor, avatarChainId, avatarCid, avatar.file);
   };
 
   const onConfirm = async () => {
@@ -881,17 +931,43 @@ const totalDistributionAmount = useMemo(() => {
       return;
     }
 
+    if (
+      !validateAll(
+        profileInputs.website,
+        profileInputs.github,
+        profileInputs.x,
+        profileInputs.discord,
+      )
+    ) {
+      setStep("details");
+      return;
+    }
+
+    setAvatarStatus("idle");
+    setAvatarCid(null);
+    setAvatarChainId(null);
+    const avatarFile = avatar.file;
+    let avatarFileCid: string | null = null;
+    if (avatarFile) {
+      try {
+        avatarFileCid = await predictCid(avatarFile);
+      } catch (e) {
+        console.error(e);
+        showToast("avatar.predictionFailed");
+      }
+    }
+    const initialMetadata = buildDistributionMetadata(avatarFileCid);
+    const launchChainId = walletClient.chain.id;
+
     setStep("wallet");
     const participationDecimals = asset.decimals;
     const participationAmount = parseUnits(liquidity.value.replace(/,/g, ""), participationDecimals);
     const distributionLiquidity = parseUnits(initialSupply.value.replace(/,/g, ""), token.decimals);
     const factory = getFactoryV1Contract(walletClient);
-    const addresses = getAddresses(walletClient.chain.id);
+    const addresses = getAddresses(launchChainId);
     const toastId = "distribution-launch";
 
     try {
-      await saveProfile(toastId);
-
       const epochDuration = BigInt(EPOCH_DURATION_MS[epochDurationInput.value] / 1000);
       const minPart = parseUnits(minParticipation.value.replace(/,/g, "") || "0", participationDecimals);
       const claimDelaySeconds = BigInt((parseInt(claimDelay.value) || 0) * 86400);
@@ -932,7 +1008,7 @@ const totalDistributionAmount = useMemo(() => {
         allowlistDeadline: 0n,
         numberOfEpochs: BigInt(epochsCount),
         totalDistributionAmount,
-        initialMetadata: [],
+        initialMetadata,
         metadataEditable: true,
       };
 
@@ -1030,11 +1106,12 @@ if (asset.native) {
         return;
       }
       if (receipt.status === "reverted") {
-        showToast("launch.failed", { id: toastId, action: viewTransactionAction(walletClient.chain.id, hash) });
+        showToast("launch.failed", { id: toastId, action: viewTransactionAction(launchChainId, hash) });
         throw new Error("createLiquidityAndDistribution reverted");
       }
-      showToast("launch.success", { id: toastId, action: viewTransactionAction(walletClient.chain.id, hash) });
+      showToast("launch.success", { id: toastId, action: viewTransactionAction(launchChainId, hash) });
       // the distributor is created by the DistributionV1Factory, not FactoryV1
+      let distributorAddress: Address | undefined;
       for (const log of receipt.logs) {
         try {
           const event = decodeEventLog({
@@ -1043,13 +1120,22 @@ if (asset.native) {
             topics: log.topics,
           });
           if (event.eventName === "NewDistributor") {
-            setDistributor(
-              (event.args as { distributor: Address }).distributor,
-            );
+            distributorAddress = (event.args as { distributor: Address }).distributor;
+            setDistributor(distributorAddress);
           }
         } catch {}
       }
       setStep("ready");
+      if (avatarFileCid && avatarFile && distributorAddress) {
+        setAvatarCid(avatarFileCid);
+        setAvatarChainId(launchChainId);
+        void uploadDistributionAvatar(
+          distributorAddress,
+          launchChainId,
+          avatarFileCid,
+          avatarFile,
+        );
+      }
     } catch (e) {
       console.error(e);
       showToast("tx.reverted", { id: toastId, params: { reason: revertReason(e) } });
@@ -1073,7 +1159,14 @@ if (asset.native) {
       <>
         {header}
         <WizardShell>
-          <Status step={step} distributor={distributor ?? undefined} chainId={chainId} />
+          <Status
+            step={step}
+            distributor={distributor ?? undefined}
+            chainId={chainId}
+            avatarStatus={avatarStatus}
+            onRetryAvatar={retryAvatar}
+            onSkipAvatar={() => setAvatarStatus("skipped")}
+          />
         </WizardShell>
       </>
     );
@@ -1176,9 +1269,8 @@ if (asset.native) {
                   <div className="flex w-full flex-col gap-4 xl:flex-row">
                     <div className="flex w-47.5 shrink-0 flex-col gap-2 xl:w-56 xl:gap-4">
                       <AvatarUpload
-                        image={avatar.preview ?? token.meta?.profile.avatar}
+                        image={avatar.preview ?? token.profile.avatar}
                         onPick={avatar.pick}
-                        disabled={profileLockReason !== null}
                         buttonLabel="Change avatar"
                         className="aspect-square w-full"
                       />
@@ -1197,17 +1289,10 @@ if (asset.native) {
                   <p className={`${bodyM} text-primary`}>
                     Optional, but it’s what participants check first. Projects with a profile earn more trust.
                   </p>
-                  {profileLockReason && (
-                    <p className={`flex items-center gap-1.5 ${bodyS} text-live`}>
-                      <IconAlertSquareRounded size={16} className="shrink-0" />
-                      {profileLockReason}
-                    </p>
-                  )}
                   <TextArea
                     state={profileInputs.description}
                     label="About the project"
                     placeholder="What are you building, and what does the token do?"
-                    disabled={profileLockReason !== null}
                   />
                   {(
                     [
@@ -1222,7 +1307,6 @@ if (asset.native) {
                       state={profileInputs[key]}
                       label={label}
                       placeholder={placeholder}
-                      disabled={profileLockReason !== null}
                     />
                   ))}
                 </div>
