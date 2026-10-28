@@ -40,6 +40,12 @@ import RouterPage from "@/components/RouterPage/RouterPage";
 import MainnetHeader from "@/components/MainnetHeader/MainnetHeader";
 import ImportToken from "@/components/ImportToken/ImportToken";
 import Alert from "@/components/Alert/Alert";
+import TextArea from "@/components/TextArea/TextArea";
+import AvatarUpload from "@/components/AvatarUpload/AvatarUpload";
+import AvatarCropDialog from "@/components/AvatarCropDialog/AvatarCropDialog";
+import { useAvatarPicker } from "@/hooks/useAvatarPicker";
+import { EMPTY_PROFILE, tokenMetadataEntries, type TokenProfile } from "@/utils/token-metadata";
+import { predictCid, requestUploadLink, uploadToIpfs } from "@/utils/avatar-api";
 import { useSelectedChain } from "@/hooks/useActiveChain";
 import { useInput } from "@/hooks/useInput";
 import {
@@ -75,7 +81,7 @@ import { roundUnits } from "@/utils/round-units";
 import { chainToName, chainToSlug, isTestnet } from "@/utils/chain-utils";
 import { formatDateTime } from "@/utils/formatDate";
 
-type Step = "router" | "import" | "welcome" | "supply" | "release" | "rules" | "review" | "wallet" | "confirming" | "ready";
+type Step = "router" | "import" | "welcome" | "details" | "supply" | "release" | "rules" | "review" | "wallet" | "confirming" | "ready";
 type ReleaseType = "time" | "epoch";
 
 type TokenInfo = {
@@ -85,10 +91,13 @@ type TokenInfo = {
   decimals: number;
   totalSupply: bigint;
   balance: bigint;
+  /** null when the token has no sqrtDAO metadata store (e.g. an imported plain ERC20). */
+  meta: { profile: TokenProfile; owner: Address; locked: boolean } | null;
 };
 
-const FORM_STEPS: Step[] = ["supply", "release", "rules", "review"];
-const STEP_NAMES = ["Supply and backing", "Release strategy", "Rules", "Review"];
+const FORM_STEPS: Step[] = ["details", "supply", "release", "rules", "review"];
+const STEP_NAMES = ["Token details", "Supply and backing", "Release strategy", "Rules", "Review"];
+const PROFILE_FIELDS = ["description", "website", "github", "x", "discord"] as const;
 const EPOCH_DURATIONS = ["20 mins", "2 hrs", "8 hrs", "1 day"];
 const EPOCH_DURATION_MS: Record<string, number> = {
   "20 mins": 20 * 60 * 1000,
@@ -394,6 +403,26 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
       : 0n;
   const founderCapPct = Number(maxFounderBps) / 100;
 
+  // token details step: on-chain identity is read-only, the profile is editable
+  const tokenName = useInput("");
+  const tokenSymbol = useInput("");
+  const tokenSupply = useInput("");
+  const profileInputs = {
+    description: useInput(""),
+    website: useInput(""),
+    github: useInput(""),
+    x: useInput(""),
+    discord: useInput(""),
+  };
+  const avatar = useAvatarPicker();
+  const profileLockReason = !token?.meta
+    ? "This token doesn't support an on-chain profile, so it can't be edited here."
+    : token.meta.locked
+      ? "This token's profile is locked and can't be changed."
+      : token.meta.owner.toLowerCase() !== address?.toLowerCase()
+        ? "Only the token owner can edit the profile. Connect the owner wallet to make changes."
+        : null;
+
   // form state
   const initialSupply = useInput("", tokenModifier, positiveNumberValidator("Initial token supply"));
 
@@ -473,15 +502,36 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
     setLoadError(null);
     try {
       const contract = getTokenV1Contract(publicClient, addr);
-      const [name, symbol, decimals, totalSupply, balance] = await Promise.all([
+      const [name, symbol, decimals, totalSupply, balance, meta] = await Promise.all([
         contract.read.name(),
         contract.read.symbol(),
         contract.read.decimals(),
         contract.read.totalSupply(),
         address ? contract.read.balanceOf([address]) : Promise.resolve(0n),
+        Promise.all([
+          contract.read.getAllMetadata(),
+          contract.read.owner(),
+          contract.read.metadataLocked(),
+        ])
+          .then(([entries, owner, locked]) => ({
+            profile: {
+              ...EMPTY_PROFILE,
+              ...Object.fromEntries(
+                entries.filter((e) => e.key in EMPTY_PROFILE).map((e) => [e.key, e.value.trim()]),
+              ),
+            },
+            owner,
+            locked,
+          }))
+          .catch(() => null),
       ]);
       if (seq !== importSeq.current || importChainRef.current !== requestChainId) return false;
-      setToken({ address: addr, name, symbol, decimals: Number(decimals), totalSupply, balance });
+      setToken({ address: addr, name, symbol, decimals: Number(decimals), totalSupply, balance, meta });
+      tokenName.onChange(name);
+      tokenSymbol.onChange(symbol);
+      tokenSupply.onChange(`${commaModifier(formatUnits(totalSupply, Number(decimals)))} ${symbol}`);
+      for (const key of PROFILE_FIELDS) profileInputs[key].onChange(meta?.profile[key] ?? "");
+      avatar.reset();
       setDistributor(null);
       return true;
     } catch (e) {
@@ -766,6 +816,43 @@ const totalDistributionAmount = useMemo(() => {
     }
   }, [publicClient]);
 
+  // Writes only the changed profile entries (plus the derived reserved "metadata"
+  // one) to the token, then pins a new avatar. No-op when nothing changed.
+  const saveProfile = async (toastId: string) => {
+    if (!token?.meta || profileLockReason || !walletClient || !publicClient) return;
+    const current = token.meta.profile;
+    const cid = avatar.file ? await predictCid(avatar.file) : null;
+    const next: TokenProfile = {
+      avatar: cid ? `ipfs://${cid}` : current.avatar,
+      ...(Object.fromEntries(
+        PROFILE_FIELDS.map((key) => [key, profileInputs[key].value.trim()]),
+      ) as Omit<TokenProfile, "avatar">),
+    };
+    const changed = tokenMetadataEntries(token.name, token.symbol, next).filter(
+      (e) => e.key === "metadata" || e.value !== current[e.key as keyof TokenProfile],
+    );
+    if (changed.length === 1) return;
+
+    showToast("profile.pending", { id: toastId });
+    const hash = await getTokenV1Contract(walletClient, token.address).write.setMetadataMany([changed], {
+      account: walletClient.account,
+      chain: walletClient.chain,
+    });
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    if (receipt.status === "reverted") throw new Error("profile update reverted");
+    // saved: a retried Confirm must not resend it
+    setToken((t) => (t?.meta ? { ...t, meta: { ...t.meta, profile: next } } : t));
+
+    if (!cid || !avatar.file) return;
+    try {
+      const { upload_url } = await requestUploadLink(token.address, cid, walletClient.chain.id);
+      if ((await uploadToIpfs(avatar.file, upload_url)) !== cid) throw new Error("CID mismatch");
+    } catch (e) {
+      console.error(e);
+      showToast("avatar.failed");
+    }
+  };
+
   const onConfirm = async () => {
     if (!walletClient || !publicClient || !token || !asset) {
       showToast("generic.error");
@@ -803,6 +890,8 @@ const totalDistributionAmount = useMemo(() => {
     const toastId = "distribution-launch";
 
     try {
+      await saveProfile(toastId);
+
       const epochDuration = BigInt(EPOCH_DURATION_MS[epochDurationInput.value] / 1000);
       const minPart = parseUnits(minParticipation.value.replace(/,/g, "") || "0", participationDecimals);
       const claimDelaySeconds = BigInt((parseInt(claimDelay.value) || 0) * 86400);
@@ -1067,10 +1156,78 @@ if (asset.native) {
                 </p>
               </div>
               <Actions>
-                <Button variant="primary" size="l" className="flex-1 xl:flex-none" onClick={() => setStep("supply")}>
+                <Button variant="primary" size="l" className="flex-1 xl:flex-none" onClick={() => setStep("details")}>
                   Start distribution
                 </Button>
               </Actions>
+            </>
+          )}
+
+          {step === "details" && (
+            <>
+              <StepHeader
+                title="Distribution"
+                index={formIndex}
+                description="Check your token’s details. Participants see these before they join."
+              />
+              <div className="flex w-full flex-col gap-6">
+                <div className="flex w-full flex-col gap-4">
+                  <SectionLabel>Token details</SectionLabel>
+                  <div className="flex w-full flex-col gap-4 xl:flex-row">
+                    <div className="flex w-47.5 shrink-0 flex-col gap-2 xl:w-56 xl:gap-4">
+                      <AvatarUpload
+                        image={avatar.preview ?? token.meta?.profile.avatar}
+                        onPick={avatar.pick}
+                        disabled={profileLockReason !== null}
+                        buttonLabel="Change avatar"
+                        className="aspect-square w-full"
+                      />
+                    </div>
+                    <div className="flex min-w-0 flex-1 flex-col gap-4">
+                      <p className={`${bodyM} text-secondary`}>These are set on-chain and can’t be changed.</p>
+                      <Input state={tokenName} label="Token Name" disabled />
+                      <Input state={tokenSymbol} label="Token symbol" disabled />
+                      <Input state={tokenSupply} label="Total supply" disabled />
+                    </div>
+                  </div>
+                </div>
+                <Rule />
+                <div className="flex w-full flex-col gap-4 xl:gap-6">
+                  <SectionLabel>Project profile</SectionLabel>
+                  <p className={`${bodyM} text-primary`}>
+                    Optional, but it’s what participants check first. Projects with a profile earn more trust.
+                  </p>
+                  {profileLockReason && (
+                    <p className={`flex items-center gap-1.5 ${bodyS} text-live`}>
+                      <IconAlertSquareRounded size={16} className="shrink-0" />
+                      {profileLockReason}
+                    </p>
+                  )}
+                  <TextArea
+                    state={profileInputs.description}
+                    label="About the project"
+                    placeholder="What are you building, and what does the token do?"
+                    disabled={profileLockReason !== null}
+                  />
+                  {(
+                    [
+                      ["website", "Website link", "https://yourproject.com"],
+                      ["github", "Github link", "https://github.com/yourproject"],
+                      ["x", "X link", "https://x.com/yourproject"],
+                      ["discord", "Discord link", "https://discord.gg/yourinvite"],
+                    ] as const
+                  ).map(([key, label, placeholder]) => (
+                    <Input
+                      key={key}
+                      state={profileInputs[key]}
+                      label={label}
+                      placeholder={placeholder}
+                      disabled={profileLockReason !== null}
+                    />
+                  ))}
+                </div>
+              </div>
+              <BackContinue onBack={goBack} onNext={goNext} />
             </>
           )}
 
@@ -1078,7 +1235,7 @@ if (asset.native) {
             <>
               <StepHeader
                 title="Distribution"
-                index={0}
+                index={formIndex}
                 description={`Set how many ${token.symbol} go out across all epochs.`}
               />
               <div className="flex w-full flex-col gap-6">
@@ -1189,7 +1346,7 @@ if (asset.native) {
                   </div>
                 </div>
               </div>
-              <BackContinue onBack={() => setStep("welcome")} onNext={goNext} />
+              <BackContinue onBack={goBack} onNext={goNext} />
             </>
           )}
 
@@ -1197,7 +1354,7 @@ if (asset.native) {
             <>
               <StepHeader
                 title="Distribution"
-                index={1}
+                index={formIndex}
                 description="Set the distribution's timing and how supply releases across it."
               />
               <div className="flex w-full flex-col gap-6">
@@ -1340,7 +1497,7 @@ if (asset.native) {
 
           {step === "rules" && (
             <>
-              <StepHeader title="Distribution" index={2} description="Optional guardrails on participation." />
+              <StepHeader title="Distribution" index={formIndex} description="Optional guardrails on participation." />
               <div className="flex w-full flex-col gap-6">
                 <div className="flex w-full flex-col gap-4">
                   <SectionLabel>Epoch setup</SectionLabel>
@@ -1421,7 +1578,7 @@ if (asset.native) {
 
           {step === "review" && (
             <>
-              <StepHeader title="Distribution review" index={3} />
+              <StepHeader title="Distribution review" index={formIndex} />
               <div className="flex w-full flex-col gap-4">
                 <ReviewSection
                   title="Supply and backing"
@@ -1501,6 +1658,9 @@ if (asset.native) {
             </>
           )}
         </div>
+        {avatar.cropSrc && (
+          <AvatarCropDialog src={avatar.cropSrc} onClose={avatar.closeCrop} onCropped={avatar.onCropped} />
+        )}
       </WizardShell>
     </>
   );
