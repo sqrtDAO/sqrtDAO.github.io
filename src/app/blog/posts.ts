@@ -14,6 +14,15 @@ export type BlogPost = {
 
 const posts: BlogPost[] = [
   {
+    slug: "how-should-you-set-up-your-distribution",
+    title: "How should you set up your distribution?",
+    date: "2026-10-28",
+    description:
+      "Two ways in, how long to run, how big a founder share to take, and how your setup builds participant trust.",
+    image: "/blog/how-should-you-set-up-your-distribution.jpg",
+    ogImage: "/blog/how-should-you-set-up-your-distribution.jpg",
+  },
+  {
     slug: "how-we-fixed-fund-raising",
     title: "How we fixed fund raising?",
     date: "2026-09-14",
