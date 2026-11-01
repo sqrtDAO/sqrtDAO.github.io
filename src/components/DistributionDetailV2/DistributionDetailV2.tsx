@@ -39,6 +39,7 @@ import {
 } from "@/utils/modifier";
 import { type InputValidator } from "@/utils/validator";
 import { roundUnits, unitsToNumber } from "@/utils/round-units";
+import { buildClaimCalendar } from "@/utils/claim-calendar";
 import { formatDateTime } from "@/utils/formatDate";
 import { formatDuration } from "@/utils/formatDuration";
 import { formatEpochTimestamp, formatPrice } from "@/utils/epoch-format";
@@ -1014,22 +1015,27 @@ const DistributionDetailV2 = ({
       onConfirm: handleParticipate,
       state: participateState,
       onAddToCalendar: () => {
-        const ics = [
-          "BEGIN:VCALENDAR",
-          "VERSION:2.0",
-          "BEGIN:VEVENT",
-          `SUMMARY:Claim ${tokenSymbol}`,
-          `DTSTART:${new Date(claimAvailableMs).toISOString().replace(/[-:.]/g, "").slice(0, 15)}Z`,
-          `DESCRIPTION:Claim your ${tokenSymbol} share`,
-          "END:VEVENT",
-          "END:VCALENDAR",
-        ].join("\r\n");
-        const blob = new Blob([ics], { type: "text/calendar" });
+        const calendar = buildClaimCalendar({
+          token: tokenSymbol,
+          claimAvailableMs,
+        });
+        if (!calendar) {
+          showToast("generic.error");
+          return;
+        }
+        const blob = new Blob([calendar.content], {
+          type: "text/calendar;charset=utf-8",
+        });
+        const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = "claim.ics";
+        a.href = url;
+        a.download = calendar.fileName;
+        a.style.display = "none";
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(a.href);
+        a.remove();
+        // Revoke only after the browser has started reading the blob.
+        setTimeout(() => URL.revokeObjectURL(url), 0);
       },
     },
     about: metadata.description ?? "",
