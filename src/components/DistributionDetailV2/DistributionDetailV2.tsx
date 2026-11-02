@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { formatUnits, maxUint256, parseUnits, type Address, zeroAddress } from "viem";
+import {
+  formatUnits,
+  maxUint256,
+  parseUnits,
+  type Address,
+  zeroAddress,
+} from "viem";
 import {
   useAccount,
   useChainId,
@@ -12,8 +18,14 @@ import {
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { IconLoader2 } from "@tabler/icons-react";
 import { base, sepolia } from "viem/chains";
-import { chainNameToId, chainToName, getExplorerUrl } from "@/utils/chain-utils";
-import MainnetDdp, { type MainnetDdpData } from "@/components/MainnetDdp/MainnetDdp";
+import {
+  chainNameToId,
+  chainToName,
+  getExplorerUrl,
+} from "@/utils/chain-utils";
+import MainnetDdp, {
+  type MainnetDdpData,
+} from "@/components/MainnetDdp/MainnetDdp";
 import MainnetHeader from "@/components/MainnetHeader/MainnetHeader";
 import MainnetFooter from "@/components/MainnetFooter/MainnetFooter";
 import { Button } from "@/components/Button/Button";
@@ -39,6 +51,7 @@ import {
 } from "@/utils/modifier";
 import { type InputValidator } from "@/utils/validator";
 import { roundUnits, unitsToNumber } from "@/utils/round-units";
+import { buildClaimCalendar } from "@/utils/claim-calendar";
 import { formatDateTime } from "@/utils/formatDate";
 import { formatDuration } from "@/utils/formatDuration";
 import { formatEpochTimestamp, formatPrice } from "@/utils/epoch-format";
@@ -96,7 +109,8 @@ function buildEpochs(
   const totalDistribution = Number(
     formatUnits(contractInfo.totalDistributionAmount, distributionDecimals),
   );
-  const supplyPerEpoch = numberOfEpochs > 0 ? totalDistribution / numberOfEpochs : 0;
+  const supplyPerEpoch =
+    numberOfEpochs > 0 ? totalDistribution / numberOfEpochs : 0;
   const supplyPerEpochAmount =
     contractInfo.numberOfEpochs > 0n
       ? contractInfo.totalDistributionAmount / contractInfo.numberOfEpochs
@@ -111,7 +125,10 @@ function buildEpochs(
       idx < currentIdx ? "passed" : idx === currentIdx ? "current" : "future";
     const timestamp = (startingTimestampSec + idx * epochDurationSec) * 1000;
     const info = epochInfo[i];
-    const volume = unitsToNumber(info.totalParticipationAmount, participationDecimals);
+    const volume = unitsToNumber(
+      info.totalParticipationAmount,
+      participationDecimals,
+    );
     const rewardAmount = unitsToNumber(info.rewardAmount, distributionDecimals);
     const supply = rewardAmount > 0 ? rewardAmount : supplyPerEpoch;
     const supplyAmount =
@@ -200,7 +217,8 @@ const DistributionDetailV2 = ({
   const publicClient = usePublicClient(chainId ? { chainId } : undefined);
   const { openConnectModal } = useConnectModal();
   const { switchChain } = useSwitchChain();
-  const sameChain = isConnected && chainId !== undefined && connectedChainId === chainId;
+  const sameChain =
+    isConnected && chainId !== undefined && connectedChainId === chainId;
 
   const {
     state,
@@ -266,7 +284,8 @@ const DistributionDetailV2 = ({
   // Auto-switch the wallet to the distribution's chain (once per visit).
   const autoSwitched = useRef(false);
   useEffect(() => {
-    if (!isConnected || chainId === undefined || connectedChainId === chainId) return;
+    if (!isConnected || chainId === undefined || connectedChainId === chainId)
+      return;
     if (autoSwitched.current) return;
     autoSwitched.current = true;
     switchChain({ chainId });
@@ -287,7 +306,14 @@ const DistributionDetailV2 = ({
             participationTokenDecimals ?? 18,
           )
         : [],
-    [contractInfo, currentEpoch, epochsInfo, epochsFrom, tokenDecimals, participationTokenDecimals],
+    [
+      contractInfo,
+      currentEpoch,
+      epochsInfo,
+      epochsFrom,
+      tokenDecimals,
+      participationTokenDecimals,
+    ],
   );
 
   // ---- combo chart paging ----
@@ -354,7 +380,9 @@ const DistributionDetailV2 = ({
     if (epochsInfo) {
       for (let i = 0; i < closedInWindow; i++) {
         windowClosedSupply +=
-          epochsInfo[i].rewardAmount > 0n ? epochsInfo[i].rewardAmount : supplyPerEpoch;
+          epochsInfo[i].rewardAmount > 0n
+            ? epochsInfo[i].rewardAmount
+            : supplyPerEpoch;
       }
     }
     const closed = epochs.filter((e) => e.state === "passed");
@@ -383,16 +411,20 @@ const DistributionDetailV2 = ({
   const displayEpoch = stats.current ?? stats.last ?? null;
   const lastClearPrice = stats.last?.clearPrice ?? null;
 
-  const startTimestampMs = contractInfo ? Number(contractInfo.startingTimestamp) * 1000 : 0;
+  const startTimestampMs = contractInfo
+    ? Number(contractInfo.startingTimestamp) * 1000
+    : 0;
   const endTimestampMs = contractInfo
     ? (Number(contractInfo.startingTimestamp) +
-        Number(contractInfo.numberOfEpochs) * Number(contractInfo.epochDuration)) *
+        Number(contractInfo.numberOfEpochs) *
+          Number(contractInfo.epochDuration)) *
       1000
     : 0;
   const currentEpochEndMs =
     contractInfo && currentEpoch !== undefined
       ? Number(
-          contractInfo.startingTimestamp + (currentEpoch + 1n) * contractInfo.epochDuration,
+          contractInfo.startingTimestamp +
+            (currentEpoch + 1n) * contractInfo.epochDuration,
         ) * 1000
       : 0;
   // Countdown always targets the END of the distribution (not the current epoch).
@@ -441,7 +473,10 @@ const DistributionDetailV2 = ({
   // ---- synced epoch range: one source of truth = (start, count) ----
   // "Spread across" edits count, "From" edits start, "To" edits start+count-1,
   // and the +/- steppers edit count. All three inputs stay in lockstep.
-  const minStartEpoch = Math.min(currentEpochDisplay ?? 1, Math.max(lastEpoch, 1));
+  const minStartEpoch = Math.min(
+    currentEpochDisplay ?? 1,
+    Math.max(lastEpoch, 1),
+  );
   const maxEpochNum = Math.max(lastEpoch, 1);
   const [rangeStart, setRangeStart] = useState<number | null>(null);
   const [rangeCount, setRangeCount] = useState<number | null>(null);
@@ -450,12 +485,16 @@ const DistributionDetailV2 = ({
   // keystrokes, so deleting the last digit ("12" → "1" → "") doesn't snap back
   // mid-edit. Out-of-range text is clamped into the rules on blur; a field left
   // empty stays empty (no placeholder, no refill) and reports itself as required.
-  const [rangeDrafts, setRangeDrafts] = useState<Record<RangeField, string | null>>({
+  const [rangeDrafts, setRangeDrafts] = useState<
+    Record<RangeField, string | null>
+  >({
     from: null,
     to: null,
     count: null,
   });
-  const [rangeRequired, setRangeRequired] = useState<Record<RangeField, boolean>>({
+  const [rangeRequired, setRangeRequired] = useState<
+    Record<RangeField, boolean>
+  >({
     from: false,
     to: false,
     count: false,
@@ -537,13 +576,19 @@ const DistributionDetailV2 = ({
     if (text === null || text === "") return null;
     const n = parseInt(text, 10);
     if (isNaN(n) || isFieldInRange(field, n)) return null;
-    if (field === "from") return `Epoch must be between ${minStartEpoch} and ${maxEpochNum}`;
-    if (field === "to") return `End epoch must be between ${fromEpochNum} and ${maxEpochNum}`;
+    if (field === "from")
+      return `Epoch must be between ${minStartEpoch} and ${maxEpochNum}`;
+    if (field === "to")
+      return `End epoch must be between ${fromEpochNum} and ${maxEpochNum}`;
     return `Spread across must be between 1 and ${maxCountNum} epoch${maxCountNum > 1 ? "s" : ""}`;
   };
   const rangeError =
-    rangeFieldError("from") ?? rangeFieldError("to") ?? rangeFieldError("count");
-  const rangeIncomplete = Object.values(rangeDrafts).some((text) => text === "");
+    rangeFieldError("from") ??
+    rangeFieldError("to") ??
+    rangeFieldError("count");
+  const rangeIncomplete = Object.values(rangeDrafts).some(
+    (text) => text === "",
+  );
 
   const rangeValue = (field: RangeField, committed: string) =>
     rangeDrafts[field] ?? committed;
@@ -598,7 +643,11 @@ const DistributionDetailV2 = ({
   const amountModifier = useMemo<InputModifier>(
     () => (v) => {
       const cleaned = decimalOnlyModifier(v);
-      if (cleaned === "" || !isConnected || participationTokenBalance === undefined) {
+      if (
+        cleaned === "" ||
+        !isConnected ||
+        participationTokenBalance === undefined
+      ) {
         return cleaned;
       }
       try {
@@ -640,7 +689,8 @@ const DistributionDetailV2 = ({
       return null;
     }
   }, [amountInput.value, participationDecimals]);
-  const amountLimitError = amountParsed !== null ? amountIssues(amountParsed) : null;
+  const amountLimitError =
+    amountParsed !== null ? amountIssues(amountParsed) : null;
 
   // ---- actions ----
   const handleClaim = useCallback(async () => {
@@ -654,10 +704,16 @@ const DistributionDetailV2 = ({
       showToast("claim.nothing");
       return;
     }
-    const distributor = getDistributorV1Contract(walletClient, contractAddress as Address);
+    const distributor = getDistributorV1Contract(
+      walletClient,
+      contractAddress as Address,
+    );
     const toastId = `claim-${contractAddress}`;
     setClaimState("claiming");
-    showToast("claim.pending", { id: toastId, params: { symbol: tokenSymbol ?? "" } });
+    showToast("claim.pending", {
+      id: toastId,
+      params: { symbol: tokenSymbol ?? "" },
+    });
     try {
       const claimParams = claimData.ranges.map((r) => ({
         user: walletClient.account.address,
@@ -669,7 +725,10 @@ const DistributionDetailV2 = ({
       });
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status === "reverted") {
-        showToast("claim.failed", { id: toastId, action: viewTransactionAction(chainId, hash) });
+        showToast("claim.failed", {
+          id: toastId,
+          action: viewTransactionAction(chainId, hash),
+        });
         setClaimState("error");
         return;
       }
@@ -684,10 +743,23 @@ const DistributionDetailV2 = ({
       setClaimState("done");
       refetch();
     } catch (e) {
-      showToast(isUserRejectedError(e) ? "claim.rejected" : "claim.failed", { id: toastId });
+      showToast(isUserRejectedError(e) ? "claim.rejected" : "claim.failed", {
+        id: toastId,
+      });
       setClaimState("error");
     }
-  }, [walletClient, publicClient, contractInfo, contractAddress, claimData, chainId, tokenSymbol, tokenDecimals, refetch, sameChain]);
+  }, [
+    walletClient,
+    publicClient,
+    contractInfo,
+    contractAddress,
+    claimData,
+    chainId,
+    tokenSymbol,
+    tokenDecimals,
+    refetch,
+    sameChain,
+  ]);
 
   const handleParticipate = useCallback(async (): Promise<boolean> => {
     if (!walletClient || !publicClient || !contractInfo) return false;
@@ -703,7 +775,11 @@ const DistributionDetailV2 = ({
     }
     // meaningfully tell the user why participation can't proceed right now
     if (ddpState !== "live") {
-      showToast(ddpState === "upcoming" ? "participate.notStarted" : "participate.ended");
+      showToast(
+        ddpState === "upcoming"
+          ? "participate.notStarted"
+          : "participate.ended",
+      );
       return false;
     }
     // an emptied range field has no committed number to fall back to
@@ -722,20 +798,36 @@ const DistributionDetailV2 = ({
     const addresses = getAddresses(chainId);
     const isEth =
       addresses.ethParticipationRouter !== zeroAddress &&
-      contractInfo.participationToken.toLowerCase() === addresses.weth.toLowerCase();
+      contractInfo.participationToken.toLowerCase() ===
+        addresses.weth.toLowerCase();
     // mark busy before the first await so the UI reacts immediately
     setParticipateState(isEth ? "participating" : "approving");
-    const totalAmount = parseUnits(amountInput.value.trim(), participationDecimals);
+    const totalAmount = parseUnits(
+      amountInput.value.trim(),
+      participationDecimals,
+    );
     const amountPerEpoch = totalAmount / BigInt(epochCountNum);
-    const range = { from: BigInt(fromEpochNum - 1), length: BigInt(epochCountNum) };
+    const range = {
+      from: BigInt(fromEpochNum - 1),
+      length: BigInt(epochCountNum),
+    };
     const toastId = `participate-${contractAddress}`;
     try {
       if (isEth) {
         const router = getEthParticipationRouterContract(walletClient);
         setParticipateState("participating");
-        showToast("participate.pending", { id: toastId, params: { epoch: fromEpochNum } });
+        showToast("participate.pending", {
+          id: toastId,
+          params: { epoch: fromEpochNum },
+        });
         const hash = await router.write.participateWithETH(
-          [contractAddress as Address, amountPerEpoch, range, walletClient.account.address, "0x"],
+          [
+            contractAddress as Address,
+            amountPerEpoch,
+            range,
+            walletClient.account.address,
+            "0x",
+          ],
           {
             account: walletClient.account,
             chain: walletClient.chain,
@@ -745,23 +837,38 @@ const DistributionDetailV2 = ({
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
         if (receipt.status === "reverted") throw new Error("reverted");
       } else {
-        const pToken = getTokenV1Contract(walletClient, contractInfo.participationToken);
+        const pToken = getTokenV1Contract(
+          walletClient,
+          contractInfo.participationToken,
+        );
         const allowance = await pToken.read.allowance([
           walletClient.account.address,
           contractAddress as Address,
         ]);
         if (allowance < totalAmount) {
           setParticipateState("approving");
-          const approveHash = await pToken.write.approve([contractAddress as Address, maxUint256], {
-            account: walletClient.account,
-            chain: walletClient.chain,
+          const approveHash = await pToken.write.approve(
+            [contractAddress as Address, maxUint256],
+            {
+              account: walletClient.account,
+              chain: walletClient.chain,
+            },
+          );
+          const approveReceipt = await publicClient.waitForTransactionReceipt({
+            hash: approveHash,
           });
-          const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
-          if (approveReceipt.status === "reverted") throw new Error("approve failed");
+          if (approveReceipt.status === "reverted")
+            throw new Error("approve failed");
         }
         setParticipateState("participating");
-        showToast("participate.pending", { id: toastId, params: { epoch: fromEpochNum } });
-        const distributor = getDistributorV1Contract(walletClient, contractAddress as Address);
+        showToast("participate.pending", {
+          id: toastId,
+          params: { epoch: fromEpochNum },
+        });
+        const distributor = getDistributorV1Contract(
+          walletClient,
+          contractAddress as Address,
+        );
         const hash = await distributor.write.participate(
           [amountPerEpoch, range, walletClient.account.address, "0x"],
           { account: walletClient.account, chain: walletClient.chain },
@@ -850,7 +957,8 @@ const DistributionDetailV2 = ({
   const claimAvailableMs = useMemo(() => {
     if (!contractInfo) return 0;
     const lastEpochEndSec =
-      Number(contractInfo.startingTimestamp) + toEpochNum * Number(contractInfo.epochDuration);
+      Number(contractInfo.startingTimestamp) +
+      toEpochNum * Number(contractInfo.epochDuration);
     return (lastEpochEndSec + Number(contractInfo.claimDelaySeconds)) * 1000;
   }, [contractInfo, toEpochNum]);
 
@@ -859,7 +967,7 @@ const DistributionDetailV2 = ({
     return (
       <DdpMessage
         title="Unknown chain"
-        message="This link is missing a valid ?chain= parameter. Append ?chain=base or ?chain=sepolia."
+        message="This link is missing a valid ?chain= parameter. Append ?chain=base, ?chain=robinhood or ?chain=sepolia."
       />
     );
   }
@@ -926,19 +1034,35 @@ const DistributionDetailV2 = ({
       onShare,
     },
     overview: {
-      distributedSupply: roundUnits(stats.distributedSupplyAmount, tokenDecimals),
-      totalSupply: roundUnits(contractInfo.totalDistributionAmount, tokenDecimals),
+      distributedSupply: roundUnits(
+        stats.distributedSupplyAmount,
+        tokenDecimals,
+      ),
+      totalSupply: roundUnits(
+        contractInfo.totalDistributionAmount,
+        tokenDecimals,
+      ),
       tokenSymbol,
-      totalParticipation: roundUnits(contractInfo.totalParticipation, participationDecimals),
+      totalParticipation: roundUnits(
+        contractInfo.totalParticipation,
+        participationDecimals,
+      ),
       quoteSymbol: quoteDisplaySymbol,
-      periodDate: formatDateTime(ddpState === "upcoming" ? startTimestampMs : endTimestampMs),
+      periodDate: formatDateTime(
+        ddpState === "upcoming" ? startTimestampMs : endTimestampMs,
+      ),
     },
     countdownTargetMs,
     epochStats: {
       epoch: displayEpoch ? `#${displayEpoch.epoch}` : "—",
-      epochTime: displayEpoch ? formatEpochTimestamp(displayEpoch.timestamp, true) : "—",
+      epochTime: displayEpoch
+        ? formatEpochTimestamp(displayEpoch.timestamp, true)
+        : "—",
       lastClearPrice: formatPrice(lastClearPrice),
-      participation: roundUnits(displayEpoch?.participationAmount ?? 0n, participationDecimals),
+      participation: roundUnits(
+        displayEpoch?.participationAmount ?? 0n,
+        participationDecimals,
+      ),
       participants: String(displayEpoch?.participants ?? 0),
       quoteSymbol: quoteDisplaySymbol,
     },
@@ -949,8 +1073,14 @@ const DistributionDetailV2 = ({
           label: "Supply per epoch (Flat release)",
           value: `${roundUnits(stats.supplyPerEpoch, tokenDecimals)} ${tokenSymbol}`,
         },
-        { label: "Epoch duration", value: formatDuration(Number(contractInfo.epochDuration)) },
-        { label: "Unique participants", value: fmtInt(Number(contractInfo.totalUniqueParticipants)) },
+        {
+          label: "Epoch duration",
+          value: formatDuration(Number(contractInfo.epochDuration)),
+        },
+        {
+          label: "Unique participants",
+          value: fmtInt(Number(contractInfo.totalUniqueParticipants)),
+        },
       ],
       supplyRemaining: `${roundUnits(stats.remainingSupplyAmount, tokenDecimals)} ${tokenSymbol}`,
       epochsLeft: fmtInt(Math.max(stats.remainingCount, 0)),
@@ -1014,22 +1144,27 @@ const DistributionDetailV2 = ({
       onConfirm: handleParticipate,
       state: participateState,
       onAddToCalendar: () => {
-        const ics = [
-          "BEGIN:VCALENDAR",
-          "VERSION:2.0",
-          "BEGIN:VEVENT",
-          `SUMMARY:Claim ${tokenSymbol}`,
-          `DTSTART:${new Date(claimAvailableMs).toISOString().replace(/[-:.]/g, "").slice(0, 15)}Z`,
-          `DESCRIPTION:Claim your ${tokenSymbol} share`,
-          "END:VEVENT",
-          "END:VCALENDAR",
-        ].join("\r\n");
-        const blob = new Blob([ics], { type: "text/calendar" });
+        const calendar = buildClaimCalendar({
+          token: tokenSymbol,
+          claimAvailableMs,
+        });
+        if (!calendar) {
+          showToast("generic.error");
+          return;
+        }
+        const blob = new Blob([calendar.content], {
+          type: "text/calendar;charset=utf-8",
+        });
+        const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = "claim.ics";
+        a.href = url;
+        a.download = calendar.fileName;
+        a.style.display = "none";
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(a.href);
+        a.remove();
+        // Revoke only after the browser has started reading the blob.
+        setTimeout(() => URL.revokeObjectURL(url), 0);
       },
     },
     about: metadata.description ?? "",
@@ -1092,7 +1227,9 @@ function DdpMessage({
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
         <div className="flex flex-col gap-2">
           <h1 className="font-display text-h3 text-primary">{title}</h1>
-          <p className="max-w-120 text-body leading-6 text-secondary">{message}</p>
+          <p className="max-w-120 text-body leading-6 text-secondary">
+            {message}
+          </p>
         </div>
         {onRetry && (
           <Button variant="primary" size="m" onClick={onRetry}>
