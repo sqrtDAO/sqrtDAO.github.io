@@ -8,9 +8,11 @@ import { base, sepolia } from "wagmi/chains";
 import { fallback, http, type Transport } from "viem";
 import { useState, type ReactNode } from "react";
 import WalletToastWatcher from "@/components/WalletToastWatcher/WalletToastWatcher";
+import { robinhood } from "@/constants/ecosystems";
 import "@rainbow-me/rainbowkit/styles.css";
 
-// Base is the default network; Sepolia is selectable via the header network switch.
+// Base is the default network; Sepolia and Robinhood are selectable via the header
+// network switch.
 //
 // Public RPCs rate-limit or reject specific calls — e.g. publicnode's free tier
 // answers `eth_getTransactionReceipt` with "archive requests require a personal
@@ -18,7 +20,10 @@ import "@rainbow-me/rainbowkit/styles.css";
 // `fallback` transport so one provider failing falls through to the next instead
 // of breaking reads or dropping an already-mined transaction. A dedicated RPC
 // can still be supplied via env and is tried first.
-const buildTransport = (dedicated: string | undefined, defaults: string[]): Transport =>
+const buildTransport = (
+  dedicated: string | undefined,
+  defaults: string[],
+): Transport =>
   fallback(
     [dedicated, ...defaults]
       .filter((url): url is string => Boolean(url))
@@ -44,12 +49,15 @@ const transports = {
     "https://sepolia.drpc.org",
     "https://rpc.sepolia.org",
   ]),
+  [robinhood.id]: buildTransport(process.env.NEXT_PUBLIC_ROBINHOOD_RPC_URL, [
+    "https://rpc.mainnet.chain.robinhood.com",
+  ]),
 };
 
 const config = getDefaultConfig({
   appName: "sqrtDAO",
   projectId: "af0315795cabd9f168cf79b92e96863a",
-  chains: [base, sepolia],
+  chains: [base, sepolia, robinhood],
   transports,
   ssr: true,
 });

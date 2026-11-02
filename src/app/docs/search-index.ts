@@ -28,7 +28,7 @@ export const docSearchIndex: DocSearchEntry[] = [
   {
     path: "/docs/contract-addresses/",
     title: "Contract addresses",
-    text: "Deployed contract addresses per chain, loaded from contract-addresses.ts. Base is the mainnet target and Sepolia is supported for testing; contracts are not deployed yet.",
+    text: "Deployed contract addresses per chain, loaded from contract-addresses.ts. Contracts are deployed on Base and Robinhood Chain mainnet, and on Sepolia for testing.",
   },
   {
     path: "/docs/epoch-distribution/",

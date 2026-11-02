@@ -1,5 +1,6 @@
 import { base, sepolia } from "wagmi/chains";
 import type { Address } from "viem";
+import { robinhood } from "@/constants/ecosystems";
 
 export type ParticipationAsset = {
   symbol: string;
@@ -10,7 +11,6 @@ export type ParticipationAsset = {
 };
 
 // Participation/backing assets per chain. Add a chain here to support it.
-// Example: robinhood chain, once its token addresses exist.
 const PARTICIPATION_ASSETS: Record<number, ParticipationAsset[]> = {
   [sepolia.id]: [
     // sqrtDAO root token is the participation token on Sepolia.
@@ -35,6 +35,24 @@ const PARTICIPATION_ASSETS: Record<number, ParticipationAsset[]> = {
     {
       symbol: "ETH",
       address: "0x4200000000000000000000000000000000000006",
+      decimals: 18,
+      native: true,
+    },
+  ],
+  [robinhood.id]: [
+    {
+      symbol: "USDT",
+      address: "0xE246BC49b0598d7Cd9f0eAD48B885034f1254380",
+      decimals: 6,
+    },
+    {
+      symbol: "USDC",
+      address: "0x80e0e24718dbFcad49ECAA6F1e6C89A190586cA8",
+      decimals: 6,
+    },
+    {
+      symbol: "ETH",
+      address: "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
       decimals: 18,
       native: true,
     },
