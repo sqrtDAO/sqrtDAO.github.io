@@ -7,6 +7,8 @@ import type { Address } from "viem";
 import EcosystemLabel from "@/components/EcosystemLabel/EcosystemLabel";
 import Logo from "@/components/Logo/Logo";
 import Status, { type DistributionStatus } from "@/components/Status/Status";
+import NoFeeNovemberBadge from "@/components/NoFeeNovemberBadge/NoFeeNovemberBadge"; // CAMPAIGN: no-fee-november
+import { NO_FEE_NOVEMBER } from "@/constants/campaigns"; // CAMPAIGN: no-fee-november
 import { useAvatarImage } from "@/hooks/useAvatarImage";
 import { BODY_L, BODY_M, BODY_S } from "@/constants/typography";
 
@@ -29,6 +31,7 @@ export type MainnetDistributionCardProps = {
   totalEpochs: string;
   /** 0–100. */
   progressPct: number;
+  noFeeNovember?: boolean; // CAMPAIGN: no-fee-november
 };
 
 // Rest boxes are 70% black; hover/focus/press turns them solid.
@@ -109,7 +112,11 @@ const MainnetDistributionCard = (props: MainnetDistributionCardProps) => {
             </p>
             <Status status={props.status} className="shrink-0" />
           </div>
-          <p className={`${BODY_M} text-secondary`}>{props.symbol}</p>
+          <div className="flex items-center gap-2">
+            <p className={`${BODY_M} text-secondary`}>{props.symbol}</p>
+            {/* CAMPAIGN: no-fee-november — on the symbol row so it doesn't compete with the status chip */}
+            {props.noFeeNovember && <NoFeeNovemberBadge label={NO_FEE_NOVEMBER.copy.badge} />}
+          </div>
         </div>
         <IconChevronRight
           size={24}

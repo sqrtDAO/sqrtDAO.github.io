@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import {
   IconAlertSquareRounded,
   IconCalendarEvent,
+  IconDiscount,
   IconChevronRight,
   IconClockEdit,
   IconEqualDouble,
@@ -92,6 +93,10 @@ import { EMPTY_PERMIT2 } from "@/lib/utils/permit2";
 import { roundUnits } from "@/utils/round-units";
 import { chainToName, chainToSlug, isTestnet } from "@/utils/chain-utils";
 import { formatDateTime } from "@/utils/formatDate";
+// CAMPAIGN: no-fee-november
+import { NO_FEE_NOVEMBER, startedInNoFeeNovember } from "@/constants/campaigns";
+import { useNoFeeNovemberActive } from "@/hooks/useNoFeeNovemberActive";
+import NoFeeNovemberBadge from "@/components/NoFeeNovemberBadge/NoFeeNovemberBadge";
 
 type Step = "router" | "import" | "welcome" | "details" | "supply" | "release" | "rules" | "review" | "wallet" | "confirming" | "ready";
 type ReleaseType = "time" | "epoch";
@@ -322,6 +327,7 @@ const Status = ({
   avatarStatus,
   onRetryAvatar,
   onSkipAvatar,
+  launchedInNoFeeNovember,
 }: {
   step: "wallet" | "confirming" | "ready";
   distributor?: Address;
@@ -329,6 +335,7 @@ const Status = ({
   avatarStatus?: AvatarStatus;
   onRetryAvatar?: () => void;
   onSkipAvatar?: () => void;
+  launchedInNoFeeNovember?: boolean; // CAMPAIGN: no-fee-november
 }) => (
   <div className="flex w-full flex-col items-center gap-8 text-center">
     <Image
@@ -360,6 +367,10 @@ const Status = ({
         <p className={`w-full text-left ${bodyM} text-secondary`}>
           Your distribution is live. Share it and let the market grow with it.
         </p>
+        {/* CAMPAIGN: no-fee-november */}
+        {launchedInNoFeeNovember && (
+          <NoFeeNovemberBadge label={NO_FEE_NOVEMBER.copy.launchedDuring} className="self-start" />
+        )}
         {distributor && (
           <p className={`w-full text-left ${bodyM} text-tertiary`}>
             Distribution address: {distributor}
@@ -428,6 +439,9 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
 
   const [protocolFeeBps, setProtocolFeeBps] = useState<bigint>(0n);
   const [buyAndBurnMinBps, setBuyAndBurnMinBps] = useState<bigint>(0n);
+  // CAMPAIGN: no-fee-november — only promise 0% when the Factory actually charges 0%.
+  const [feeLoaded, setFeeLoaded] = useState(false);
+  const noFeeNovember = useNoFeeNovemberActive() && feeLoaded && protocolFeeBps === 0n;
 
   const protocolFeePct = Number(protocolFeeBps) / 100;
   const minAnchorPct = Number(buyAndBurnMinBps) / 100;
@@ -614,6 +628,7 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
       .then(([fee, , min]) => {
         setProtocolFeeBps(fee);
         setBuyAndBurnMinBps(min);
+        setFeeLoaded(true); // CAMPAIGN: no-fee-november
       })
       .catch(() => {});
   }, [publicClient]);
@@ -1166,6 +1181,10 @@ if (asset.native) {
             avatarStatus={avatarStatus}
             onRetryAvatar={retryAvatar}
             onSkipAvatar={() => setAvatarStatus("skipped")}
+            // CAMPAIGN: no-fee-november
+            launchedInNoFeeNovember={
+              feeLoaded && protocolFeeBps === 0n && startMs !== null && startedInNoFeeNovember(startMs)
+            }
           />
         </WizardShell>
       </>
@@ -1620,9 +1639,21 @@ if (asset.native) {
                     <div className={`flex w-full flex-wrap gap-4 ${bodyS}`}>
                       <span className="text-(--color-support-teal-300)">{priceAnchorPct}% Price anchor</span>
                       <span className="text-(--color-support-violet-300)">{founderPct}% Founder share</span>
-                      <span className="text-accent">{protocolFeePct}% Protocol fee</span>
+                      <span className="inline-flex items-center gap-1 text-accent">
+                        {protocolFeePct}% Protocol fee
+                        {/* CAMPAIGN: no-fee-november */}
+                        {noFeeNovember && <IconDiscount size={16} aria-hidden="true" />}
+                      </span>
                     </div>
                   </div>
+                  {/* CAMPAIGN: no-fee-november — Figma 16954:37926 */}
+                  {noFeeNovember && (
+                    <Alert
+                      tone="live"
+                      title={NO_FEE_NOVEMBER.copy.rulesTitle}
+                      description={NO_FEE_NOVEMBER.copy.rulesBody}
+                    />
+                  )}
                   <SettingCard
                     title="Price anchor (Buy and burn)"
                     desc={`The protocol buys your token from the pool and burns it, keeping the clear price aligned with the open market. Protocol minimum: ${minAnchorPct}%.`}
@@ -1734,6 +1765,8 @@ if (asset.native) {
                   ]}
                 />
               </div>
+              {/* CAMPAIGN: no-fee-november */}
+              {noFeeNovember && <Alert title={NO_FEE_NOVEMBER.copy.review} />}
               <BackContinue
                 onBack={goBack}
                 onNext={onConfirm}
