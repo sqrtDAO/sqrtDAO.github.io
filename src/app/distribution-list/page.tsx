@@ -1,8 +1,5 @@
 "use client";
 
-// CAMPAIGN: no-fee-november
-import { showNoFeeNovemberBadge } from "@/constants/campaigns";
-import { useNoFeeNovemberActive } from "@/hooks/useNoFeeNovemberActive";
 import { Suspense, useState } from "react";
 import { useRouter } from "next/navigation";
 import MainnetDistributionList from "@/components/MainnetDistributionList/MainnetDistributionList";
@@ -55,7 +52,6 @@ function DistributionListContent() {
       ? `${DISTRIBUTION_LAUNCH_HREF}?chain=${ALL_MAINNET_CHAINS}`
       : DISTRIBUTION_LAUNCH_HREF;
 
-  const noFeeNovember = useNoFeeNovemberActive(); // CAMPAIGN: no-fee-november
   const cards = distributions.map((d) => ({
     id: `${d.chainId}-${d.address}`,
     href: `/distribution/?address=${d.address}&chain=${chainToSlug(d.chainId)}`,
@@ -76,7 +72,6 @@ function DistributionListContent() {
     epochsCompleted: d.epochsCompleted.toLocaleString("en-US"),
     totalEpochs: d.totalEpochs.toLocaleString("en-US"),
     progressPct: d.totalEpochs > 0 ? (d.epochsCompleted / d.totalEpochs) * 100 : 0,
-    noFeeNovember: showNoFeeNovemberBadge(d.startedAt, noFeeNovember), // CAMPAIGN: no-fee-november
   }));
 
   return (

@@ -1,9 +1,5 @@
 "use client";
 
-// CAMPAIGN: no-fee-november
-import { NO_FEE_NOVEMBER } from "@/constants/campaigns";
-import { useNoFeeNovemberActive } from "@/hooks/useNoFeeNovemberActive";
-import { BODY_M } from "@/constants/typography";
 import { useState } from "react";
 import Link from "next/link";
 import WhyLaunchDialog from "@/components/WhyLaunchDialog/WhyLaunchDialog";
@@ -69,7 +65,6 @@ const CardInner = ({
 // When `onImport` is given, the "Import a token" card advances the caller's flow instead of navigating.
 const RouterPage = ({ onImport }: { onImport?: () => void }) => {
   const [whyOpen, setWhyOpen] = useState(false);
-  const noFeeNovember = useNoFeeNovemberActive(); // CAMPAIGN: no-fee-november
 
   return (
     <WizardShell closeHref="/" spacious>
@@ -102,10 +97,6 @@ const RouterPage = ({ onImport }: { onImport?: () => void }) => {
             );
           })}
         </div>
-        {/* CAMPAIGN: no-fee-november */}
-        {noFeeNovember && (
-          <p className={`${BODY_M} text-accent`}>{NO_FEE_NOVEMBER.copy.launchEntry}</p>
-        )}
       </div>
 
       <button

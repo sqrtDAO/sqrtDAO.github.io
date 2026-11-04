@@ -17,12 +17,10 @@ const STATUS_CLASSES: Record<DistributionStatus, string> = {
   ended: "bg-status-ended text-tertiary",
 };
 
-export const STATUS_CHIP = "inline-flex items-center justify-center whitespace-nowrap rounded-pill px-1.5 text-body-s leading-5";
-
 export default function Status({ status, className }: StatusProps) {
   return (
     <span
-      className={`${STATUS_CHIP} ${STATUS_CLASSES[status]}${className ? ` ${className}` : ""}`}
+      className={`inline-flex items-center justify-center whitespace-nowrap rounded-pill px-1.5 text-body-s leading-5 ${STATUS_CLASSES[status]}${className ? ` ${className}` : ""}`}
     >
       {STATUS_LABEL[status]}
     </span>
