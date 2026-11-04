@@ -5,6 +5,8 @@ import LandingFragment from "@/components/LandingFragment/LandingFragment";
 import LandingAccentBar from "@/components/LandingAccentBar/LandingAccentBar";
 import GlitchReveal from "@/components/GlitchReveal/GlitchReveal";
 import Logo from "@/components/Logo/Logo";
+import { NO_FEE_NOVEMBER } from "@/constants/campaigns"; // CAMPAIGN: no-fee-november
+import { useNoFeeNovemberActive } from "@/hooks/useNoFeeNovemberActive"; // CAMPAIGN: no-fee-november
 
 // Mainnet landing passes `ctas` (LandingCtas); without it the testnet "/" renders unchanged.
 type HeroProps = { onTryItClick?: () => void; ctas?: React.ReactNode };
@@ -25,10 +27,29 @@ function Glitch({ children }: { children: React.ReactElement }) {
   );
 }
 
+// CAMPAIGN: no-fee-november — Figma 16956:38130; slides like TestnetRibbon (same marquee, same pace).
+const NoFeeNovemberTicker = ({ className }: { className: string }) => (
+  <div className={`flex overflow-hidden bg-action py-1.5 text-body-s leading-5 tracking-[0.01em] whitespace-nowrap text-on-amber ${className}`}>
+    <div className="flex w-max animate-marquee hover:[animation-play-state:paused] motion-reduce:animate-none">
+      {[0, 1].map((half) => (
+        <div key={half} aria-hidden={half === 1} className="flex gap-6 pr-6">
+          {[0, 1, 2].map((i) => (
+            <p key={i} aria-hidden={i > 0} className="flex gap-1">
+              <span className="font-bold">{NO_FEE_NOVEMBER.copy.tickerLead}</span>
+              <span>{NO_FEE_NOVEMBER.copy.ticker}</span>
+            </p>
+          ))}
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
 // Static decorative mockup of the product's epoch/progress UI — not the real
 // EpochBlockChart/EpochComboChart (confirmed with the user: this illustration is
 // flat and non-interactive, no chart data plumbing here).
 function HeroIllustration({ onTryItClick, ctas }: HeroProps) {
+  const noFeeNovember = useNoFeeNovemberActive(); // CAMPAIGN: no-fee-november
   return (
     <div className="absolute left-[223px] top-[107px] h-[629px] w-[1167px]">
       {/* Background Frame — Figma's own exported SVG silhouette (boolean union of
@@ -75,6 +96,9 @@ function HeroIllustration({ onTryItClick, ctas }: HeroProps) {
         </Glitch>
       </div>
 
+      {/* CAMPAIGN: no-fee-november */}
+      {noFeeNovember && <NoFeeNovemberTicker className="absolute left-0 top-[49px] w-[1000px]" />}
+
       <Glitch>
         <LandingFragment className="left-[1015px] top-[50px] size-[31px]" />
       </Glitch>
@@ -83,7 +107,7 @@ function HeroIllustration({ onTryItClick, ctas }: HeroProps) {
       </Glitch>
 
       <Glitch>
-        <h1 className="absolute left-[3px] top-[66px] w-[917px] font-display text-display-xl font-semibold leading-none tracking-[-0.03em] text-primary">
+        <h1 className={`absolute left-[3px] ${noFeeNovember ? "top-[96px]" : "top-[66px]"} w-[917px] font-display text-display-xl font-semibold leading-none tracking-[-0.03em] text-primary`}>
           Token distribution that funds itself
         </h1>
       </Glitch>
@@ -149,8 +173,10 @@ function HeroIllustration({ onTryItClick, ctas }: HeroProps) {
 // visibly clipped text in How It Works. Same reasoning applies to every other
 // narrow section — see LandingHowItWorks.tsx.
 function HeroMobile({ onTryItClick, ctas }: HeroProps) {
+  const noFeeNovember = useNoFeeNovemberActive(); // CAMPAIGN: no-fee-november
   return (
     <section className="relative mx-auto w-full max-w-[640px] xl:hidden">
+      {noFeeNovember && <NoFeeNovemberTicker className="w-full" />}
       <div className="relative mx-auto w-full max-w-[390px]">
         {/* Frame "1" */}
         <div className="relative h-[661px] w-full">
