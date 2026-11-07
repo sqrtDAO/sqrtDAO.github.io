@@ -103,7 +103,8 @@ type TokenInfo = {
   symbol: string;
   decimals: number;
   totalSupply: bigint;
-  balance: bigint;
+  /** null while the wallet is disconnected or its balance has not been read yet. */
+  balance: bigint | null;
   /** Token metadata is only used to prefill the distribution profile. */
   profile: TokenProfile;
 };
@@ -122,6 +123,12 @@ const EPOCH_DURATION_MS: Record<string, number> = {
 const RELEASE_POLICY_CREATOR_OR_FACTORY = 2;
 // the contract requires startTimestamp >= block.timestamp; keep a buffer
 const START_TIME_BUFFER_SEC = 60;
+// Measured launch gasUsed: ~8.9M on Base and ~9.5M on Robinhood. 15M leaves
+// ~55% headroom. Do not derive this from block.gasLimit: Arbitrum Orbit chains
+// (e.g. Robinhood) report the header's 2^50 sentinel as the block gas limit,
+// which makes wallets think the tx costs millions of ETH and reject it with
+// "gas balance is not enough".
+const LAUNCH_GAS_LIMIT = 15_000_000n;
 
 const bodyM = "text-body leading-5.5 tracking-[0.01em]";
 const bodyS = "text-body-s leading-5 tracking-[0.01em]";
@@ -540,7 +547,7 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
         contract.read.symbol(),
         contract.read.decimals(),
         contract.read.totalSupply(),
-        address ? contract.read.balanceOf([address]) : Promise.resolve(0n),
+        address ? contract.read.balanceOf([address]) : Promise.resolve(null),
         contract.read
           .getAllMetadata()
           .then((entries) => {
@@ -627,7 +634,9 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
   }, [token?.address, address, publicClient]);
 
   const decimals = token?.decimals ?? 18;
-  const balanceBig = token?.balance ?? 0n;
+  // null = unknown (no wallet / read pending); a real 0n still caps inputs at 0.
+  // Deriving from `address` also drops a previous wallet's balance on disconnect.
+  const balanceBig = address ? token?.balance ?? null : null;
   const tryParseAmount = (v: string): bigint | null => {
     try {
       return parseUnits(v.replace(/,/g, "") || "0", decimals);
@@ -637,14 +646,16 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
   };
   const initialBig = tryParseAmount(initialSupply.value) ?? 0n;
   const distributedBig = tryParseAmount(toDistribute.value) ?? 0n;
-  const availableBig = balanceBig > initialBig ? balanceBig - initialBig : 0n;
+  const availableBig =
+    balanceBig !== null ? (balanceBig > initialBig ? balanceBig - initialBig : 0n) : null;
 
-  const balanceNum = Number(formatUnits(balanceBig, decimals));
+  const balanceNum = balanceBig !== null ? Number(formatUnits(balanceBig, decimals)) : null;
   const initialNum = Number(formatUnits(initialBig, decimals));
   const distributedNum = Number(formatUnits(distributedBig, decimals));
-  const available = Number(formatUnits(availableBig, decimals));
   const percent =
-    availableBig > 0n ? Math.min(100, Number((distributedBig * 100n) / availableBig)) : 0;
+    availableBig !== null && availableBig > 0n
+      ? Math.min(100, Number((distributedBig * 100n) / availableBig))
+      : 0;
 
   // bigint formatting keeps fractions precise (500.5 stays 500.5, never floored)
   const fmtAmount = (v: bigint) => commaModifier(formatUnits(v, decimals));
@@ -654,6 +665,8 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
   //   "Supply to distribute" when the LP deposit eats into it,
   // - typing "Supply to distribute" is capped live at the remainder, so it can
   //   never exceed the balance (no over-100% state).
+  // When the balance is unknown (wallet disconnected or read pending) both
+  // fields stay uncapped so the form can be filled before connecting.
   const onInitialSupplyChange = (v: string) => {
     const parsed = tryParseAmount(v);
     if (parsed === null) {
@@ -661,7 +674,7 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
       initialSupply.onChange(v);
       return;
     }
-    if (parsed > balanceBig) {
+    if (balanceBig !== null && parsed > balanceBig) {
       // over balance → snap to the balance (and empty the distribute field)
       initialSupply.onChange(fmtAmount(balanceBig));
       if (distributedBig > 0n) toDistribute.onChange(fmtAmount(0n));
@@ -669,12 +682,14 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
     }
     // keep the user's text exactly as typed, so "1.", "1.5", "1000.25" survive
     initialSupply.onChange(v);
-    const leftBig = balanceBig - parsed;
-    if (distributedBig > leftBig) toDistribute.onChange(fmtAmount(leftBig));
+    if (balanceBig !== null) {
+      const leftBig = balanceBig - parsed;
+      if (distributedBig > leftBig) toDistribute.onChange(fmtAmount(leftBig));
+    }
   };
   const onToDistributeChange = (v: string) => {
     const parsed = tryParseAmount(v);
-    if (parsed !== null && parsed > availableBig) {
+    if (availableBig !== null && parsed !== null && parsed > availableBig) {
       toDistribute.onChange(fmtAmount(availableBig));
       return;
     }
@@ -788,8 +803,9 @@ const totalDistributionAmount = useMemo(() => {
         );
       case "supply": {
         if (!validateAll(initialSupply, liquidity, toDistribute)) return false;
-        const need = initialNum + distributedNum;
-        if (need > balanceNum) {
+        // Only enforce the cap once the wallet balance is known; before that the
+        // form is intentionally free so it can be filled disconnected.
+        if (balanceNum !== null && initialNum + distributedNum > balanceNum) {
           toDistribute.setError("Not enough token balance");
           return false;
         }
@@ -914,6 +930,14 @@ const totalDistributionAmount = useMemo(() => {
     }
     if (wrongChain) {
       switchToSelected();
+      return;
+    }
+
+    // The supply step can be completed while disconnected (balance unknown), so
+    // re-check it now that the wallet is connected and its balance is known.
+    if (balanceNum !== null && initialNum + distributedNum > balanceNum) {
+      toDistribute.setError("Not enough token balance");
+      setStep("supply");
       return;
     }
 
@@ -1079,15 +1103,12 @@ if (asset.native) {
         EMPTY_PERMIT2,
         EMPTY_PERMIT2,
       ] as const;
-      // Skip eth_estimateGas: this launch is very gas-heavy (~63M) and public
-      // RPCs cap their estimate/call, returning a bogus "reverted". Hand the tx
-      // the whole block gas limit and let the wallet send it.
-      const latestBlock = await publicClient.getBlock({ blockTag: "latest" });
+      // Skip eth_estimateGas: public RPCs cap their estimate/call for this heavy
+      // launch and return a bogus "reverted". Use a fixed limit instead.
       const hash = await factory.write.createLiquidityAndDistribution(args, {
         account: walletClient.account,
         chain: walletClient.chain,
-        // wallets reject gas ==/above the block limit, so leave a small margin
-        gas: (latestBlock.gasLimit * 98n) / 100n,
+        gas: LAUNCH_GAS_LIMIT,
       });
       const receipt = await publicClient
         .waitForTransactionReceipt({ hash })
@@ -1409,22 +1430,37 @@ if (asset.native) {
                   <div className="flex w-full flex-col gap-2">
                     <SupplySlider
                       value={percent}
-                      disabled={availableBig <= 0n}
-                      onChange={(p) =>
+                      disabled={availableBig === null || availableBig <= 0n}
+                      onChange={(p) => {
+                        if (availableBig === null) return;
                         toDistribute.onChange(
                           fmtAmount((availableBig * BigInt(p)) / 100n),
-                        )
-                      }
+                        );
+                      }}
                     />
                     <div className="flex w-full items-start gap-2">
                       <p className={`flex-1 ${bodyM} text-accent`}>
-                        {percent}% ≈ {distributedNum.toLocaleString("en-US")} {token.symbol}
+                        {availableBig !== null
+                          ? `${percent}% ≈ ${distributedNum.toLocaleString("en-US")} ${token.symbol}`
+                          : `${distributedNum.toLocaleString("en-US")} ${token.symbol}`}
                       </p>
                       <div className="flex flex-1 flex-col items-end gap-1 xl:flex-row xl:items-baseline xl:justify-end">
                         <p className={`${bodyS} text-secondary`}>Wallet balance</p>
-                        <p className={`${bodyM} text-primary`}>
-                          {roundUnits(token.balance, token.decimals)} {token.symbol}
-                        </p>
+                        {balanceBig !== null ? (
+                          <p className={`${bodyM} text-primary`}>
+                            {roundUnits(balanceBig, token.decimals)} {token.symbol}
+                          </p>
+                        ) : isConnected ? (
+                          <p className={`${bodyM} text-primary`}>—</p>
+                        ) : (
+                          <button
+                            type="button"
+                            className={`${bodyM} cursor-pointer text-accent`}
+                            onClick={() => openConnectModal?.()}
+                          >
+                            Connect wallet
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

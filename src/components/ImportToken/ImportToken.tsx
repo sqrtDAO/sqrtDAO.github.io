@@ -23,7 +23,8 @@ export type ImportedToken = {
   symbol: string;
   decimals: number;
   totalSupply: bigint;
-  balance: bigint;
+  /** null while the wallet is disconnected or its balance has not been read yet. */
+  balance: bigint | null;
 };
 
 type ImportTokenProps = {
@@ -83,7 +84,7 @@ const TokenCard = ({
         </div>
         <div className="flex flex-col gap-4 xl:flex-row xl:gap-0">
           <Stat label="Token total Supply" value={roundUnits(token.totalSupply, token.decimals)} symbol={token.symbol} />
-          <Stat label="Your token balance" value={roundUnits(token.balance, token.decimals)} symbol={token.symbol} />
+          <Stat label="Your token balance" value={token.balance !== null ? roundUnits(token.balance, token.decimals) : "—"} symbol={token.symbol} />
         </div>
         <div className="flex gap-2">
           <Button
