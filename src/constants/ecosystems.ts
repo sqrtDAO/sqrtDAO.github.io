@@ -9,6 +9,11 @@ export const robinhood = defineChain({
   blockExplorers: {
     default: { name: "Blockscout", url: "https://robinhoodchain.blockscout.com" },
   },
+  // viem's multicall needs this declared on the chain (verified deployed on
+  // Robinhood at the canonical Multicall3 address).
+  contracts: {
+    multicall3: { address: "0xcA11bde05977b3631167028862bE2a173976CA11" },
+  },
 });
 
 export type Ecosystem = {
