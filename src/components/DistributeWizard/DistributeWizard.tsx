@@ -122,6 +122,12 @@ const EPOCH_DURATION_MS: Record<string, number> = {
 const RELEASE_POLICY_CREATOR_OR_FACTORY = 2;
 // the contract requires startTimestamp >= block.timestamp; keep a buffer
 const START_TIME_BUFFER_SEC = 60;
+// Measured launch gasUsed: ~8.9M on Base and ~9.5M on Robinhood. 15M leaves
+// ~55% headroom. Do not derive this from block.gasLimit: Arbitrum Orbit chains
+// (e.g. Robinhood) report the header's 2^50 sentinel as the block gas limit,
+// which makes wallets think the tx costs millions of ETH and reject it with
+// "gas balance is not enough".
+const LAUNCH_GAS_LIMIT = 15_000_000n;
 
 const bodyM = "text-body leading-5.5 tracking-[0.01em]";
 const bodyS = "text-body-s leading-5 tracking-[0.01em]";
@@ -1079,15 +1085,12 @@ if (asset.native) {
         EMPTY_PERMIT2,
         EMPTY_PERMIT2,
       ] as const;
-      // Skip eth_estimateGas: this launch is very gas-heavy (~63M) and public
-      // RPCs cap their estimate/call, returning a bogus "reverted". Hand the tx
-      // the whole block gas limit and let the wallet send it.
-      const latestBlock = await publicClient.getBlock({ blockTag: "latest" });
+      // Skip eth_estimateGas: public RPCs cap their estimate/call for this heavy
+      // launch and return a bogus "reverted". Use a fixed limit instead.
       const hash = await factory.write.createLiquidityAndDistribution(args, {
         account: walletClient.account,
         chain: walletClient.chain,
-        // wallets reject gas ==/above the block limit, so leave a small margin
-        gas: (latestBlock.gasLimit * 98n) / 100n,
+        gas: LAUNCH_GAS_LIMIT,
       });
       const receipt = await publicClient
         .waitForTransactionReceipt({ hash })
