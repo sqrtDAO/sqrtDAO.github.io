@@ -2,6 +2,7 @@ import { IconBrandDiscord, IconBrandGithub, IconBrandX } from "@tabler/icons-rea
 import Image from "next/image";
 import Logo from "@/components/Logo/Logo";
 import NavLink from "@/components/NavLink/NavLink";
+import CookieSettings from "@/components/CookieSettings/CookieSettings";
 import { DISCORD_URL, GITHUB_URL, MAINNET_NAV, X_URL } from "@/constants/links";
 import "@/components/IconButton/IconButton.css";
 
@@ -62,7 +63,9 @@ const LinkGrid = ({
 );
 
 const Copyright = ({ className = "" }: { className?: string }) => (
-  <p className={`text-body-s leading-5 tracking-[0.01em] text-tertiary ${className}`}>{COPYRIGHT}</p>
+  <p className={`text-body-s leading-5 tracking-[0.01em] text-tertiary ${className}`}>
+    {COPYRIGHT} · <CookieSettings />
+  </p>
 );
 
 // Figma 11089:93493 (desktop) / 11252:94162 (mobile)

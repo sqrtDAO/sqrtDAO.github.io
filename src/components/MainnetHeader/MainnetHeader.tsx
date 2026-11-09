@@ -11,6 +11,7 @@ import { IconButton } from "@/components/IconButton/IconButton";
 import NavLink from "@/components/NavLink/NavLink";
 import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
 import { MAINNET_NAV } from "@/constants/links";
+import { trackClarityEvent } from "@/utils/clarity";
 
 const DESKTOP_NAV = [MAINNET_NAV.launch, MAINNET_NAV.explore, MAINNET_NAV.blog, MAINNET_NAV.docs];
 
@@ -21,7 +22,13 @@ const WalletConnect = ({ children }: { children: (p: WalletRenderProps) => React
     {({ account, chain, openAccountModal, openChainModal, openConnectModal, mounted }) => {
       const connected = mounted && account && chain;
       const props = !connected
-        ? { label: "Connect wallet", onClick: openConnectModal }
+        ? {
+            label: "Connect wallet",
+            onClick: () => {
+              trackClarityEvent("wallet_connect_clicked");
+              openConnectModal?.();
+            },
+          }
         : chain.unsupported
           ? { label: "Switch network", onClick: openChainModal }
           : { label: account.displayName, onClick: openAccountModal };
