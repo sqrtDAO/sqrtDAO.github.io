@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { Oxanium, IBM_Plex_Sans_Condensed } from "next/font/google";
 import RainbowKitRoot from "@/components/RainbowKitRoot/RainbowKitRoot";
 import ToastContainer from "@/components/ToastContainer/ToastContainer";
+import ClarityAnalytics from "@/components/ClarityAnalytics/ClarityAnalytics";
+import ClarityTracker from "@/components/ClarityTracker/ClarityTracker";
+import ClarityWalletTracker from "@/components/ClarityWalletTracker/ClarityWalletTracker";
+import ConsentBanner from "@/components/ConsentBanner/ConsentBanner";
 import { SITE_NAME, SITE_URL } from "@/constants/site";
 import "./theme.css";
 import "./globals.css";
@@ -71,8 +75,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${oxanium.variable} ${ibmPlex.variable}`}>
       <body>
-        <RainbowKitRoot>{children}</RainbowKitRoot>
+        <RainbowKitRoot>
+          <ClarityTracker />
+          <ClarityWalletTracker />
+          {children}
+        </RainbowKitRoot>
         <ToastContainer />
+        <ConsentBanner />
+        <ClarityAnalytics />
       </body>
     </html>
   );

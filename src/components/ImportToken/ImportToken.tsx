@@ -3,7 +3,6 @@
 import Image from "next/image";
 import type { Address } from "viem";
 import { useWalletClient } from "wagmi";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { IconWallet } from "@tabler/icons-react";
 import Input from "@/components/Input/Input";
 import { Button } from "@/components/Button/Button";
@@ -13,6 +12,7 @@ import { WizardTitle } from "@/components/WizardShell/WizardShell";
 import { BODY_M, BODY_S } from "@/constants/typography";
 import { avatarHttpsUrl } from "@/constants/avatar";
 import { useAvatarImage, type AvatarImage } from "@/hooks/useAvatarImage";
+import { useClarityConnectModal } from "@/hooks/useClarityConnectModal";
 import type { UseInputReturn } from "@/hooks/useInput";
 import useTokenAvatar from "@/hooks/useTokenAvatar";
 import { roundUnits } from "@/utils/round-units";
@@ -114,7 +114,7 @@ const TokenName = ({ token, chainId }: { token: ImportedToken; chainId: number }
 // Figma 11318:97231 / 16780:43386 (desktop) · 14484:103660 / 16807:116164 (mobile)
 const ImportToken = (props: ImportTokenProps) => {
   const { data: walletClient } = useWalletClient();
-  const { openConnectModal } = useConnectModal();
+  const openConnectModal = useClarityConnectModal();
   // Resolve the token's on-chain avatar. Non-TokenV1 ERC-20s simply have no
   // readable avatar, so the branded placeholder stays as the fallback.
   const avatar = useTokenAvatar(props.token?.address, props.chainId);

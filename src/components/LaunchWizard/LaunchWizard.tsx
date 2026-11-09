@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   IconCopy,
@@ -10,7 +10,6 @@ import {
 } from "@tabler/icons-react";
 import { decodeEventLog, formatUnits, parseUnits, type Address } from "viem";
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Input from "@/components/Input/Input";
 import Divider from "@/components/Divider/Divider";
 import { Button } from "@/components/Button/Button";
@@ -25,6 +24,9 @@ import TextArea from "@/components/TextArea/TextArea";
 import { useAvatarPicker } from "@/hooks/useAvatarPicker";
 import { useInput } from "@/hooks/useInput";
 import { useSelectedChain } from "@/hooks/useActiveChain";
+import { useClarityConnectModal } from "@/hooks/useClarityConnectModal";
+import { useClarityStep } from "@/hooks/useClarityStep";
+import { setClarityTags, trackClarityEvent } from "@/utils/clarity";
 import { chainToName, chainToSlug } from "@/utils/chain-utils";
 import {
   amountValidator,
@@ -73,7 +75,10 @@ const CopyRow = ({ label, value }: { label: string; value: string }) => (
   <div className="flex w-full flex-col gap-1">
     <p className={`${bodyM} text-secondary`}>{label}</p>
     <div className="flex items-center gap-4">
-      <p className="min-w-0 flex-1 truncate text-body-l leading-6 tracking-[0.02em] text-primary xl:flex-none">
+      <p
+        data-clarity-mask="true"
+        className="min-w-0 flex-1 truncate text-body-l leading-6 tracking-[0.02em] text-primary xl:flex-none"
+      >
         {value}
       </p>
       <IconButton
@@ -95,9 +100,10 @@ const LaunchWizard = () => {
   const { data: walletClient } = useWalletClient();
   const { chainId, wrongChain, switchToSelected, select } = useSelectedChain();
   const publicClient = usePublicClient({ chainId });
-  const { openConnectModal } = useConnectModal();
+  const openConnectModal = useClarityConnectModal();
 
   const [step, setStep] = useState<Step>("form");
+  const consented = useClarityStep("launch_wizard", step);
   const [launching, setLaunching] = useState(false);
   const { cropSrc, file: avatarFile, preview, pick, closeCrop, onCropped } = useAvatarPicker();
   const [result, setResult] = useState<{
@@ -127,6 +133,14 @@ const LaunchWizard = () => {
     undefined,
     (v) => (v.trim() === "" ? null : addressValidator(v)),
   );
+
+  useEffect(() => {
+    if (!consented || !chainId) return;
+    setClarityTags({
+      launch_chain: chainToSlug(chainId),
+      launch_chain_name: chainToName(chainId),
+    });
+  }, [chainId, consented]);
 
   const receiverAddress = useMemo(
     () => (changeReceiver && receiver.value.trim() ? (receiver.value.trim() as Address) : address),
@@ -164,6 +178,7 @@ const LaunchWizard = () => {
     }
     if (changeReceiver && !receiver.validate()) return;
 
+    trackClarityEvent("launch_wizard_submit");
     setLaunching(true);
     const addresses = getAddresses(chainId);
     const totalSupply = parseUnits(supply.value.replace(/,/g, ""), 18);
@@ -265,6 +280,7 @@ const LaunchWizard = () => {
         symbol: config.symbol,
         supply: totalSupply,
       });
+      trackClarityEvent("launch_wizard_complete");
       setStep("done");
 
       if (avatarFile && cid) {
@@ -275,6 +291,7 @@ const LaunchWizard = () => {
       }
     } catch (e) {
       console.error(e);
+      trackClarityEvent("launch_wizard_error");
       showToast("deploy.failed", { id: toastId });
     } finally {
       setLaunching(false);
@@ -289,7 +306,10 @@ const LaunchWizard = () => {
   return (
     <>
       <MainnetHeader ribbonStays={step === "form"} />
-      <WizardShell closeHref="/">
+      <WizardShell
+        closeHref="/"
+        onClose={() => trackClarityEvent("launch_wizard_cancel")}
+      >
         <div className="flex w-full flex-col gap-8">
           {step === "form" && (
             <>
@@ -299,7 +319,14 @@ const LaunchWizard = () => {
               />
               {/* Figma 11254:94167 / 14411:84789 — one column: picker, avatar, then fields. */}
               <div className="flex w-full flex-col gap-4">
-                <EcosystemPicker variant="rich" value={chainId} onChange={select} />
+                <EcosystemPicker
+                  variant="rich"
+                  value={chainId}
+                  onChange={(id) => {
+                    select(id);
+                    trackClarityEvent("launch_chain_selected");
+                  }}
+                />
                 <SectionLabel>Primary informations</SectionLabel>
                 <AvatarUpload image={preview} onPick={pick} />
                 <Input state={name} label="Token Name" placeholder="The full name, e.g. Dev Protocol." />
@@ -318,7 +345,11 @@ const LaunchWizard = () => {
                 <Input state={discord} label="Discord link" placeholder="https://…" />
               </div>
               <Actions>
-                <Link href="/" className="sqrt-btn sqrt-btn--outline sqrt-btn--m flex-1 xl:flex-none">
+                <Link
+                  href="/"
+                  onClick={() => trackClarityEvent("launch_wizard_cancel")}
+                  className="sqrt-btn sqrt-btn--outline sqrt-btn--m flex-1 xl:flex-none"
+                >
                   Cancel
                 </Link>
                 <Button

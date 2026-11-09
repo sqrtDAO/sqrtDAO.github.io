@@ -15,7 +15,6 @@ import {
   useSwitchChain,
   useWalletClient,
 } from "wagmi";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { IconLoader2 } from "@tabler/icons-react";
 import { base, sepolia } from "viem/chains";
 import {
@@ -34,6 +33,7 @@ import type { DdpState } from "@/components/DistributionOverview/DistributionOve
 import type { FundSplit } from "@/components/FundSplitBar/FundSplitBar";
 import type { EpochData } from "@/lib/charts/types";
 import { useDistributorData } from "@/hooks/useDistributorData";
+import { useClarityConnectModal } from "@/hooks/useClarityConnectModal";
 import type {
   DistributionState,
   DistributorContractInfo,
@@ -215,7 +215,7 @@ const DistributionDetailV2 = ({
   const { address, isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient(chainId ? { chainId } : undefined);
-  const { openConnectModal } = useConnectModal();
+  const openConnectModal = useClarityConnectModal();
   const { switchChain } = useSwitchChain();
   const sameChain =
     isConnected && chainId !== undefined && connectedChainId === chainId;

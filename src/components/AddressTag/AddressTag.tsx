@@ -42,6 +42,7 @@ export default function AddressTag({ value, className }: AddressTagProps) {
   return (
     <button
       type="button"
+      data-clarity-mask="true"
       className={`address-tag${copied ? " is-copied" : ""}${className ? ` ${className}` : ""}`}
       onClick={handleClick}
     >

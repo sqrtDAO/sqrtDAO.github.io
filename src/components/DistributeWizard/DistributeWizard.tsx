@@ -25,7 +25,6 @@ import {
   type Address,
 } from "viem";
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
 import Input from "@/components/Input/Input";
 import Divider from "@/components/Divider/Divider";
 import Stepper from "@/components/Stepper/Stepper";
@@ -44,6 +43,9 @@ import TextArea from "@/components/TextArea/TextArea";
 import AvatarUpload from "@/components/AvatarUpload/AvatarUpload";
 import AvatarCropDialog from "@/components/AvatarCropDialog/AvatarCropDialog";
 import { useAvatarPicker } from "@/hooks/useAvatarPicker";
+import { useClarityConnectModal } from "@/hooks/useClarityConnectModal";
+import { useClarityStep } from "@/hooks/useClarityStep";
+import { setClarityTags, trackClarityEvent } from "@/utils/clarity";
 import {
   EMPTY_PROFILE,
   isTokenProfileKey,
@@ -291,7 +293,7 @@ const SettingCard = ({
   </div>
 );
 
-const ReviewRow = ({ label, value }: { label: string; value: string }) => (
+const ReviewRow = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div className={`flex w-full items-center gap-4 ${bodyM}`}>
     <p className="min-w-0 flex-1 text-secondary">{label}</p>
     <p className="min-w-0 flex-1 text-right text-primary">{value}</p>
@@ -305,7 +307,7 @@ const ReviewSection = ({
 }: {
   title: string;
   onChange?: () => void;
-  rows: [string, string][];
+  rows: [string, React.ReactNode][];
 }) => (
   <div className="flex w-full flex-col gap-2">
     <div className={`flex w-full items-center justify-between ${onChange ? "" : "py-2"}`}>
@@ -368,7 +370,7 @@ const Status = ({
           Your distribution is live. Share it and let the market grow with it.
         </p>
         {distributor && (
-          <p className={`w-full text-left ${bodyM} text-tertiary`}>
+          <p data-clarity-mask="true" className={`w-full text-left ${bodyM} text-tertiary`}>
             Distribution address: {distributor}
           </p>
         )}
@@ -416,9 +418,10 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
   const { data: walletClient } = useWalletClient();
   const { chainId, wrongChain, switchToSelected, select } = useSelectedChain();
   const publicClient = usePublicClient({ chainId });
-  const { openConnectModal } = useConnectModal();
+  const openConnectModal = useClarityConnectModal();
 
   const [step, setStep] = useState<Step>(targetToken ? "welcome" : "router");
+  const consented = useClarityStep("distribution_wizard", step);
   const [token, setToken] = useState<TokenInfo | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [distributor, setDistributor] = useState<Address | null>(null);
@@ -533,6 +536,16 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
   };
   const founderShare = useInput("", founderShareModifier, founderShareValidator);
   const founderReceiver = useInput("", undefined, addressValidator);
+
+  useEffect(() => {
+    if (!consented) return;
+    setClarityTags({
+      distribution_asset: asset?.symbol,
+      distribution_release_type: releaseTypeIdx === 0 ? "time" : "epoch",
+      distribution_founder_rule: founderOn ? "on" : "off",
+      distribution_epoch_duration: epochDurationInput.value,
+    });
+  }, [asset?.symbol, consented, epochDurationInput.value, founderOn, releaseTypeIdx]);
 
   const loadToken = async (addr: Address) => {
     if (!publicClient) return false;
@@ -933,6 +946,8 @@ const totalDistributionAmount = useMemo(() => {
       return;
     }
 
+    trackClarityEvent("distribution_wizard_submit");
+
     // The supply step can be completed while disconnected (balance unknown), so
     // re-check it now that the wallet is connected and its balance is known.
     if (balanceNum !== null && initialNum + distributedNum > balanceNum) {
@@ -1146,6 +1161,7 @@ if (asset.native) {
           }
         } catch {}
       }
+      trackClarityEvent("distribution_wizard_complete");
       setStep("ready");
       if (avatarFileCid && avatarFile && distributorAddress) {
         setAvatarCid(avatarFileCid);
@@ -1159,6 +1175,7 @@ if (asset.native) {
       }
     } catch (e) {
       console.error(e);
+      trackClarityEvent("distribution_wizard_error");
       showToast("tx.reverted", { id: toastId, params: { reason: revertReason(e) } });
       setStep("review");
     }
@@ -1197,7 +1214,11 @@ if (asset.native) {
     return (
       <>
         {header}
-        <WizardShell closeHref="/" spacious>
+        <WizardShell
+          closeHref="/"
+          spacious
+          onClose={() => trackClarityEvent("distribution_wizard_cancel")}
+        >
           {step === "import" && (
             <ImportToken
               address={importAddress}
@@ -1246,7 +1267,10 @@ if (asset.native) {
   return (
     <>
       {header}
-      <WizardShell closeHref="/">
+      <WizardShell
+        closeHref="/"
+        onClose={() => trackClarityEvent("distribution_wizard_cancel")}
+      >
         <div className="flex w-full flex-col gap-8">
           {step === "welcome" && (
             <>
@@ -1371,7 +1395,12 @@ if (asset.native) {
                       items={assets.map((a) => a.symbol)}
                       activeIndex={assetIndex}
                       size="l"
-                      onChange={setAssetIndex}
+                      onChange={(idx) => {
+                        setAssetIndex(idx);
+                        trackClarityEvent(
+                          `distribution_asset_selected_${assets[idx]?.symbol ?? idx}`,
+                        );
+                      }}
                     />
                   </div>
                   {assets.length === 0 && (
@@ -1530,7 +1559,12 @@ if (asset.native) {
                       items={["Time-based", "Epoch-based"]}
                       activeIndex={releaseTypeIdx}
                       size="l"
-                      onChange={setReleaseTypeIdx}
+                      onChange={(idx) => {
+                        setReleaseTypeIdx(idx);
+                        trackClarityEvent(
+                          `distribution_release_${idx === 0 ? "time" : "epoch"}`,
+                        );
+                      }}
                     />
                     <p className={`${bodyM} text-primary`}>
                       {releaseTypeIdx === 0
@@ -1668,7 +1702,16 @@ if (asset.native) {
                     <SettingCard
                       title="Founder share"
                       desc={`Sent to your address when the epoch closes. Capped at ${founderCapPct}% — anything above the protocol's ${minAnchorPct}% price-anchor minimum.`}
-                      action={<Switch on={founderOn} onChange={setFounderOn} className="shrink-0" />}
+                      action={
+                        <Switch
+                          on={founderOn}
+                          onChange={(on) => {
+                            setFounderOn(on);
+                            trackClarityEvent(`distribution_founder_${on ? "on" : "off"}`);
+                          }}
+                          className="shrink-0"
+                        />
+                      }
                     />
                     {founderOn && (
                       <div className="flex w-full flex-col gap-2 xl:flex-row xl:gap-4">
@@ -1754,7 +1797,13 @@ if (asset.native) {
                       ? ([
                           [
                             "Founder receiver:",
-                            founderReceiver.value ? shortAddress(founderReceiver.value) : "—",
+                            founderReceiver.value ? (
+                              <span data-clarity-mask="true">
+                                {shortAddress(founderReceiver.value)}
+                              </span>
+                            ) : (
+                              "—"
+                            ),
                           ],
                         ] as [string, string][])
                       : []),
