@@ -153,9 +153,7 @@ export default function BlogPostPage() {
       <p className="text-caption uppercase tracking-widest text-tertiary">
         {postDate(post)} · {estimateReadTime(body)}
       </p>
-      <h1 className="mt-3 font-display text-h2 font-bold text-primary sm:text-h1">
-        {post.title}
-      </h1>
+      <h1 className="sr-only">{post.title}</h1>
       <Image
         src={post.image}
         alt={post.title}
