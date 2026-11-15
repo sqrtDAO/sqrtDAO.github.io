@@ -14,6 +14,15 @@ export type BlogPost = {
 
 const posts: BlogPost[] = [
   {
+    slug: "why-you-might-need-a-token",
+    title: "Why You might need a token for your project?",
+    date: "2026-11-15",
+    description:
+      "Investment lets strangers share your risk and your upside. A token can do the same on-chain — if it has a real job and a launch that gives people time to show up.",
+    image: "/blog/why-you-might-need-a-token.jpg",
+    ogImage: "/blog/why-you-might-need-a-token-og.jpg",
+  },
+  {
     slug: "how-should-you-set-up-your-distribution",
     title: "How should you set up your distribution?",
     date: "2026-10-28",
