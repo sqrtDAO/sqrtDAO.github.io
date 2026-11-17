@@ -96,3 +96,5 @@ gh-pages/
 *.tmp
 *.temp
 .cache/
+# local debug session logs
+.agents/logs/

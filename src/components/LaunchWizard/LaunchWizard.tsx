@@ -71,6 +71,24 @@ const Actions = ({ children }: { children: React.ReactNode }) => (
   <div className="flex w-full items-center justify-end gap-4">{children}</div>
 );
 
+// viem errors carry a human-readable `shortMessage`; keep the raw `message` too
+// so the on-screen panel has something actionable to screenshot.
+const describeError = (error: unknown) => {
+  if (!error || typeof error !== "object") return String(error);
+  const { shortMessage, details, message } = error as {
+    shortMessage?: string;
+    details?: string;
+    message?: string;
+  };
+  return [shortMessage, details, message].filter(Boolean).join(" — ") || "Unknown error";
+};
+
+// MetaMask Connect's mobile transport gives the wallet 60s to answer; when it
+// expires the transaction may still have been broadcast, so "try again" is the
+// wrong prompt.
+const isTransportTimeout = (error: unknown) =>
+  /timed out|RPCErr53/i.test(describeError(error));
+
 const CopyRow = ({ label, value }: { label: string; value: string }) => (
   <div className="flex w-full flex-col gap-1">
     <p className={`${bodyM} text-secondary`}>{label}</p>
@@ -105,6 +123,7 @@ const LaunchWizard = () => {
   const [step, setStep] = useState<Step>("form");
   const consented = useClarityStep("launch_wizard", step);
   const [launching, setLaunching] = useState(false);
+  const [launchError, setLaunchError] = useState<string | null>(null);
   const { cropSrc, file: avatarFile, preview, pick, closeCrop, onCropped } = useAvatarPicker();
   const [result, setResult] = useState<{
     token: Address;
@@ -172,6 +191,12 @@ const LaunchWizard = () => {
       return;
     }
     if (!walletClient || !publicClient) return;
+    if (walletClient.chain && walletClient.chain.id !== chainId) {
+      setLaunchError(
+        `Your wallet is on chain ${walletClient.chain.id}, but this page expects ${chainId}. Switch network in your wallet and try again.`,
+      );
+      return;
+    }
     if (!validateAll(name, symbol, supply, website, github, x, discord)) {
       setStep("form");
       return;
@@ -180,6 +205,7 @@ const LaunchWizard = () => {
 
     trackClarityEvent("launch_wizard_submit");
     setLaunching(true);
+    setLaunchError(null);
     const addresses = getAddresses(chainId);
     const totalSupply = parseUnits(supply.value.replace(/,/g, ""), 18);
 
@@ -250,8 +276,10 @@ const LaunchWizard = () => {
         });
       if (!receipt) return;
       if (receipt.status === "reverted") {
+        const message = `The token-creation transaction reverted on-chain (${hash}).`;
+        setLaunchError(message);
         showToast("deploy.failed", { id: toastId, action: viewTransactionAction(chainId, hash) });
-        throw new Error("createToken reverted");
+        throw new Error(message);
       }
 
       let tokenAddress: Address | undefined;
@@ -267,7 +295,7 @@ const LaunchWizard = () => {
           }
         } catch {}
       }
-      if (!tokenAddress) throw new Error("NewToken event not found");
+      if (!tokenAddress) throw new Error(`NewToken event not found in the receipt (${hash}).`);
 
       showToast("deploy.success", {
         id: toastId,
@@ -290,9 +318,17 @@ const LaunchWizard = () => {
         setAvatarStatus("skipped");
       }
     } catch (e) {
-      console.error(e);
+      const message = describeError(e);
+      console.error("[launch] createToken failed", {
+        message,
+        chainId,
+        walletChainId: walletClient?.chain?.id,
+        address,
+        error: e,
+      });
+      setLaunchError(message);
       trackClarityEvent("launch_wizard_error");
-      showToast("deploy.failed", { id: toastId });
+      showToast(isTransportTimeout(e) ? "deploy.timeout" : "deploy.failed", { id: toastId });
     } finally {
       setLaunching(false);
     }
@@ -406,6 +442,15 @@ const LaunchWizard = () => {
                   </button>
                 </div>
               </div>
+              {launchError && (
+                <div
+                  role="alert"
+                  className="flex w-full flex-col gap-1 rounded-m border border-danger bg-surface p-4"
+                >
+                  <p className={`${bodyM} text-danger`}>Launch failed</p>
+                  <p className="break-words text-body-s text-secondary">{launchError}</p>
+                </div>
+              )}
               <Actions>
                 <Button variant="outline" size="m" onClick={() => setStep("form")}>
                   Back

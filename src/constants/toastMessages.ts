@@ -11,6 +11,7 @@ export type ToastMessageKey =
   | "deploy.success"
   | "deploy.failed"
   | "deploy.rejected"
+  | "deploy.timeout"
   | "deploy.unconfirmed"
   | "launch.pending"
   | "launch.success"
@@ -71,6 +72,10 @@ export const TOAST_MESSAGES: Record<ToastMessageKey, ToastMessageDef> = {
   "deploy.success": { type: "success", copy: "Token created — {symbol} is live on-chain." },
   "deploy.failed": { type: "error", copy: "Token creation didn't go through. Please try again." },
   "deploy.rejected": { type: "info", copy: "Deployment cancelled." },
+  "deploy.timeout": {
+    type: "info",
+    copy: "Your wallet didn't confirm in time. Check it for a pending or already-sent transaction before trying again.",
+  },
   "deploy.unconfirmed": {
     type: "info",
     copy: "Transaction submitted. We couldn't confirm it yet — check the explorer; it may already be on-chain.",
