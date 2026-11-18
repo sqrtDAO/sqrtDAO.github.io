@@ -48,7 +48,7 @@ import { getAddresses } from "@/contracts/contract-addresses";
 import { DISTRIBUTION_LAUNCH_HREF } from "@/constants/links";
 import { showToast } from "@/hooks/useToast";
 import { viewTransactionAction } from "@/utils/explorer-utils";
-import { isTransportTimeout } from "@/utils/wallet-error";
+import { describeError, isTransportTimeout } from "@/utils/wallet-error";
 import { predictCid, requestUploadLink, uploadToIpfs } from "@/utils/avatar-api";
 import { tokenMetadataEntries } from "@/utils/token-metadata";
 import { avatarHttpsUrl } from "@/constants/avatar";
@@ -72,17 +72,6 @@ const Actions = ({ children }: { children: React.ReactNode }) => (
   <div className="flex w-full items-center justify-end gap-4">{children}</div>
 );
 
-// viem errors carry a human-readable `shortMessage`; keep the raw `message` too
-// so the on-screen panel has something actionable to screenshot.
-const describeError = (error: unknown) => {
-  if (!error || typeof error !== "object") return String(error);
-  const { shortMessage, details, message } = error as {
-    shortMessage?: string;
-    details?: string;
-    message?: string;
-  };
-  return [shortMessage, details, message].filter(Boolean).join(" — ") || "Unknown error";
-};
 
 const CopyRow = ({ label, value }: { label: string; value: string }) => (
   <div className="flex w-full flex-col gap-1">
