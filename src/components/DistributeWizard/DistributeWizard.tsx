@@ -89,6 +89,7 @@ import { CLAIM_ROOT_DISCORD_URL, DISTRIBUTION_LAUNCH_HREF, DISTRIBUTION_LIST } f
 import { distributionV1FactoryAbi } from "@/contracts/abis";
 import { showToast } from "@/hooks/useToast";
 import { viewTransactionAction } from "@/utils/explorer-utils";
+import { isTransportTimeout } from "@/utils/wallet-error";
 import { quickSqrtPriceX96 } from "@/lib/utils/sqrtPricex96";
 import { EMPTY_PERMIT2 } from "@/lib/utils/permit2";
 import { roundUnits } from "@/utils/round-units";
@@ -945,6 +946,13 @@ const totalDistributionAmount = useMemo(() => {
       switchToSelected();
       return;
     }
+    // `wrongChain` comes from the account state; the wallet client is what the
+    // transaction actually goes through, so guard on its chain too.
+    if (walletClient.chain && walletClient.chain.id !== chainId) {
+      showToast("network.wrong", { params: { chain: chainToName(chainId) } });
+      setStep("review");
+      return;
+    }
 
     trackClarityEvent("distribution_wizard_submit");
 
@@ -1176,7 +1184,10 @@ if (asset.native) {
     } catch (e) {
       console.error(e);
       trackClarityEvent("distribution_wizard_error");
-      showToast("tx.reverted", { id: toastId, params: { reason: revertReason(e) } });
+      // A transport timeout may still have broadcast the transaction, so don't
+      // invite a retry that could create a second distribution.
+      if (isTransportTimeout(e)) showToast("deploy.timeout", { id: toastId });
+      else showToast("tx.reverted", { id: toastId, params: { reason: revertReason(e) } });
       setStep("review");
     }
   };

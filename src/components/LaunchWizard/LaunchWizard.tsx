@@ -48,6 +48,7 @@ import { getAddresses } from "@/contracts/contract-addresses";
 import { DISTRIBUTION_LAUNCH_HREF } from "@/constants/links";
 import { showToast } from "@/hooks/useToast";
 import { viewTransactionAction } from "@/utils/explorer-utils";
+import { isTransportTimeout } from "@/utils/wallet-error";
 import { predictCid, requestUploadLink, uploadToIpfs } from "@/utils/avatar-api";
 import { tokenMetadataEntries } from "@/utils/token-metadata";
 import { avatarHttpsUrl } from "@/constants/avatar";
@@ -82,12 +83,6 @@ const describeError = (error: unknown) => {
   };
   return [shortMessage, details, message].filter(Boolean).join(" — ") || "Unknown error";
 };
-
-// MetaMask Connect's mobile transport gives the wallet 60s to answer; when it
-// expires the transaction may still have been broadcast, so "try again" is the
-// wrong prompt.
-const isTransportTimeout = (error: unknown) =>
-  /timed out|RPCErr53/i.test(describeError(error));
 
 const CopyRow = ({ label, value }: { label: string; value: string }) => (
   <div className="flex w-full flex-col gap-1">
