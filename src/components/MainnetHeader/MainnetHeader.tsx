@@ -1,9 +1,11 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { useAppKit } from "@reown/appkit/react";
+import { useAccount } from "wagmi";
+import { base, sepolia } from "wagmi/chains";
 import { IconMenu, IconWallet, IconX } from "@tabler/icons-react";
 import Logo from "@/components/Logo/Logo";
 import { Button } from "@/components/Button/Button";
@@ -11,31 +13,41 @@ import { IconButton } from "@/components/IconButton/IconButton";
 import NavLink from "@/components/NavLink/NavLink";
 import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
 import { MAINNET_NAV } from "@/constants/links";
-import { trackClarityEvent } from "@/utils/clarity";
+import { robinhood } from "@/constants/ecosystems";
+import { openWalletModal } from "@/hooks/useWalletModal";import { trackClarityEvent } from "@/utils/clarity";
 
 const DESKTOP_NAV = [MAINNET_NAV.launch, MAINNET_NAV.explore, MAINNET_NAV.blog, MAINNET_NAV.docs];
 
+const SUPPORTED_CHAIN_IDS = new Set<number>([base.id, sepolia.id, robinhood.id]);
+
+const shortAddress = (address?: string) =>
+  address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "";
+
 type WalletRenderProps = { label: string; onClick: () => void };
 
-const WalletConnect = ({ children }: { children: (p: WalletRenderProps) => React.ReactNode }) => (
-  <ConnectButton.Custom>
-    {({ account, chain, openAccountModal, openChainModal, openConnectModal, mounted }) => {
-      const connected = mounted && account && chain;
-      const props = !connected
-        ? {
-            label: "Connect wallet",
-            onClick: () => {
-              trackClarityEvent("wallet_connect_clicked");
-              openConnectModal?.();
-            },
-          }
-        : chain.unsupported
-          ? { label: "Switch network", onClick: openChainModal }
-          : { label: account.displayName, onClick: openAccountModal };
-      return <div className={mounted ? "" : "pointer-events-none opacity-0"}>{children(props)}</div>;
-    }}
-  </ConnectButton.Custom>
-);
+const WalletConnect = ({ children }: { children: (p: WalletRenderProps) => React.ReactNode }) => {
+  const { address, chainId, isConnected } = useAccount();
+  const { open } = useAppKit();
+  // wagmi reconnects on the client, so render nothing chain-dependent until mounted.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const connected = mounted && isConnected;
+  const unsupported = connected && chainId !== undefined && !SUPPORTED_CHAIN_IDS.has(chainId);
+  const props: WalletRenderProps = !connected
+    ? {
+        label: "Connect wallet",
+        onClick: () => {
+          trackClarityEvent("wallet_connect_clicked");
+          openWalletModal();
+        },
+      }
+    : unsupported
+      ? { label: "Switch network", onClick: () => open({ view: "Networks" }) }
+      : { label: shortAddress(address), onClick: () => open({ view: "Account" }) };
+
+  return <div className={mounted ? "" : "pointer-events-none opacity-0"}>{children(props)}</div>;
+};
 
 type MainnetHeaderProps = {
   /** Static pages (docs/blog/404): no wallet button and no testnet mode. */

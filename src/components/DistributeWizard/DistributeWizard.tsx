@@ -25,6 +25,8 @@ import {
   type Address,
 } from "viem";
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
+import { base, sepolia } from "wagmi/chains";
+import { robinhood } from "@/constants/ecosystems";
 import Input from "@/components/Input/Input";
 import Divider from "@/components/Divider/Divider";
 import Stepper from "@/components/Stepper/Stepper";
@@ -82,13 +84,14 @@ import {
   getTokenV1Contract,
   getWethContract,
 } from "@/contracts/contracts";
-import { transferToHookAbi } from "@/contracts/abis";
+import { factoryV1Abi, transferToHookAbi } from "@/contracts/abis";
 import { getAddresses } from "@/contracts/contract-addresses";
 import { getParticipationAssets, type ParticipationAsset } from "@/contracts/participation-assets";
 import { CLAIM_ROOT_DISCORD_URL, DISTRIBUTION_LAUNCH_HREF, DISTRIBUTION_LIST } from "@/constants/links";
 import { distributionV1FactoryAbi } from "@/contracts/abis";
 import { showToast } from "@/hooks/useToast";
 import { viewTransactionAction } from "@/utils/explorer-utils";
+import { describeError, isTransportTimeout } from "@/utils/wallet-error";
 import { quickSqrtPriceX96 } from "@/lib/utils/sqrtPricex96";
 import { EMPTY_PERMIT2 } from "@/lib/utils/permit2";
 import { roundUnits } from "@/utils/round-units";
@@ -123,14 +126,27 @@ const EPOCH_DURATION_MS: Record<string, number> = {
 };
 // CreatorOrFactory — see DistributorV1.ReleasePolicy
 const RELEASE_POLICY_CREATOR_OR_FACTORY = 2;
-// the contract requires startTimestamp >= block.timestamp; keep a buffer
-const START_TIME_BUFFER_SEC = 60;
+// the contract requires startTimestamp >= block.timestamp; keep a buffer so it
+// can't expire while the user signs — and so a lagging RPC or a skewed device
+// clock can't make the preflight simulation disagree with the contract
+const START_TIME_BUFFER_SEC = 300;
 // Measured launch gasUsed: ~8.9M on Base and ~9.5M on Robinhood. 15M leaves
 // ~55% headroom. Do not derive this from block.gasLimit: Arbitrum Orbit chains
 // (e.g. Robinhood) report the header's 2^50 sentinel as the block gas limit,
 // which makes wallets think the tx costs millions of ETH and reject it with
 // "gas balance is not enough".
-const LAUNCH_GAS_LIMIT = 15_000_000n;
+//
+// Sepolia is the exception. Its Uniswap v3 deployment is far heavier than
+// Base's: measured on an archive node, the whole launch needs ~63M gas
+// (`eth_estimateGas` splits it ~37M pool + ~26M distributor), and 60M still
+// reverts inside the distributor deployment with empty data. 80M clears it with
+// margin and stays well under Sepolia's ~200M block limit.
+const LAUNCH_GAS_LIMIT: Record<number, bigint> = {
+  [base.id]: 15_000_000n,
+  [sepolia.id]: 80_000_000n,
+  [robinhood.id]: 15_000_000n,
+};
+const launchGasLimit = (chainId: number) => LAUNCH_GAS_LIMIT[chainId] ?? 15_000_000n;
 
 const bodyM = "text-body leading-5.5 tracking-[0.01em]";
 const bodyS = "text-body-s leading-5 tracking-[0.01em]";
@@ -424,6 +440,7 @@ const DistributeWizard = ({ initialToken }: { initialToken?: Address }) => {
   const consented = useClarityStep("distribution_wizard", step);
   const [token, setToken] = useState<TokenInfo | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [launchError, setLaunchError] = useState<string | null>(null);
   const [distributor, setDistributor] = useState<Address | null>(null);
   const importAddress = useInput("", undefined, addressValidator);
   const [importing, setImporting] = useState(false);
@@ -945,6 +962,14 @@ const totalDistributionAmount = useMemo(() => {
       switchToSelected();
       return;
     }
+    // `wrongChain` comes from the account state; the wallet client is what the
+    // transaction actually goes through, so guard on its chain too.
+    if (walletClient.chain && walletClient.chain.id !== chainId) {
+      showToast("network.wrong", { params: { chain: chainToName(chainId) } });
+      setStep("review");
+      return;
+    }
+    setLaunchError(null);
 
     trackClarityEvent("distribution_wizard_submit");
 
@@ -1105,8 +1130,6 @@ if (asset.native) {
         return;
       }
 
-      setStep("confirming");
-      showToast("launch.pending", { id: toastId });
       const args = [
         sqrtPriceX96,
         participationAmount,
@@ -1118,12 +1141,35 @@ if (asset.native) {
         EMPTY_PERMIT2,
         EMPTY_PERMIT2,
       ] as const;
-      // Skip eth_estimateGas: public RPCs cap their estimate/call for this heavy
-      // launch and return a bogus "reverted". Use a fixed limit instead.
+      setStep("confirming");
+      showToast("launch.pending", { id: toastId });
+      // Simulate first: a revert here costs nothing and viem decodes the reason,
+      // so the wallet never opens for a call that cannot succeed. The gas limit
+      // has to be passed — the default eth_call gas is too low for this launch on
+      // some chains, which reads as a bogus "reverted".
+      try {
+        await publicClient.simulateContract({
+          address: factory.address,
+          abi: factoryV1Abi,
+          functionName: "createLiquidityAndDistribution",
+          args,
+          account: address,
+          gas: launchGasLimit(launchChainId),
+        });
+      } catch (e) {
+        // Advisory only. Public RPCs answer this heavy call with a bare "execution
+        // reverted" even when the same calldata succeeds against the same state on
+        // a local node, so a failed simulation must not block the wallet — the
+        // wallet's own execution and the receipt stay authoritative.
+        console.warn("[distribution] simulation reverted — continuing to the wallet", describeError(e));
+      }
+
+      // Skip eth_estimateGas: public RPCs cap their estimate for this heavy launch
+      // and return a bogus "reverted". Use a fixed limit instead.
       const hash = await factory.write.createLiquidityAndDistribution(args, {
         account: walletClient.account,
         chain: walletClient.chain,
-        gas: LAUNCH_GAS_LIMIT,
+        gas: launchGasLimit(launchChainId),
       });
       const receipt = await publicClient
         .waitForTransactionReceipt({ hash })
@@ -1142,8 +1188,27 @@ if (asset.native) {
         return;
       }
       if (receipt.status === "reverted") {
+        // A receipt carries no revert data, so replay the call against the block
+        // before it to recover the reason. If the replay passes (state moved
+        // since), say so instead of inventing a cause.
+        const replay = await publicClient
+          .simulateContract({
+            address: factory.address,
+            abi: factoryV1Abi,
+            functionName: "createLiquidityAndDistribution",
+            args,
+            account: address,
+            gas: launchGasLimit(launchChainId),
+            blockNumber: receipt.blockNumber - 1n,
+          })
+          .then(() => null)
+          .catch((e) => describeError(e));
+        const message = replay
+          ? `The launch transaction reverted on-chain: ${replay} (${hash}).`
+          : `The launch transaction reverted on-chain with no reason (${hash}). The same call succeeds on the current state, so the failure was specific to that block — check the transaction on the explorer before retrying.`;
+        setLaunchError(message);
         showToast("launch.failed", { id: toastId, action: viewTransactionAction(launchChainId, hash) });
-        throw new Error("createLiquidityAndDistribution reverted");
+        throw new Error(message);
       }
       showToast("launch.success", { id: toastId, action: viewTransactionAction(launchChainId, hash) });
       // the distributor is created by the DistributionV1Factory, not FactoryV1
@@ -1176,7 +1241,12 @@ if (asset.native) {
     } catch (e) {
       console.error(e);
       trackClarityEvent("distribution_wizard_error");
-      showToast("tx.reverted", { id: toastId, params: { reason: revertReason(e) } });
+      const message = describeError(e);
+      setLaunchError(message);
+      // A transport timeout may still have broadcast the transaction, so don't
+      // invite a retry that could create a second distribution.
+      if (isTransportTimeout(e)) showToast("deploy.timeout", { id: toastId });
+      else showToast("tx.reverted", { id: toastId, params: { reason: message } });
       setStep("review");
     }
   };
@@ -1819,6 +1889,15 @@ if (asset.native) {
                   ]}
                 />
               </div>
+              {launchError && (
+                <div
+                  role="alert"
+                  className="flex w-full flex-col gap-1 rounded-m border border-danger bg-surface p-4"
+                >
+                  <p className={`${bodyM} text-danger`}>Launch failed</p>
+                  <p className="break-words text-body-s text-secondary">{launchError}</p>
+                </div>
+              )}
               <BackContinue
                 onBack={goBack}
                 onNext={onConfirm}
@@ -1850,12 +1929,5 @@ const shortAddress = (a: string) =>
   a.length > 10 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a;
 
 // Pulls the human reason out of a viem contract error so users see why a tx failed.
-const revertReason = (e: unknown): string => {
-  const err = e as { shortMessage?: string; message?: string };
-  const msg = err.shortMessage ?? err.message ?? String(e);
-  const afterReason = msg.match(/reason:\s*([^\n]+)/);
-  if (afterReason) return afterReason[1].trim();
-  return msg.split("\n")[0];
-};
 
 export default DistributeWizard;

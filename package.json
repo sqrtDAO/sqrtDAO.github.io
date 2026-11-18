@@ -11,8 +11,11 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@rainbow-me/rainbowkit": "^2.2.11",
+    "@metamask/connect-evm": "^2.1.1",
+    "@reown/appkit": "^1.8.24",
+    "@reown/appkit-adapter-wagmi": "^1.8.24",
     "@tabler/icons-react": "^3.44.0",
+    "@wagmi/connectors": "^8.2.4",
     "blockstore-core": "^7.0.1",
     "ipfs-unixfs-importer": "^17.1.1",
     "lightweight-charts": "^5.2.0",
@@ -20,8 +23,8 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-easy-crop": "^6.2.3",
-    "viem": "~2.54.3",
-    "wagmi": "^2.19.5"
+    "viem": "~2.57.20",
+    "wagmi": "^3.7.11"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
