@@ -57,7 +57,7 @@ import { formatDuration } from "@/utils/formatDuration";
 import { formatEpochTimestamp, formatPrice } from "@/utils/epoch-format";
 import { fmtInt } from "@/utils/formatInt";
 import { showToast } from "@/hooks/useToast";
-import { isUserRejectedError } from "@/utils/wallet-error";
+import { describeError, isUserRejectedError } from "@/utils/wallet-error";
 import { viewTransactionAction } from "@/utils/explorer-utils";
 import {
   getDistributorV1Contract,
@@ -212,11 +212,11 @@ const DistributionDetailV2 = ({
   const connectedChainId = useChainId();
   // chain is mandatory: an unknown/missing ?chain= is an error, not a fallback
   const chainId = chainNameToId(chainSlug);
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, connector } = useAccount();
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient(chainId ? { chainId } : undefined);
   const openConnectModal = useClarityConnectModal();
-  const { switchChain } = useSwitchChain();
+  const { switchChainAsync } = useSwitchChain();
   const sameChain =
     isConnected && chainId !== undefined && connectedChainId === chainId;
 
@@ -282,14 +282,17 @@ const DistributionDetailV2 = ({
   }, [publicClient, contractInfo?.distributionToken, chainId]);
 
   // Auto-switch the wallet to the distribution's chain (once per visit).
+  // WalletConnect sessions only cover the chains the wallet granted, so asking
+  // for another one is rejected before it reaches the wallet — leave those to
+  // the explicit action.
   const autoSwitched = useRef(false);
   useEffect(() => {
-    if (!isConnected || chainId === undefined || connectedChainId === chainId)
-      return;
+    if (!isConnected || chainId === undefined || connectedChainId === chainId) return;
+    if (connector?.type === "walletConnect") return;
     if (autoSwitched.current) return;
     autoSwitched.current = true;
-    switchChain({ chainId });
-  }, [isConnected, chainId, connectedChainId, switchChain]);
+    switchChainAsync({ chainId }).catch(() => showToast("network.switchFailed"));
+  }, [isConnected, chainId, connectedChainId, connector, switchChainAsync]);
 
   const ddpState: DdpState = state ? STATE_TO_DDP[state] : "upcoming";
   const running = ddpState === "live";
@@ -719,6 +722,12 @@ const DistributionDetailV2 = ({
         user: walletClient.account.address,
         range: { from: r.from, length: r.to - r.from + 1n },
       }));
+      // Simulate first: a revert here costs nothing and the wallet stays closed.
+      await distributor.simulate
+        .claimMany([claimParams], { account: walletClient.account.address })
+        .catch((e) => {
+          throw new Error(describeError(e));
+        });
       const hash = await distributor.write.claimMany([claimParams], {
         account: walletClient.account,
         chain: walletClient.chain,
@@ -743,10 +752,15 @@ const DistributionDetailV2 = ({
       setClaimState("done");
       refetch();
     } catch (e) {
-      showToast(isUserRejectedError(e) ? "claim.rejected" : "claim.failed", {
-        id: toastId,
-      });
-      setClaimState("error");
+      const rejected = isUserRejectedError(e);
+      showToast(rejected ? "claim.rejected" : "claim.failed", { id: toastId });
+      if (!rejected) {
+        showToast("tx.reverted", {
+          id: `${toastId}-reason`,
+          params: { reason: describeError(e) },
+        });
+      }
+      setClaimState(rejected ? "idle" : "error");
     }
   }, [
     walletClient,
@@ -820,20 +834,24 @@ const DistributionDetailV2 = ({
           id: toastId,
           params: { epoch: fromEpochNum },
         });
-        const hash = await router.write.participateWithETH(
-          [
-            contractAddress as Address,
-            amountPerEpoch,
-            range,
-            walletClient.account.address,
-            "0x",
-          ],
-          {
-            account: walletClient.account,
-            chain: walletClient.chain,
-            value: amountPerEpoch * BigInt(epochCountNum),
-          },
-        );
+        const ethValue = amountPerEpoch * BigInt(epochCountNum);
+        const ethArgs = [
+          contractAddress as Address,
+          amountPerEpoch,
+          range,
+          walletClient.account.address,
+          "0x",
+        ] as const;
+        await router.simulate
+          .participateWithETH(ethArgs, { account: walletClient.account.address, value: ethValue })
+          .catch((e) => {
+            throw new Error(describeError(e));
+          });
+        const hash = await router.write.participateWithETH(ethArgs, {
+          account: walletClient.account,
+          chain: walletClient.chain,
+          value: ethValue,
+        });
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
         if (receipt.status === "reverted") throw new Error("reverted");
       } else {
@@ -869,10 +887,21 @@ const DistributionDetailV2 = ({
           walletClient,
           contractAddress as Address,
         );
-        const hash = await distributor.write.participate(
-          [amountPerEpoch, range, walletClient.account.address, "0x"],
-          { account: walletClient.account, chain: walletClient.chain },
-        );
+        const participateArgs = [
+          amountPerEpoch,
+          range,
+          walletClient.account.address,
+          "0x",
+        ] as const;
+        await distributor.simulate
+          .participate(participateArgs, { account: walletClient.account.address })
+          .catch((e) => {
+            throw new Error(describeError(e));
+          });
+        const hash = await distributor.write.participate(participateArgs, {
+          account: walletClient.account,
+          chain: walletClient.chain,
+        });
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
         if (receipt.status === "reverted") throw new Error("reverted");
       }
@@ -900,7 +929,7 @@ const DistributionDetailV2 = ({
       if (!isUserRejectedError(e)) {
         showToast("tx.reverted", {
           id: `${toastId}-reason`,
-          params: { reason: revertReason(e) },
+          params: { reason: describeError(e) },
         });
       }
       return false;
@@ -1121,8 +1150,11 @@ const DistributionDetailV2 = ({
       amountError: amountLimitError ?? amountInput.error,
       rangeError,
       onConnect: () => {
-        if (isConnected && !sameChain) switchChain({ chainId });
-        else openConnectModal?.();
+        if (isConnected && !sameChain && chainId !== undefined) {
+          switchChainAsync({ chainId }).catch(() => showToast("network.switchFailed"));
+        } else {
+          openConnectModal?.();
+        }
       },
       connectLabel:
         isConnected && !sameChain
@@ -1241,14 +1273,5 @@ function DdpMessage({
     </div>
   );
 }
-
-// Pulls the human reason out of a viem contract error so users see why a tx failed.
-const revertReason = (e: unknown): string => {
-  const err = e as { shortMessage?: string; message?: string };
-  const msg = err.shortMessage ?? err.message ?? String(e);
-  const afterReason = msg.match(/reason:\s*([^\n]+)/);
-  if (afterReason) return afterReason[1].trim();
-  return msg.split("\n")[0];
-};
 
 export default DistributionDetailV2;
