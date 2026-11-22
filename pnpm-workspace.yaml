@@ -1,5 +1,10 @@
+# pnpm keeps dependency build scripts off by default. These are approved so a
+# fresh install builds their native/postinstall steps instead of failing with
+# ERR_PNPM_IGNORED_BUILDS (`pnpm approve-builds` writes this list).
 allowBuilds:
-  sharp: set this to true or false
-ignoredBuiltDependencies:
-  - sharp
-  - unrs-resolver
+  bufferutil: true
+  esbuild: true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true
+  utf-8-validate: true

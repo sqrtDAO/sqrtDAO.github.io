@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   formatUnits,
   maxUint256,
@@ -12,7 +12,6 @@ import {
   useAccount,
   useChainId,
   usePublicClient,
-  useSwitchChain,
   useWalletClient,
 } from "wagmi";
 import { IconLoader2 } from "@tabler/icons-react";
@@ -34,6 +33,7 @@ import type { FundSplit } from "@/components/FundSplitBar/FundSplitBar";
 import type { EpochData } from "@/lib/charts/types";
 import { useDistributorData } from "@/hooks/useDistributorData";
 import { useClarityConnectModal } from "@/hooks/useClarityConnectModal";
+import { useSwitchNetwork } from "@/hooks/useSwitchNetwork";
 import type {
   DistributionState,
   DistributorContractInfo,
@@ -212,11 +212,11 @@ const DistributionDetailV2 = ({
   const connectedChainId = useChainId();
   // chain is mandatory: an unknown/missing ?chain= is an error, not a fallback
   const chainId = chainNameToId(chainSlug);
-  const { address, isConnected, connector } = useAccount();
+  const { address, isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient(chainId ? { chainId } : undefined);
   const openConnectModal = useClarityConnectModal();
-  const { switchChainAsync } = useSwitchChain();
+  const switchTo = useSwitchNetwork();
   const sameChain =
     isConnected && chainId !== undefined && connectedChainId === chainId;
 
@@ -280,19 +280,6 @@ const DistributionDetailV2 = ({
       .then((creator) => setNative(creator !== zeroAddress))
       .catch(() => {});
   }, [publicClient, contractInfo?.distributionToken, chainId]);
-
-  // Auto-switch the wallet to the distribution's chain (once per visit).
-  // WalletConnect sessions only cover the chains the wallet granted, so asking
-  // for another one is rejected before it reaches the wallet — leave those to
-  // the explicit action.
-  const autoSwitched = useRef(false);
-  useEffect(() => {
-    if (!isConnected || chainId === undefined || connectedChainId === chainId) return;
-    if (connector?.type === "walletConnect") return;
-    if (autoSwitched.current) return;
-    autoSwitched.current = true;
-    switchChainAsync({ chainId }).catch(() => showToast("network.switchFailed"));
-  }, [isConnected, chainId, connectedChainId, connector, switchChainAsync]);
 
   const ddpState: DdpState = state ? STATE_TO_DDP[state] : "upcoming";
   const running = ddpState === "live";
@@ -1151,7 +1138,7 @@ const DistributionDetailV2 = ({
       rangeError,
       onConnect: () => {
         if (isConnected && !sameChain && chainId !== undefined) {
-          switchChainAsync({ chainId }).catch(() => showToast("network.switchFailed"));
+          void switchTo(chainId);
         } else {
           openConnectModal?.();
         }

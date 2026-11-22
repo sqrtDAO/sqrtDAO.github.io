@@ -1,9 +1,9 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useAccount, useSwitchChain } from "wagmi";
+import { useAccount } from "wagmi";
 import { ALL_MAINNET_CHAINS, DEFAULT_CHAIN } from "@/constants/ecosystems";
-import { showToast } from "@/hooks/useToast";
+import { useSwitchNetwork } from "@/hooks/useSwitchNetwork";
 import { chainNameToId, chainToSlug, ecosystemOf, isLive } from "@/utils/chain-utils";
 
 /** `?chain=` wins over the wallet — the URL is what the page shows. */
@@ -39,22 +39,11 @@ export const useSelectedChain = () => {
   const activeEcosystem = ecosystemOf(active);
   const chainId = activeEcosystem && isLive(activeEcosystem) ? active! : DEFAULT_CHAIN.id;
   const { chainId: walletChainId } = useAccount();
-  const { switchChainAsync } = useSwitchChain();
+  const switchTo = useSwitchNetwork();
   const setChainParam = useSetChainParam();
 
-  // MetaMask Connect and injected wallets switch without leaving the page. A
-  // WalletConnect session can only move between the chains the wallet granted at
-  // pairing, so if that request is refused the user has to switch in the wallet.
-  const switchTo = async (id: number) => {
-    try {
-      await switchChainAsync({ chainId: id });
-    } catch {
-      showToast("network.switchFailed");
-    }
-  };
-
-  // Line the wallet up with `?chain=` after connecting (see WalletChainSync).
-
+  // Picking a network moves the page first; the wallet follows. If the wallet
+  // refuses, the page keeps the choice and the wizard shows "Switch to X".
   const wrongChain = walletChainId !== undefined && walletChainId !== chainId;
   return {
     chainId,
