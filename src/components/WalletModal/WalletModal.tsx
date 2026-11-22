@@ -22,6 +22,7 @@ import {
   walletDeepLink,
 } from "@/lib/wallet/deeplink";
 import { onDisplayUri } from "@/lib/wallet/display-uri";
+import { metaMaskTransport, preferWalletConnectTransport } from "@/lib/wallet/prefs";
 
 type Pending = {
   kind: "metaMask" | "walletConnect" | "injected";
@@ -218,8 +219,8 @@ const WalletModal = () => {
         // hop). A desktop extension is plain injected — no SDK chunk, no chance
         // of MetaMask's own install modal opening behind ours. Everything else
         // is a WalletConnect QR the phone can scan.
-        if (mobile) void connectMetaMask();
-        else if (hasInjectedMetaMask() && fallbackInjected)
+        if (mobile && metaMaskTransport() === "connect") void connectMetaMask();
+        else if (!mobile && hasInjectedMetaMask() && fallbackInjected)
           void connectInjected(fallbackInjected, "MetaMask");
         else void connectWalletConnect(findWallet("metamask"));
       },
@@ -303,7 +304,10 @@ const WalletModal = () => {
           {pending.kind === "metaMask" && mobile ? (
             <button
               type="button"
-              onClick={() => void connectWalletConnect(findWallet("metamask"))}
+              onClick={() => {
+                preferWalletConnectTransport();
+                void connectWalletConnect(findWallet("metamask"));
+              }}
               className="self-start text-body-s text-secondary underline hover:text-primary"
             >
               MetaMask didn&apos;t open? Connect through WalletConnect instead
