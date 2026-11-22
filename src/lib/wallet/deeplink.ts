@@ -9,7 +9,3 @@ export const walletDeepLink = (link: WalletLink, uri: string) => {
 export const openDeepLink = (url: string) => {
   window.location.assign(url);
 };
-
-/** MetaMask Connect hands out `metamask://connect/mwp?…`; map it to its App Link. */
-export const metaMaskUniversalLink = (deeplink: string) =>
-  deeplink.replace("metamask://", "https://metamask.app.link/");

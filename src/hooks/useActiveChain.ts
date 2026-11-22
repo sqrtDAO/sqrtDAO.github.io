@@ -42,16 +42,23 @@ export const useSelectedChain = () => {
   const switchTo = useSwitchNetwork();
   const setChainParam = useSetChainParam();
 
-  // Picking a network moves the page first; the wallet follows. If the wallet
-  // refuses, the page keeps the choice and the wizard shows "Switch to X".
+  // With a wallet connected, the page only moves once the wallet accepted the
+  // switch — otherwise the picker claims a chain the wallet is not on and the
+  // wizard's "Confirm" fails later. Disconnected users just pick the chain; the
+  // connect modal requests it directly (see WalletModal `pageChainId`).
   const wrongChain = walletChainId !== undefined && walletChainId !== chainId;
   return {
     chainId,
     wrongChain,
     switchToSelected: () => switchTo(chainId),
     select: (id: number) => {
-      setChainParam(id);
-      if (walletChainId !== undefined && walletChainId !== id) void switchTo(id);
+      if (walletChainId === undefined || walletChainId === id) {
+        setChainParam(id);
+        return;
+      }
+      void switchTo(id).then((result) => {
+        if (result === "switched") setChainParam(id);
+      });
     },
   };
 };

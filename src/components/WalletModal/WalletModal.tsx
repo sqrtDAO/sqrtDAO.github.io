@@ -13,14 +13,14 @@ import {
 import DialogShell from "@/components/DialogShell/DialogShell";
 import { Button } from "@/components/Button/Button";
 import { DEEPLINK_WALLETS, findWallet, type WalletDefinition } from "@/constants/wallet";
+import { DEFAULT_CHAIN } from "@/constants/ecosystems";
 import { useIsMobileBrowser } from "@/hooks/useIsMobileBrowser";
 import { hasInjectedMetaMask, hasInjectedProvider } from "@/lib/wallet/detect";
 import { closeWalletDialog, useWalletDialog } from "@/hooks/useWalletDialog";
-import {
-  metaMaskUniversalLink,
-  openDeepLink,
-  walletDeepLink,
-} from "@/lib/wallet/deeplink";
+import { openDeepLink, walletDeepLink } from "@/lib/wallet/deeplink";
+import { METAMASK_REOPEN_LINK } from "@/lib/wallet/metamask-link";
+import { debugLog, describeWalletError } from "@/lib/wallet/debug";
+import { chainNameToId } from "@/utils/chain-utils";
 import { onDisplayUri } from "@/lib/wallet/display-uri";
 import { metaMaskTransport, preferWalletConnectTransport } from "@/lib/wallet/prefs";
 
@@ -39,6 +39,14 @@ type Row = {
 };
 
 const CONNECT_FAILED = "Approval didn't come through. Try again from your wallet.";
+
+// Connect *on the chain the page is showing*. The wallets otherwise reuse
+// whatever they had selected last, which is how a `?chain=sepolia` page ended up
+// connected to Base and then needed a switch it could not complete.
+const pageChainId = () => {
+  if (typeof window === "undefined") return DEFAULT_CHAIN.id;
+  return chainNameToId(new URLSearchParams(window.location.search).get("chain")) ?? DEFAULT_CHAIN.id;
+};
 
 const IconForWallet = ({ id }: { id: string }) =>
   id === "walletconnect" ? <IconQrcode size={20} /> : <IconWallet size={20} />;
@@ -151,10 +159,13 @@ const WalletModal = () => {
     setError(null);
     setUri(null);
     setPending({ kind: "injected", label });
+    const chainId = pageChainId();
+    debugLog("connect:start", { connector: connector.id, chainId });
     try {
-      await connectAsync({ connector });
+      await connectAsync({ connector, chainId });
       close();
-    } catch {
+    } catch (error) {
+      debugLog("connect:failed", describeWalletError(error));
       backToList();
     }
   };
@@ -166,13 +177,17 @@ const WalletModal = () => {
     setPending({ kind: "metaMask", label: "MetaMask" });
     // MetaMask Connect announces the deeplink it wants to open; keep the App
     // Link version so the user can reopen the app without losing the page.
-    const off = onDisplayUri(metaMaskConnector, (deeplink) =>
-      setUri(metaMaskUniversalLink(deeplink)),
-    );
+    const off = onDisplayUri(metaMaskConnector, (deeplink) => {
+      debugLog("metamask:deeplink", deeplink.slice(0, 80));
+      setUri(deeplink);
+    });
+    const chainId = pageChainId();
+    debugLog("connect:start", { connector: "metaMask", chainId });
     try {
-      await connectAsync({ connector: metaMaskConnector });
+      await connectAsync({ connector: metaMaskConnector, chainId });
       close();
-    } catch {
+    } catch (error) {
+      debugLog("connect:failed", describeWalletError(error));
       // Stay on the waiting screen: that is where the WalletConnect fallback is.
       setError(CONNECT_FAILED);
     } finally {
@@ -189,15 +204,19 @@ const WalletModal = () => {
     // On mobile hand it straight to the requested wallet; on desktop the modal
     // renders it as a QR.
     const off = onDisplayUri(walletConnectConnector, (pairingUri) => {
+      debugLog("walletconnect:uri", pairingUri.slice(0, 80));
       setUri(pairingUri);
       if (!mobile || !wallet?.link) return;
       const link = walletDeepLink(wallet.link, pairingUri);
       if (link) openDeepLink(link);
     });
+    const chainId = pageChainId();
+    debugLog("connect:start", { connector: "walletConnect", chainId });
     try {
-      await connectAsync({ connector: walletConnectConnector });
+      await connectAsync({ connector: walletConnectConnector, chainId });
       close();
-    } catch {
+    } catch (error) {
+      debugLog("connect:failed", describeWalletError(error));
       // A rejected proposal can't be reused, so ask for a fresh pairing.
       backToList();
     } finally {
@@ -291,6 +310,17 @@ const WalletModal = () => {
 
           {pending.kind === "metaMask" && uri ? (
             <OpenLink href={uri} label="Open MetaMask" />
+          ) : null}
+
+          {pending.kind === "metaMask" && mobile ? (
+            <p className="text-body-s text-secondary">
+              MetaMask showing its splash screen instead of the request? Switch to
+              it from your recent apps —{" "}
+              <a href={METAMASK_REOPEN_LINK} className="underline hover:text-primary">
+                or tap here
+              </a>{" "}
+              — the request is already waiting there.
+            </p>
           ) : null}
 
           {pending.kind === "injected" ? null : waitingForUri ? (

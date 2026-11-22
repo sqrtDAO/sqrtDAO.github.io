@@ -4,6 +4,7 @@ import { DAPP_DESCRIPTION, WC_PROJECT_ID } from "@/constants/wallet";
 import { SITE_NAME, SITE_URL } from "@/constants/site";
 import { LIVE_CHAINS } from "@/utils/chain-utils";
 import { RPC_URLS, transports } from "@/lib/wagmi/transports";
+import { openMetaMaskLink } from "@/lib/wallet/metamask-link";
 
 const appUrl = () => (typeof window === "undefined" ? SITE_URL : window.location.origin);
 const appHref = () => (typeof window === "undefined" ? SITE_URL : window.location.href);
@@ -34,6 +35,8 @@ const dappMetadata = {
   },
 };
 
+const isBrowser = typeof window !== "undefined";
+
 export const wagmiConfig = createConfig({
   chains,
   transports,
@@ -44,18 +47,28 @@ export const wagmiConfig = createConfig({
     metaMask({
       dapp: { name: SITE_NAME, url: appUrl(), iconUrl: `${appUrl()}/og.png` },
       analytics: { enabled: false },
-      // Universal link instead of `metamask://` so Android keeps the browser
-      // tab in the back stack while the user approves in the app.
-      mobile: { useDeeplink: false },
+      // `metamask://connect/mwp?p=…` for the connection request (the App Link
+      // form makes MetaMask treat the path as a dapp URL and drop the payload),
+      // and a launcher-style wake link for the `id=` requests — see
+      // `lib/wallet/metamask-link.ts`.
+      mobile: { preferredOpenLink: openMetaMaskLink },
     }),
     // Everything else, and MetaMask too when the mobile app is old enough that
     // MetaMask Connect is not available. `showQrModal: false` — the pairing URI
     // is rendered by our own modal so deeplinks can be opened explicitly.
-    walletConnect({
-      projectId: WC_PROJECT_ID,
-      showQrModal: false,
-      metadata: dappMetadata,
-    }),
+    //
+    // Browser only: wagmi calls `connector.setup()` eagerly, and the
+    // WalletConnect provider's storage constructor touches indexedDB, which
+    // throws (and logs an unhandled rejection) while prerendering.
+    ...(isBrowser
+      ? [
+          walletConnect({
+            projectId: WC_PROJECT_ID,
+            showQrModal: false,
+            metadata: dappMetadata,
+          }),
+        ]
+      : []),
     // Any other injected extension (and the wallet a dapp browser injects).
     injected(),
   ],

@@ -7,6 +7,7 @@ export type ToastMessageKey =
   | "network.switched"
   | "network.wrong"
   | "network.switchFailed"
+  | "network.walletTimeout"
   | "deploy.pending"
   | "deploy.success"
   | "deploy.failed"
@@ -67,6 +68,10 @@ export const TOAST_MESSAGES: Record<ToastMessageKey, ToastMessageDef> = {
   "network.switched": { type: "success", copy: "Switched to {chain}" },
   "network.wrong": { type: "error", copy: "Wrong network — switch to {chain} to continue." },
   "network.switchFailed": { type: "error", copy: "Couldn't switch network. Try from your wallet." },
+  "network.walletTimeout": {
+    type: "info",
+    copy: "Your wallet didn't answer in time. Open it from your recent apps — the request is waiting there — then try again.",
+  },
 
   "deploy.pending": { type: "pending", copy: "Deploying your token…" },
   "deploy.success": { type: "success", copy: "Token created — {symbol} is live on-chain." },
