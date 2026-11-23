@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useAccount, useConnect } from "wagmi";
 import { showToast } from "@/hooks/useToast";
 
-// Mounted once at the root (see WalletRoot) so wallet connect/disconnect/
+// Mounted once at the root (see WalletProvider) so wallet connect/disconnect/
 // connect-failed toasts fire app-wide regardless of which page is active.
 export default function WalletToastWatcher() {
   const { isConnected, status } = useAccount();

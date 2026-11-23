@@ -1,11 +1,9 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAppKit } from "@reown/appkit/react";
 import { useAccount } from "wagmi";
-import { base, sepolia } from "wagmi/chains";
 import { IconMenu, IconWallet, IconX } from "@tabler/icons-react";
 import Logo from "@/components/Logo/Logo";
 import { Button } from "@/components/Button/Button";
@@ -13,12 +11,14 @@ import { IconButton } from "@/components/IconButton/IconButton";
 import NavLink from "@/components/NavLink/NavLink";
 import TestnetRibbon from "@/components/TestnetRibbon/TestnetRibbon";
 import { MAINNET_NAV } from "@/constants/links";
-import { robinhood } from "@/constants/ecosystems";
-import { openWalletModal } from "@/hooks/useWalletModal";import { trackClarityEvent } from "@/utils/clarity";
+import { useIsMounted } from "@/hooks/useIsMounted";
+import { openWalletDialog } from "@/hooks/useWalletDialog";
+import { LIVE_CHAINS } from "@/utils/chain-utils";
+import { trackClarityEvent } from "@/utils/clarity";
 
 const DESKTOP_NAV = [MAINNET_NAV.launch, MAINNET_NAV.explore, MAINNET_NAV.blog, MAINNET_NAV.docs];
 
-const SUPPORTED_CHAIN_IDS = new Set<number>([base.id, sepolia.id, robinhood.id]);
+const SUPPORTED_CHAIN_IDS = new Set<number>(LIVE_CHAINS.map((chain) => chain.id));
 
 const shortAddress = (address?: string) =>
   address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "";
@@ -27,10 +27,8 @@ type WalletRenderProps = { label: string; onClick: () => void };
 
 const WalletConnect = ({ children }: { children: (p: WalletRenderProps) => React.ReactNode }) => {
   const { address, chainId, isConnected } = useAccount();
-  const { open } = useAppKit();
   // wagmi reconnects on the client, so render nothing chain-dependent until mounted.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useIsMounted();
 
   const connected = mounted && isConnected;
   const unsupported = connected && chainId !== undefined && !SUPPORTED_CHAIN_IDS.has(chainId);
@@ -39,12 +37,12 @@ const WalletConnect = ({ children }: { children: (p: WalletRenderProps) => React
         label: "Connect wallet",
         onClick: () => {
           trackClarityEvent("wallet_connect_clicked");
-          openWalletModal();
+          openWalletDialog("connect");
         },
       }
     : unsupported
-      ? { label: "Switch network", onClick: () => open({ view: "Networks" }) }
-      : { label: shortAddress(address), onClick: () => open({ view: "Account" }) };
+      ? { label: "Switch network", onClick: () => openWalletDialog("account") }
+      : { label: shortAddress(address), onClick: () => openWalletDialog("account") };
 
   return <div className={mounted ? "" : "pointer-events-none opacity-0"}>{children(props)}</div>;
 };
