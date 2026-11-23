@@ -56,8 +56,8 @@ export const useSelectedChain = () => {
         setChainParam(id);
         return;
       }
-      void switchTo(id).then((result) => {
-        if (result === "switched") setChainParam(id);
+      void switchTo(id).then((outcome) => {
+        if (outcome.status === "switched") setChainParam(id);
       });
     },
   };

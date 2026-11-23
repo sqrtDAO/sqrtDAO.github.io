@@ -35,7 +35,7 @@ const TestnetRibbon = ({ stay = false }: TestnetRibbonProps) => {
 
   const backToMainnet = async () => {
     // rejected in the wallet — stay on testnet
-    if (isConnected && (await switchTo(DEFAULT_CHAIN.id)) !== "switched") return;
+    if (isConnected && (await switchTo(DEFAULT_CHAIN.id)).status !== "switched") return;
     if (stay) setChainParam(DEFAULT_CHAIN.id);
     else router.push(DISTRIBUTION_LIST);
   };
