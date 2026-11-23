@@ -39,6 +39,7 @@ import RouterPage from "@/components/RouterPage/RouterPage";
 import MainnetHeader from "@/components/MainnetHeader/MainnetHeader";
 import ImportToken from "@/components/ImportToken/ImportToken";
 import Alert from "@/components/Alert/Alert";
+import HackathonBanner from "@/components/HackathonBanner/HackathonBanner";
 import TextArea from "@/components/TextArea/TextArea";
 import AvatarUpload from "@/components/AvatarUpload/AvatarUpload";
 import AvatarCropDialog from "@/components/AvatarCropDialog/AvatarCropDialog";
@@ -1280,6 +1281,9 @@ if (asset.native) {
                 </h1>
                 <p className={`${bodyS} text-secondary`}>Here&apos;s how it works</p>
               </div>
+              <HackathonBanner title="You’re launching during the Builder Hackathon">
+                To receive a prize, your distribution must run until at least 20 Jan 2027, one month after the hackathon ends.
+              </HackathonBanner>
               <div className={`${bodyL} flex w-full flex-col gap-6 text-primary`}>
                 <p>
                   Your token is released gradually, over timed windows called{" "}
@@ -1624,6 +1628,10 @@ if (asset.native) {
                         />
                       </div>
                     )}
+                    <HackathonBanner title="Set your end date to 20 Jan 2027 or later" icon={<IconCalendarEvent size={20} className="shrink-0" />}>
+                      Hackathon prizes are paid into your remaining epochs after Demo Day. If your distribution ends earlier, there are fewer
+                      epochs left to pay your prize into.
+                    </HackathonBanner>
                     <p className={`flex w-full flex-wrap items-center gap-2 rounded-m border border-subtle bg-surface p-4 ${bodyM} text-secondary`}>
                       This creates{" "}
                       <strong className="font-bold text-primary">{epochsCount} total epochs</strong> releasing{" "}
@@ -1733,6 +1741,13 @@ if (asset.native) {
                       </div>
                     )}
                   </div>
+                  {/* TODO(copy): Figma 17640:95616 still has placeholder text for this description. */}
+                  <HackathonBanner
+                    title="Fund Split changes due to hackathon period"
+                    icon={<Image src="/hackathon/logo-amber.svg" alt="" width={21} height={16} className="shrink-0" />}
+                  >
+                    Description about differences between normal fund split and this fund split
+                  </HackathonBanner>
                 </div>
               </div>
               <BackContinue onBack={goBack} onNext={goNext} />
