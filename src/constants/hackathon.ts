@@ -1,7 +1,7 @@
 // sqrtDAO Builder Hackathon (/hackathon) — everything time- or link-dependent lives here.
 
-// TODO: real booking link before launch. Every "Book a call" reads this and opens in a new tab.
-export const BOOKING_URL = "#";
+// Every "Book a call" reads this and opens in a new tab.
+export const BOOKING_URL = "https://calendly.com/arashselective";
 export const WHY_TOKEN_HREF = "https://sqrtdao.org/blog/why-you-might-need-a-token/";
 
 // Timeline: week 1 starts here (UTC); each card is 7 days, the 5th is Demo week.
