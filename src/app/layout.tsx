@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Oxanium, IBM_Plex_Sans_Condensed } from "next/font/google";
-import WalletRoot from "@/components/WalletRoot/WalletRoot";
+import WalletProvider from "@/components/WalletProvider/WalletProvider";
 import ToastContainer from "@/components/ToastContainer/ToastContainer";
 import ClarityAnalytics from "@/components/ClarityAnalytics/ClarityAnalytics";
 import ClarityTracker from "@/components/ClarityTracker/ClarityTracker";
@@ -75,11 +75,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${oxanium.variable} ${ibmPlex.variable}`}>
       <body>
-        <WalletRoot>
+        <WalletProvider>
           <ClarityTracker />
           <ClarityWalletTracker />
           {children}
-        </WalletRoot>
+        </WalletProvider>
         <ToastContainer />
         <ConsentBanner />
         <ClarityAnalytics />

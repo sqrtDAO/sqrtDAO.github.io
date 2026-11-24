@@ -4,6 +4,40 @@ Short log of deferred or non-obvious decisions. Add an entry when we decide
 *not* to do something now, so future sessions (and teammates) don't re-litigate
 it or trip over it.
 
+## Wallet layer: wagmi connectors + our own dialogs, no AppKit
+
+**Status:** Chosen architecture (`src/lib/wagmi/config.ts`, `WalletModal`,
+`AccountModal`).
+
+**Why:** Mobile Android + MetaMask/Rabby kept failing with Reown AppKit in the
+stack, because AppKit owns three things we needed to control ourselves: the
+modal, the deeplink opening, and chain switching. The concrete failures were
+
+1. `WalletChainSync` fired `switchChainAsync` right after connecting. Every
+   MetaMask Connect request opens the wallet app (`metamask://`/App Link), so the
+   user was thrown back into MetaMask before the session settled — the second
+   open then hung on the fox splash. Nothing switches chains automatically now;
+   `useSwitchNetwork` runs only from an explicit action, and every write path
+   already guards on `sameChain`/`wrongChain`.
+2. WalletConnect proposals carried no `metadata.redirect`, so wallets had no URL
+   to send the user back to and the dapp tab stayed in the background. `redirect`
+   now points at the current page.
+3. Custom-scheme deeplinks (`metamask://…`) start the wallet in its own task on
+   Android, so "back" lands on the wallet home screen. We now prefer App Links
+   (`https://metamask.app.link/…`) and only fall back to a scheme when the wallet
+   has no universal link (Rabby).
+
+**What's in place:** three wagmi connectors — `metaMask` (MetaMask Connect:
+EIP-6963 on desktop, MWP App Link on mobile), `walletConnect` (Rabby + every
+other wallet, `showQrModal: false`, QR from `qrcode.react`), and `injected`. The
+pairing URI is read off the connector emitter (`onDisplayUri`) so the modal can
+either render a QR or hand the URI to a wallet's deep link. `@reown/appkit` and
+`@reown/appkit-adapter-wagmi` were removed.
+
+**Not done on purpose:** no auto-switch on connect, no "wrong network" banner in
+the header (the dapp pages already gate their actions), and no wallet logos from
+the WalletConnect Explorer (an extra runtime dependency for cosmetics).
+
 ## V.1 component namespacing (`components/v1/` vs flat)
 
 **Status:** Deferred.

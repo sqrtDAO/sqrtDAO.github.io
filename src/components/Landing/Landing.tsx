@@ -8,6 +8,7 @@ import LandingHowItWorks from "@/components/LandingHowItWorks/LandingHowItWorks"
 import LandingForFounders from "@/components/LandingForFounders/LandingForFounders";
 import LandingForParticipants from "@/components/LandingForParticipants/LandingForParticipants";
 import MainnetFooter from "@/components/MainnetFooter/MainnetFooter";
+import HackathonAnnouncement from "@/components/HackathonAnnouncement/HackathonAnnouncement";
 
 // Mainnet landing — Figma 10694:90661 (desktop) / 10694:91237 (mobile).
 // No "Help us build it"; the mainnet footer closes the page.
@@ -28,6 +29,7 @@ export default function Landing() {
           <MainnetFooter placement="landing" />
         </div>
       </main>
+      <HackathonAnnouncement />
     </>
   );
 }

@@ -2,11 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { IconChevronRight } from "@tabler/icons-react";
-import { useAccount, useSwitchChain } from "wagmi";
+import { useAccount } from "wagmi";
 import { DEFAULT_CHAIN } from "@/constants/ecosystems";
 import { DISTRIBUTION_LIST } from "@/constants/links";
 import { BODY_S } from "@/constants/typography";
 import { useActiveChainId, useSetChainParam } from "@/hooks/useActiveChain";
+import { useSwitchNetwork } from "@/hooks/useSwitchNetwork";
 import { chainToName, isTestnet } from "@/utils/chain-utils";
 
 type TestnetRibbonProps = {
@@ -20,7 +21,7 @@ const SHADE = "pointer-events-none absolute inset-y-0 w-6 from-(--color-infra-30
 const TestnetRibbon = ({ stay = false }: TestnetRibbonProps) => {
   const { chainId } = useActiveChainId();
   const { isConnected } = useAccount();
-  const { switchChainAsync } = useSwitchChain();
+  const switchTo = useSwitchNetwork();
   const setChainParam = useSetChainParam();
   const router = useRouter();
   if (!isTestnet(chainId)) return null;
@@ -33,13 +34,8 @@ const TestnetRibbon = ({ stay = false }: TestnetRibbonProps) => {
   );
 
   const backToMainnet = async () => {
-    if (isConnected) {
-      try {
-        await switchChainAsync({ chainId: DEFAULT_CHAIN.id });
-      } catch {
-        return; // rejected in the wallet — stay on testnet
-      }
-    }
+    // rejected in the wallet — stay on testnet
+    if (isConnected && (await switchTo(DEFAULT_CHAIN.id)).status !== "switched") return;
     if (stay) setChainParam(DEFAULT_CHAIN.id);
     else router.push(DISTRIBUTION_LIST);
   };
