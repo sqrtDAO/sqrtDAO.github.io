@@ -25,7 +25,11 @@ jobs:
       - uses: pnpm/action-setup@v4
         name: Install pnpm
         with:
-          version: 10
+          # Must match the pnpm that wrote pnpm-lock.yaml. With pnpm 10 the
+          # install of this lockfile produces a layout Turbopack can't resolve
+          # next/font through ("queries have exactly one entry"), and `next build`
+          # fails; pnpm 12 installs it and builds cleanly.
+          version: 12
           run_install: false
 
       - name: Install Node.js

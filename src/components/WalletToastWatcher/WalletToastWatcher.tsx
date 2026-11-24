@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useAccount, useConnect } from "wagmi";
 import { showToast } from "@/hooks/useToast";
+import { isRecreatingSession } from "@/lib/wallet/session";
 
 // Mounted once at the root (see WalletProvider) so wallet connect/disconnect/
 // connect-failed toasts fire app-wide regardless of which page is active.
@@ -35,7 +36,8 @@ export default function WalletToastWatcher() {
     if (isConnected && !wasConnected.current) {
       // showToast("wallet.connected");
     } else if (!isConnected && wasConnected.current) {
-      showToast("wallet.disconnected");
+      // A session we are re-creating for a new network is not a disconnect.
+      if (!isRecreatingSession()) showToast("wallet.disconnected");
     }
     wasConnected.current = isConnected;
   }, [isConnected, status]);

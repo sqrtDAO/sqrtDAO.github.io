@@ -60,7 +60,7 @@ const AccountModal = () => {
   const [addingChain, setAddingChain] = useState(false);
   const [failed, setFailed] = useState<Failed | null>(null);
 
-  if (!open || !isConnected || !address) return null;
+  if (!open) return null;
 
   const close = () => {
     setCopied(false);
@@ -132,6 +132,26 @@ const AccountModal = () => {
     preferWalletConnectTransport();
     reconnect();
   };
+
+  // Rare, but possible: the wallet dropped the connection mid-flow (a revoked
+  // permission, or the session re-create for a new network failed). Say so and
+  // offer the only useful action instead of vanishing.
+  if (!isConnected || !address) {
+    return (
+      <DialogShell
+        title="Wallet"
+        subtitle={<span className={`${BODY_S} text-secondary`}>Not connected</span>}
+        onClose={close}
+      >
+        <p className={`${BODY_S} text-secondary`}>
+          The wallet disconnected before the network change finished.
+        </p>
+        <Button variant="primary" size="m" className="self-start" onClick={reconnect}>
+          Connect wallet
+        </Button>
+      </DialogShell>
+    );
+  }
 
   const activePage = pageChainId();
   const failedName = failed ? chainToName(failed.chainId) : "";

@@ -7,7 +7,7 @@ import { LIVE_CHAINS, chainToName } from "@/utils/chain-utils";
 import { isTransportTimeout, isUserRejectedError } from "@/utils/wallet-error";
 import { applyWalletState, readChainId, withTimeout } from "@/lib/wallet/chain-sync";
 import { WALLET_KNOWN_CHAIN_IDS, addChain } from "@/lib/wallet/add-chain";
-import { sessionPermitsChain } from "@/lib/wallet/session";
+import { markSessionRecreate, sessionPermitsChain } from "@/lib/wallet/session";
 import { debugLog, describeWalletError } from "@/lib/wallet/debug";
 
 // Long enough for the user to switch to the wallet app, approve, and come back.
@@ -52,6 +52,7 @@ export const useSwitchNetwork = () => {
     async (chainId: number): Promise<boolean> => {
       if (!connector) return false;
       debugLog("session:reconnect", { chainId, connector: connector.id });
+      markSessionRecreate(true);
       try {
         await disconnectAsync();
         await withTimeout(connectAsync({ connector, chainId }), RECONNECT_TIMEOUT_MS);
@@ -59,6 +60,8 @@ export const useSwitchNetwork = () => {
       } catch (error) {
         debugLog("session:reconnect-failed", describeWalletError(error));
         return false;
+      } finally {
+        markSessionRecreate(false);
       }
     },
     [connectAsync, disconnectAsync, connector],

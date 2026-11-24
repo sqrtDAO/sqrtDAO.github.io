@@ -61,7 +61,9 @@ export const useWalletResync = () => {
         accounts: accounts && accounts[0] !== address ? accounts : undefined,
       });
 
-      if (actualChain !== undefined) followWallet(actualChain);
+      // Only when the wallet actually moved: a `?chain=` from a shared link (or a
+      // deliberate picker choice) must survive a resume where nothing changed.
+      if (chainChanged) followWallet(actualChain);
     };
 
     // `visibilitychange` is the one that fires when the app switcher returns to

@@ -4,6 +4,16 @@ import { debugLog, describeWalletError } from "@/lib/wallet/debug";
 
 type Eip1193 = { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> };
 
+// Set while `useSwitchNetwork` deliberately drops and re-creates the connection,
+// so the app doesn't announce "wallet disconnected" during a reconnect it caused.
+let recreating = false;
+
+export const markSessionRecreate = (value: boolean) => {
+  recreating = value;
+};
+
+export const isRecreatingSession = () => recreating;
+
 type SessionLike = { sessionScopes?: Record<string, unknown> };
 
 /**
